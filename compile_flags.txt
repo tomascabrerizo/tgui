@@ -1,0 +1,8 @@
+-pedantic
+-D_GNU_SOURCE 
+-Wall
+-Wextra
+-Werror
+-std=c99
+-g
+-I./code
