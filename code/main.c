@@ -94,6 +94,18 @@ int main(void) {
 
         tgui_update();
 
+        TGuiCursor cursor = tgui_get_cursor_state();
+
+        switch (cursor) { 
+        
+        case TGUI_CURSOR_ARROW:   { os_set_cursor(window, OS_CURSOR_ARROW); } break;
+        case TGUI_CURSOR_HAND:    { os_set_cursor(window, OS_CURSOR_HAND); } break;
+        case TGUI_CURSOR_V_ARROW: { os_set_cursor(window, OS_CURSOR_V_ARROW); } break;
+        case TGUI_CURSOR_H_ARROW: { os_set_cursor(window, OS_CURSOR_H_ARROW); } break;
+
+        }
+
+
         clear_backbuffer(backbuffer);
         
         Rectangle dim = {0, 0, window_w, window_h};

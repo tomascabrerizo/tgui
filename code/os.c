@@ -9,6 +9,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/Xcursor/Xcursor.h>
 
 static u64 g_os_page_size = 0;
 static Display *g_x11_display = 0;
@@ -75,7 +76,28 @@ typedef struct OsWindow {
 
     Window os_window;
     Atom delete_message;
+
 } OsWindow;
+
+
+static Cursor cursor_v_double_arrow;
+static Cursor cursor_h_double_arrow;
+static Cursor cursor_hand;
+static Cursor cursor_arrow;
+ 
+void os_set_cursor(OsWindow *window, OsCursor cursor) {
+
+    Display *d = g_x11_display;
+    
+    switch (cursor) { 
+    
+    case OS_CURSOR_ARROW:   { XDefineCursor(d, window->os_window, cursor_arrow); } break;
+    case OS_CURSOR_HAND:    { XDefineCursor(d, window->os_window, cursor_hand); } break;
+    case OS_CURSOR_V_ARROW: { XDefineCursor(d, window->os_window, cursor_v_double_arrow); } break;
+    case OS_CURSOR_H_ARROW: { XDefineCursor(d, window->os_window, cursor_h_double_arrow); } break;
+
+    }
+}
 
 struct OsWindow *os_window_create(struct Arena *arena, char *title, u32 x, u32 y, u32 w, u32 h) {
     OsWindow *window = arena_push_struct(arena, OsWindow, 8);
@@ -92,8 +114,14 @@ struct OsWindow *os_window_create(struct Arena *arena, char *title, u32 x, u32 y
     /* TODO: investigate why is necesary to do this to catch WM_DELETE_WINDOW message */
     window->delete_message = XInternAtom(d, "WM_DELETE_WINDOW", False);
     XSetWMProtocols(d, window->os_window, &window->delete_message, 1);
-
+    
     XFlush(d);
+
+    cursor_v_double_arrow = XcursorLibraryLoadCursor(d, "sb_v_double_arrow");
+    cursor_h_double_arrow = XcursorLibraryLoadCursor(d, "sb_h_double_arrow");
+    cursor_hand           = XcursorLibraryLoadCursor(d, "hand1");
+    cursor_arrow          = XcursorLibraryLoadCursor(d, "arrow");
+    XDefineCursor (d, window->os_window, cursor_arrow);
 
     return window;
 }

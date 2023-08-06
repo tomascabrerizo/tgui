@@ -226,12 +226,26 @@ TGuiSplitDirection calculate_drop_split_dir(TGuiDockerNode *mouse_over_node) {
         return dir;
 }
 
-TGuiDockerNode *split_node_get_first_window(TGuiDockerNode *split) {
+static TGuiDockerNode *root_node_get_first_window(TGuiDockerNode *root) {
+    ASSERT(root->type == TGUI_DOCKER_NODE_ROOT);
+    TGuiDockerNode *child = root->childs->next;
+    if(child->type == TGUI_DOCKER_NODE_WINDOW) {
+        return child;
+    } else if(child->type == TGUI_DOCKER_NODE_ROOT) {
+        return root_node_get_first_window(child);
+    } else {
+        ASSERT(!"Split node cannot be the first child of root node");
+        return root;
+    }
+}
+
+static TGuiDockerNode *split_node_get_first_window(TGuiDockerNode *split) {
     ASSERT(split->type == TGUI_DOCKER_NODE_SPLIT);
     TGuiDockerNode *window = split->next; 
+    /* TODO: Find the best way to handle where to place the window when mouse is over a split node */
     if(window->type == TGUI_DOCKER_NODE_ROOT) {
-        window = window->childs->next;
-    }
+        window = root_node_get_first_window(window);
+    } 
     ASSERT(window->type == TGUI_DOCKER_NODE_WINDOW);
     return window;
 }
@@ -271,6 +285,16 @@ static Rectangle calculate_menu_bar_rect(TGuiDockerNode *window) {
     return menu_bar_rect;
 }
 
+static b32 mouse_in_menu_bar(TGuiDockerNode *window) {
+    ASSERT(window->type == TGUI_DOCKER_NODE_WINDOW);
+
+    s32 x = input.mouse_x;
+    s32 y = input.mouse_y;
+    Rectangle dim = calculate_menu_bar_rect(window);
+
+    return (dim.min_x <= x && x <= dim.max_x && dim.min_y <= y && y <= dim.max_y);
+}
+
 void window_grabbing_start(TGuiDockerNode *window) {
     
     if(docker.grabbing_window) {
@@ -281,12 +305,7 @@ void window_grabbing_start(TGuiDockerNode *window) {
         return;
     } else {
         /* TODO: This is a complete hack, program should only start the window grabbing if the click start from the menu bar */
-        s32 x = input.mouse_x;
-        s32 y = input.mouse_y;
-        Rectangle dim = calculate_menu_bar_rect(window);
-        if(!(dim.min_x <= x && x <= dim.max_x && dim.min_y <= y && y <= dim.max_y)) {
-            return;
-        }
+        if(!mouse_in_menu_bar(window)) return;
     }
     
     docker.grabbing_window = true;
@@ -362,6 +381,45 @@ void window_node_move(TGuiDockerNode *node) {
     window_grabbing_start(node);
 }
 
+void set_cursor_state(TGuiDockerNode *mouse_over) {
+    
+    /* TODO: Should probably handle the situation when we are performing an action i a better way */
+    if(docker.active_node) return;
+
+    state.cursor = TGUI_CURSOR_ARROW;
+
+    
+    if(!mouse_over) {
+        state.cursor = TGUI_CURSOR_ARROW;
+        return;
+    }
+
+    switch (mouse_over->type) {
+    
+    case TGUI_DOCKER_NODE_ROOT: {
+        state.cursor = TGUI_CURSOR_ARROW;
+    } break; 
+    case TGUI_DOCKER_NODE_WINDOW: {
+        if(mouse_in_menu_bar(mouse_over)) {
+            state.cursor = TGUI_CURSOR_HAND;
+        } else {
+            state.cursor = TGUI_CURSOR_ARROW;
+        }
+    } break; 
+    case TGUI_DOCKER_NODE_SPLIT: {
+        ASSERT(mouse_over->parent);
+        TGuiDockerNode *parent = mouse_over->parent;
+        if(parent->dir == TGUI_SPLIT_DIR_VERTICAL) {
+            state.cursor = TGUI_CURSOR_H_ARROW;
+        } else if(parent->dir == TGUI_SPLIT_DIR_HORIZONTAL) {
+            state.cursor = TGUI_CURSOR_V_ARROW;
+        }
+    } break; 
+    
+    }
+
+}
+
 void tgui_update(void) {
     if(input.window_resize) {
         tgui_node_recalculate_dim(docker.root);
@@ -369,6 +427,9 @@ void tgui_update(void) {
     }
     
     TGuiDockerNode *mouse_over_node = get_node_in_position(docker.root, input.mouse_x, input.mouse_y);
+
+    set_cursor_state(mouse_over_node);
+
     if(mouse_over_node && (mouse_over_node->type == TGUI_DOCKER_NODE_SPLIT || mouse_over_node->type == TGUI_DOCKER_NODE_WINDOW)) {
         if(!docker.active_node && input.mouse_button_is_down && !input.mouse_button_was_down) {
             docker.active_node = mouse_over_node;
@@ -604,6 +665,10 @@ void tgui_node_recalculate_dim(TGuiDockerNode *node) {
 
     }
 
+}
+
+TGuiCursor tgui_get_cursor_state(void) {
+    return state.cursor;
 }
 
 static inline void draw_rectangle(Painter *painter, Rectangle rect, u32 color) {

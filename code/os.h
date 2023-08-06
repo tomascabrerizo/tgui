@@ -69,5 +69,18 @@ void os_virtual_decommit(void *ptr, u64 size);
 void os_virtual_release(void *ptr, u64 size);
 
 
+/* -------------------
+        Cursor 
+   ------------------- */
+
+typedef enum OsCursor {
+    OS_CURSOR_ARROW,
+    OS_CURSOR_HAND,
+    OS_CURSOR_V_ARROW,
+    OS_CURSOR_H_ARROW,
+} OsCursor;
+
+void os_set_cursor(struct OsWindow *window, OsCursor cursor);
+
 #endif /* _OS_H_ */
 

@@ -59,12 +59,24 @@ typedef struct TGuiInput {
 
 } TGuiInput;
 
+
+typedef enum TGuiCursor {
+
+    TGUI_CURSOR_ARROW, 
+    TGUI_CURSOR_HAND,
+    TGUI_CURSOR_V_ARROW, 
+    TGUI_CURSOR_H_ARROW 
+
+} TGuiCursor;
+
 typedef struct TGui {
     Arena arena;
     VirtualMap registry;
 
     u64 hot;
     u64 active;
+
+    TGuiCursor cursor;
 } TGui;
 
 void tgui_initialize(void);
@@ -82,5 +94,7 @@ void tgui_root_set_child(TGuiDockerNode *root, TGuiDockerNode *node);
 void tgui_node_split(TGuiDockerNode *node, TGuiSplitDirection dir, TGuiDockerNode *node1);
 
 void tgui_node_recalculate_dim(TGuiDockerNode *node);
+
+TGuiCursor tgui_get_cursor_state(void);
 
 #endif /* _TGUI_H_ */
