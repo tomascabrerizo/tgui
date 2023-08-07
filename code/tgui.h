@@ -5,6 +5,9 @@
 #include "memory.h"
 #include "painter.h"
 
+/* TODO: Create actual TGuiWindow instead of using the TGuiDockerNode */
+struct TGuiDockerNode;
+
 typedef enum TGuiCursor {
 
     TGUI_CURSOR_ARROW, 
@@ -28,13 +31,15 @@ typedef struct TGuiInput {
 } TGuiInput;
 
 typedef struct TGui {
+
+    TGuiCursor cursor;
+
     Arena arena;
     VirtualMap registry;
 
     u64 hot;
     u64 active;
 
-    TGuiCursor cursor;
 } TGui;
 
 void tgui_initialize(void);
@@ -46,5 +51,7 @@ void tgui_update(void);
 TGuiInput *tgui_get_input(void);
 
 TGuiCursor tgui_get_cursor_state(void);
+
+b32 tgui_button(struct TGuiDockerNode *window, const char *label, s32 x, s32 y, Painter *painter);
 
 #endif /* _TGUI_H_ */

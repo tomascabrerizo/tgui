@@ -2,15 +2,11 @@
 #define _PAINTER_H_
 
 #include "common.h"
+#include "geometry.h"
 
 typedef struct Point {
     s32 x, y;
 } Point;
-
-typedef struct Rectangle {
-    s32 min_x, min_y;
-    s32 max_x, max_y;
-} Rectangle;
 
 typedef struct Bitmap {
     u32 *pixels;
@@ -28,6 +24,8 @@ void painter_initialize(Painter *painter, u32 *pixels, Rectangle dim, Rectangle 
 void painter_clear(Painter *painter, u32 color);
 
 void painter_draw_rect(Painter *painter, s32 x, s32 y, s32 w, s32 h, u32 color);
+
+void painter_draw_rectangle(Painter *painter, Rectangle rectangle, u32 color);
 
 void painter_draw_vline(Painter *painter, s32 x, s32 y0, s32 y1, u32 color);
 

@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "memory.h"
+#include "geometry.h"
 #include "painter.h"
 
 #define SPLIT_HALF_SIZE 3
@@ -65,5 +66,9 @@ TGuiDockerNode *tgui_docker_create_root_window(void);
 TGuiDockerNode *tgui_docker_split_window(TGuiDockerNode *window, TGuiSplitDirection dir);
 
 void tgui_docker_root_node_draw(Painter *painter);
+
+Rectangle tgui_docker_get_client_rect(TGuiDockerNode *window);
+
+b32 tgui_docker_window_is_visible(TGuiDockerNode *window);
 
 #endif /* _TGUI_DOCKER_H_ */

@@ -1,5 +1,6 @@
 #include "tgui_docker.h"
 #include "common.h"
+#include "geometry.h"
 #include "tgui.h"
 
 extern TGui state;
@@ -88,7 +89,7 @@ void node_free(TGuiDockerNode *node) {
 
 static inline b32 position_overlap_node(TGuiDockerNode *node, s32 x, s32 y) {
     Rectangle dim = node->dim;
-    return (dim.min_x <= x && x <= dim.max_x && dim.min_y <= y && y <= dim.max_y); 
+    return rect_point_overlaps(dim, x, y);
 }
 
 static TGuiDockerNode *get_node_in_position(TGuiDockerNode *node, s32 x, s32 y) {
@@ -248,6 +249,16 @@ static Rectangle calculate_menu_bar_rect(TGuiDockerNode *window) {
     menu_bar_rect.max_y = menu_bar_rect.min_y + MENU_BAR_HEIGHT;
 
     return menu_bar_rect;
+}
+
+Rectangle tgui_docker_get_client_rect(TGuiDockerNode *window) {
+    ASSERT(window->type == TGUI_DOCKER_NODE_WINDOW);
+    Rectangle client_rect = window->dim;
+    client_rect.min_x += 1;
+    client_rect.min_y += (MENU_BAR_HEIGHT + 1);
+    client_rect.max_x -= 1;
+    client_rect.max_y -= 1;
+    return client_rect;
 }
 
 static b32 mouse_in_menu_bar(TGuiDockerNode *window) {
@@ -555,6 +566,13 @@ void tgui_docker_root_set_child(TGuiDockerNode *root, TGuiDockerNode *node) {
         clink_list_insert_front(root->childs, node);
     }
 
+}
+
+b32 tgui_docker_window_is_visible(TGuiDockerNode *window) {
+    if(docker.grabbing_window && docker.active_node == window) {
+        return false;
+    }
+    return true;
 }
 
 void tgui_docker_node_split(TGuiDockerNode *node, TGuiSplitDirection dir, TGuiDockerNode *node1) {

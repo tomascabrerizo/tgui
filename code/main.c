@@ -1,4 +1,5 @@
 #include "common.h"
+#include "geometry.h"
 #include "os.h"
 #include "memory.h"
 #include "painter.h"
@@ -6,6 +7,7 @@
 #include "tgui_docker.h"
 
 #include "os.c"
+#include "geometry.c"
 #include "memory.c"
 #include "painter.c"
 #include "tgui.c"
@@ -79,7 +81,6 @@ int main(void) {
         os_window_get_mouse_position(window, &input->mouse_x, &input->mouse_y);
         os_window_get_mouse_lbutton_state(window, &input->mouse_button_is_down);
 
-        app_update(&app, seconds_per_frame);
 
         switch (tgui_get_cursor_state()) { 
         
@@ -92,8 +93,9 @@ int main(void) {
 
         Painter painter;
         painter_initialize(&painter, (u32 *)backbuffer->data, (Rectangle){0, 0, window_w, window_h}, 0);
+
         app_draw(&app, &painter);
-        
+        app_update(&app, seconds_per_frame, &painter);
         
         u64 current_time = os_get_ticks();
         u64 delta_time = current_time - last_time;

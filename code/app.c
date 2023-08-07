@@ -25,13 +25,17 @@ void app_initialize(App *app) {
 
 void app_terminate(App *app) {
     UNUSED(app);
-
     tgui_terminate();
 }
 
-void app_update(App *app, f32 dt) {
+void app_update(App *app, f32 dt, Painter *painter) {
     UNUSED(app); UNUSED(dt);
     tgui_update();
+
+    if(tgui_button(app->window3, "Click me!", 10, 10, painter)) {
+        printf("click!\n");
+    }
+
 }
 
 void app_draw(App *app, Painter *painter) {
