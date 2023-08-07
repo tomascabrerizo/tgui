@@ -7,6 +7,10 @@
    ---------------------- */
 
 void arena_initialize(Arena *arena, u64 size, ArenaType type) {
+
+    memset(arena, 0, sizeof(Arena));
+    arena->type = type;
+
     switch (type) {
     case ARENA_TYPE_STATIC: { 
         static_arena_initialize(arena, size); 

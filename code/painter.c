@@ -22,6 +22,14 @@ void painter_initialize(Painter *painter, u32 *pixels, Rectangle dim, Rectangle 
 
 }
 
+void painter_clear(Painter *painter, u32 color) {
+    s32 x = painter->clip.min_x;
+    s32 y = painter->clip.min_y;
+    s32 w = (painter->clip.max_x - painter->clip.min_x);
+    s32 h = (painter->clip.max_y - painter->clip.min_y);
+    painter_draw_rect(painter, x, y, w, h, color);
+}
+
 static inline void clip_rectangle(Rectangle *rect, Rectangle clip, s32 *offset_x, s32 *offset_y) {
     
     if(rect->max_x > clip.max_x) rect->max_x = clip.max_x;

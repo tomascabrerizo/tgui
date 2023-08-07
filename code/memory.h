@@ -104,7 +104,9 @@ void virtual_arena_free(Arena *arena);
     ((dummy)->next == (dummy) && (dummy)->prev == (dummy))
 
 #define clink_list_end(node, dummy) ((node) == (dummy))
+
 #define clink_list_first(node, dummy) ((node)->prev == (dummy))
+
 #define clink_list_last(node, dummy) ((node)->next == (dummy))
 
 #define clink_list_get_back(dummy) (dummy)->prev

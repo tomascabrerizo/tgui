@@ -1,0 +1,43 @@
+#include "common.h"
+#include "memory.h"
+#include "painter.h"
+#include "tgui.h"
+#include "tgui_docker.h"
+
+typedef struct App {
+    Arena arena;
+
+    TGuiDockerNode *window0;
+    TGuiDockerNode *window1;
+    TGuiDockerNode *window2;
+    TGuiDockerNode *window3;
+
+} App;
+
+void app_initialize(App *app) {
+    arena_initialize(&app->arena, 0, ARENA_TYPE_VIRTUAL);
+    
+    app->window0 = tgui_docker_create_window();
+    app->window1 = tgui_docker_split_window(window0, TGUI_SPLIT_DIR_VERTICAL);
+    app->window2 = tgui_docker_split_window(window1, TGUI_SPLIT_DIR_HORIZONTAL);
+    app->window3 = tgui_docker_split_window(window0, TGUI_SPLIT_DIR_HORIZONTAL);
+
+    tgui_docker_set_root_node(app->window0);
+
+}
+
+void app_terminate(App *app) {
+    UNUSED(app);
+    arena_terminate(&app->arena);
+}
+
+void app_update(App *app, f32 dt) {
+    UNUSED(app); UNUSED(dt);
+    tgui_update();
+}
+
+void app_draw(App *app, Painter *painter) {
+    UNUSED(app); UNUSED(painter);
+    painter_clear(painter, 0x00);
+    tgui_docker_root_node_draw(painter);
+}

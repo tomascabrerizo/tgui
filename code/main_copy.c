@@ -13,6 +13,10 @@
 
 #include "app.c"
 
+void clear_backbuffer(OsBackbuffer *backbuffer) {
+    memset(backbuffer->data, 0, backbuffer->width*backbuffer->height*backbuffer->bytes_per_pixel);
+}
+
 static OsBackbuffer *realloc_backbuffer(OsBackbuffer *backbuffer, OsWindow *window, s32 w, s32 h) {
     
     static Arena arena;
@@ -49,18 +53,29 @@ int main(void) {
     OsBackbuffer *backbuffer = realloc_backbuffer(0, window, window_w, window_h);
    
     u64 miliseconds_per_frame = 16;
-    f32 seconds_per_frame = (f32)miliseconds_per_frame / 1000.0f;
     u64 last_time = os_get_ticks();
-     
+    
+    tgui_initialize();
+    
+    TGuiDockerNode *window_node0 = window_node_alloc(0);
+    TGuiDockerNode *window_node1 = window_node_alloc(0);
+    TGuiDockerNode *window_node2 = window_node_alloc(0);
+    TGuiDockerNode *window_node3 = window_node_alloc(0);
+    TGuiDockerNode *window_node4 = window_node_alloc(0);
+    TGuiDockerNode *window_node5 = window_node_alloc(0);
+
+    tgui_docker_set_root_node(window_node0);
+    tgui_docker_node_split(window_node0, TGUI_SPLIT_DIR_VERTICAL, window_node1);
+    tgui_docker_node_split(window_node0, TGUI_SPLIT_DIR_VERTICAL, window_node2);
+    tgui_docker_node_split(window_node2, TGUI_SPLIT_DIR_HORIZONTAL, window_node3);
+    tgui_docker_node_split(window_node2, TGUI_SPLIT_DIR_HORIZONTAL, window_node4);
+    tgui_docker_node_split(window_node1, TGUI_SPLIT_DIR_HORIZONTAL, window_node5);
 
     TGuiInput *input = tgui_get_input();
     
     input->window_resize = true;
     input->resize_w = window_w;
     input->resize_h = window_h;
-    
-    App app;
-    app_initialize(&app);
 
     while(!os_window_should_close(window)) {
 
@@ -79,7 +94,7 @@ int main(void) {
         os_window_get_mouse_position(window, &input->mouse_x, &input->mouse_y);
         os_window_get_mouse_lbutton_state(window, &input->mouse_button_is_down);
 
-        app_update(&app, seconds_per_frame);
+        tgui_update();
 
         switch (tgui_get_cursor_state()) { 
         
@@ -90,11 +105,15 @@ int main(void) {
 
         }
 
+        clear_backbuffer(backbuffer);
+        
+        Rectangle dim = {0, 0, window_w, window_h};
         Painter painter;
-        painter_initialize(&painter, (u32 *)backbuffer->data, (Rectangle){0, 0, window_w, window_h}, 0);
-        app_draw(&app, &painter);
+        painter_initialize(&painter, (u32 *)backbuffer->data, dim, 0);
         
-        
+        root_node_draw(&painter);
+        //node_draw(&painter, window_node0);
+         
         u64 current_time = os_get_ticks();
         u64 delta_time = current_time - last_time;
 
@@ -108,9 +127,11 @@ int main(void) {
         
         os_backbuffer_swap(window, backbuffer);
         
+        //printf("miliseconds per frame: %lld\n", delta_time);
+
     }
     
-    app_terminate(&app);
+    tgui_terminate();
 
     os_backbuffer_destroy(backbuffer);
     os_window_destroy(window);

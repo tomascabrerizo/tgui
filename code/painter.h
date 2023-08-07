@@ -25,6 +25,8 @@ typedef struct Painter {
 
 void painter_initialize(Painter *painter, u32 *pixels, Rectangle dim, Rectangle *clip);
 
+void painter_clear(Painter *painter, u32 color);
+
 void painter_draw_rect(Painter *painter, s32 x, s32 y, s32 w, s32 h, u32 color);
 
 void painter_draw_vline(Painter *painter, s32 x, s32 y0, s32 y1, u32 color);
