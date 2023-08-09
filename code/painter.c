@@ -195,8 +195,13 @@ void painter_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 color) {
     
     u32 last_index = 0; UNUSED(last_index);
     for(u32 i = 0; i < text_len; ++i) {
-    
-        u32 index = ((u32)text[i] - painter_font.glyph_rage_start);
+        
+        u32 codepoint = (u32)text[i];
+        if((codepoint < painter_font.glyph_rage_start) || (codepoint > painter_font.glyph_rage_end)) {
+            codepoint = (u32)'?';
+        }
+
+        u32 index = (codepoint - painter_font.glyph_rage_start);
        
         u32 kerning = 0;
 #if 0

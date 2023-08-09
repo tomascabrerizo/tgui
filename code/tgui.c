@@ -119,7 +119,7 @@ b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painte
     Rectangle saved_painter_clip = painter->clip;
     painter->clip = button_rect;
     
-    u32 button_color = 0xcccccc;
+    u32 button_color = 0xaaaaaa;
     b32 mouse_is_over = rect_point_overlaps(button_rect, input.mouse_x, input.mouse_y);
     
     if(state.active == id) {

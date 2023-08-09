@@ -241,8 +241,9 @@ b32 os_window_resize(struct OsWindow *window) {
 }
 
 void os_window_get_mouse_position(struct OsWindow *window, s32 *x, s32 *y) {
-    *x = CLAMP(window->mouse_x, 0, window->width);
-    *y = CLAMP(window->mouse_y, 0, window->height);
+    /* TODO: Handle mouse clamp in the docker code */
+    *x = CLAMP(window->mouse_x, 0, window->width   - 1);
+    *y = CLAMP(window->mouse_y, 0, window->height - 1);
 }
 
 void os_window_get_mouse_lbutton_state(struct OsWindow *window, b32 *is_down) {

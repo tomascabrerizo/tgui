@@ -504,6 +504,15 @@ void tgui_docker_terminate(void) {
     node_free(docker.root);
 }
 
+void docker_node_print(TGuiDockerNode *node) {
+    switch(node->type) {
+    case TGUI_DOCKER_NODE_ROOT:   { printf("Root Node\n"); } break;
+    case TGUI_DOCKER_NODE_WINDOW: { printf("Window Node\n"); } break;
+    case TGUI_DOCKER_NODE_SPLIT:  { printf("Split Node\n"); } break;
+
+    }
+}
+
 void tgui_docker_update(void) {
     
     if(!docker.root) return;
@@ -514,6 +523,7 @@ void tgui_docker_update(void) {
     }
      
     TGuiDockerNode *mouse_over_node = get_node_in_position(docker.root, input.mouse_x, input.mouse_y);
+    ASSERT(mouse_over_node);
 
     set_cursor_state(mouse_over_node);
 
