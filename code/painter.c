@@ -1,11 +1,14 @@
 #include "painter.h"
+#include "common.h"
+#include "geometry.h"
 #include "memory.h"
 #include "os.h"
 
 static PainterFont painter_font;
 
 void painter_initialize(Arena *arena) {
-    OsFont *font = os_font_create(arena, "/usr/share/fonts/truetype/liberation2/LiberationMono-Regular.ttf", 20);
+    //struct OsFont *font = os_font_create(arena, "/usr/share/fonts/truetype/liberation2/LiberationMono-Regular.ttf", 20);
+    struct OsFont *font = os_font_create(arena, "/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf", 20);
     
     painter_font.glyph_rage_start = 32;
     painter_font.glyph_rage_end = 126;
@@ -50,9 +53,9 @@ void painter_terminate(void) {
 }
 
 void painter_draw_pixel(Painter *painter, s32 x, s32 y, u32 color) {
-    if(x >= painter->clip.min_x && x < painter->clip.max_x &&
-       y >= painter->clip.min_y && y < painter->clip.max_y) {
-        u32 painter_w = (painter->dim.max_x - painter->dim.min_x);
+    if(x >= painter->clip.min_x && x <= painter->clip.max_x &&
+       y >= painter->clip.min_y && y <= painter->clip.max_y) {
+        u32 painter_w = rect_width(painter->clip);
         u32 *pixel = painter->pixels + (y * painter_w) + x;
         *pixel = color;
     }
@@ -74,8 +77,8 @@ void painter_start(Painter *painter, u32 *pixels, Rectangle dim, Rectangle *clip
 void painter_draw_rectangle(Painter *painter, Rectangle rectangle, u32 color) {
     s32 x = rectangle.min_x;
     s32 y = rectangle.min_y;
-    s32 w = (rectangle.max_x - rectangle.min_x);
-    s32 h = (rectangle.max_y - rectangle.min_y);
+    s32 w = rect_width(rectangle);
+    s32 h = rect_height(rectangle);
     painter_draw_rect(painter, x, y, w, h, color);
 }
 
@@ -110,49 +113,53 @@ void painter_draw_rect(Painter *painter, s32 x, s32 y, s32 w, s32 h, u32 color) 
     Rectangle rect;
     rect.min_x = x;
     rect.min_y = y;
-    rect.max_x = x + w;
-    rect.max_y = y + h;
+    rect.max_x = x + w - 1;
+    rect.max_y = y + h - 1;
 
     clip_rectangle(&rect, painter->clip, 0, 0);
     
-    u32 painter_w = (painter->dim.max_x - painter->dim.min_x);
+    u32 painter_w = rect_width(painter->dim);
     u32 *row = painter->pixels + (rect.min_y * painter_w) + rect.min_x;
 
-    for(y = rect.min_y; y < rect.max_y; ++y) {
+    for(y = rect.min_y; y <= rect.max_y; ++y) {
         u32 *pixel = row;
-        for(x = rect.min_x; x < rect.max_x; ++x) {
+        for(x = rect.min_x; x <= rect.max_x; ++x) {
             *pixel++ = color;
         }
         row += painter_w;
     }
 }
 
-void painter_draw_bitmap(Painter *painter, s32 x, s32 y, Bitmap *bitmap) {
+void painter_draw_bitmap(Painter *painter, s32 x, s32 y, Bitmap *bitmap, u32 tint) {
     Rectangle rect;
     rect.min_x = x;
     rect.min_y = y;
-    rect.max_x = x + bitmap->width;
-    rect.max_y = y + bitmap->height;
+    rect.max_x = x + bitmap->width  - 1;
+    rect.max_y = y + bitmap->height - 1;
     
     s32 offset_x;
     s32 offset_y;
     clip_rectangle(&rect, painter->clip, &offset_x, &offset_y);
 
-    u32 painter_w = (painter->dim.max_x - painter->dim.min_x);
+    u32 painter_w = rect_width(painter->dim);
     u32 *row = painter->pixels + (rect.min_y * painter_w) + rect.min_x;
     u32 *src_row = bitmap->pixels + (offset_y * bitmap->width) + offset_x;
 
-    for(y = rect.min_y; y < rect.max_y; ++y) {
+    for(y = rect.min_y; y <= rect.max_y; ++y) {
         u32 *pixel = row;
         u32 *src_pixel = src_row;
-        for(x = rect.min_x; x < rect.max_x; ++x) {
+        for(x = rect.min_x; x <= rect.max_x; ++x) {
 
             u32 src = *src_pixel;
             u32 des = *pixel;
             
-            u32 sr = (src >> 16) & 0xff;
-            u32 sg = (src >>  8) & 0xff;
-            u32 sb = (src >>  0) & 0xff;
+            f32 tr = ((tint >> 16) & 0xff) / 255.0f;
+            f32 tg = ((tint >>  8) & 0xff) / 255.0f;
+            f32 tb = ((tint >>  0) & 0xff) / 255.0f;
+
+            u32 sr = ((src >> 16) & 0xff) * tr;
+            u32 sg = ((src >>  8) & 0xff) * tg;
+            u32 sb = ((src >>  0) & 0xff) * tb;
 
             u32 dr = (des >> 16) & 0xff;
             u32 dg = (des >>  8) & 0xff;
@@ -172,44 +179,65 @@ void painter_draw_bitmap(Painter *painter, s32 x, s32 y, Bitmap *bitmap) {
     }
 }
 
-void painter_draw_text(Painter *painter, s32 x, s32 y, char *text) {
+void painter_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 color) {
     
     s32 cursor = x;
-    s32 base   = y;
+    s32 base   = y + painter_font.ascent;
 
     u32 text_len = strlen(text);
     
-    u32 last_index = 0;
+    u32 last_index = 0; UNUSED(last_index);
     for(u32 i = 0; i < text_len; ++i) {
     
         u32 index = ((u32)text[i] - painter_font.glyph_rage_start);
        
-        /* TODO: look like kerning is always zero */
         u32 kerning = 0;
+#if 0
+        /* TODO: look like kerning is always zero */
         if(last_index) {
             kerning = os_font_get_kerning_between(painter_font.font, last_index, index);
-            if(kerning) {
-                u32 break_here = 0; (void)break_here;
-            }
         }
+#endif
         
         PainterGlyph *glyph = painter_font.glyphs + index;
-        painter_draw_bitmap(painter, cursor + glyph->left_bearing - kerning, base - glyph->top_bearing, &glyph->bitmap);
+        painter_draw_bitmap(painter, cursor + glyph->left_bearing - kerning, base - glyph->top_bearing, &glyph->bitmap, color);
         cursor += glyph->adv_width;
 
         last_index = index;
     }
 }
 
+Rectangle painter_get_text_dim(Painter *painter, s32 x, s32 y, char *text) {
+    UNUSED(painter);
+    Rectangle result;
+    
+    s32 w = 0;
+    s32 h = painter_font.ascent - painter_font.descent + painter_font.line_gap;
+
+    u32 text_len = strlen(text);
+    for(u32 i = 0; i < text_len; ++i) {
+        u32 index = ((u32)text[i] - painter_font.glyph_rage_start);
+        PainterGlyph *glyph = painter_font.glyphs + index;
+        w += glyph->adv_width;
+    }
+
+    result.min_x = x;
+    result.min_y = y;
+    result.max_x = result.min_x + w;
+    result.max_y = result.min_y + h;
+
+    return result;
+}
+
 void painter_draw_vline(Painter *painter, s32 x, s32 y0, s32 y1, u32 color) {
    
     if(x < painter->clip.min_x)  return;
-    if(x >= painter->clip.max_x) return; 
+    if(x > painter->clip.max_x) return; 
 
-    if(y0 < painter->clip.min_y) y0 = painter->clip.min_y; 
-    if(y1 >= painter->clip.max_y) y1 = painter->clip.max_y - 1; 
+    if(y0 < painter->clip.min_y)  y0 = painter->clip.min_y; 
+    if(y1 > painter->clip.max_y)  y1 = painter->clip.max_y; 
     
-    u32 painter_w = (painter->dim.max_x - painter->dim.min_x);
+    u32 painter_w = rect_width(painter->dim);
     u32 *pixel = painter->pixels + (y0 * painter_w) + x;
     
     for(s32 y = y0; y <= y1; ++y) {
@@ -222,12 +250,12 @@ void painter_draw_vline(Painter *painter, s32 x, s32 y0, s32 y1, u32 color) {
 void painter_draw_hline(Painter *painter, s32 y, s32 x0, s32 x1, u32 color) {
     
     if(y < painter->clip.min_y)  return; 
-    if(y >= painter->clip.max_y) return; 
+    if(y > painter->clip.max_y)  return; 
 
     if(x0 < painter->clip.min_x) x0 = painter->clip.min_x; 
-    if(x1 >= painter->clip.max_x) x1 = painter->clip.max_x - 1; 
+    if(x1 > painter->clip.max_x) x1 = painter->clip.max_x; 
     
-    u32 painter_w = (painter->dim.max_x - painter->dim.min_x);
+    u32 painter_w = rect_width(painter->dim);
     u32 *pixel = painter->pixels + (y * painter_w) + x0;
     
     for(s32 x = x0; x <= x1; ++x) {

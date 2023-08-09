@@ -1,6 +1,7 @@
 #include "tgui_docker.h"
 #include "common.h"
 #include "geometry.h"
+#include "painter.h"
 #include "tgui.h"
 
 extern TGui state;
@@ -148,8 +149,8 @@ static inline void calculate_mouse_rel_x_y(TGuiDockerNode *split, TGuiDockerNode
     clamp_min += epsilon;
 
     Rectangle parent_dim = parent->dim;
-    *x = CLAMP((f32)(input.mouse_x - parent_dim.min_x) / (f32)(parent_dim.max_x - parent_dim.min_x), clamp_min, clamp_max);
-    *y = CLAMP((f32)(input.mouse_y - parent_dim.min_y) / (f32)(parent_dim.max_y - parent_dim.min_y), clamp_min, clamp_max);
+    *x = CLAMP((f32)(input.mouse_x - parent_dim.min_x) / (f32)rect_width(parent_dim) , clamp_min, clamp_max);
+    *y = CLAMP((f32)(input.mouse_y - parent_dim.min_y) / (f32)rect_height(parent_dim), clamp_min, clamp_max);
 
 }
 
@@ -246,7 +247,7 @@ static Rectangle calculate_menu_bar_rect(TGuiDockerNode *window) {
     menu_bar_rect.min_x += 1;
     menu_bar_rect.max_x -= 1;
     menu_bar_rect.min_y += 1;
-    menu_bar_rect.max_y = menu_bar_rect.min_y + MENU_BAR_HEIGHT;
+    menu_bar_rect.max_y = menu_bar_rect.min_y + MENU_BAR_HEIGHT - 1;
 
     return menu_bar_rect;
 }
@@ -410,13 +411,13 @@ static void split_recalculate_dim(TGuiDockerNode *split) {
     
     if(parent->dir == TGUI_SPLIT_DIR_VERTICAL) {
         
-        s32 abs_split_position = dim.min_x + (split->split_position * (dim.max_x - dim.min_x));
+        s32 abs_split_position = dim.min_x + (split->split_position * rect_width(dim));
         split->dim.min_x =  abs_split_position - SPLIT_HALF_SIZE;
         split->dim.max_x =  abs_split_position + SPLIT_HALF_SIZE;
     
     } else if(parent->dir == TGUI_SPLIT_DIR_HORIZONTAL) {
 
-        s32 abs_split_position = dim.min_y + (split->split_position * (dim.max_y - dim.min_y));
+        s32 abs_split_position = dim.min_y + (split->split_position * rect_height(dim));
         split->dim.min_y =  abs_split_position - SPLIT_HALF_SIZE;
         split->dim.max_y =  abs_split_position + SPLIT_HALF_SIZE;
     }
@@ -427,35 +428,27 @@ static void split_recalculate_dim(TGuiDockerNode *split) {
         Termporal drawing methods
    ------------------------------------ */
 
-static inline void draw_rectangle(Painter *painter, Rectangle rect, u32 color) {
-    s32 x = rect.min_x;
-    s32 y = rect.min_y;
-    s32 w = (rect.max_x - rect.min_x);
-    s32 h = (rect.max_y - rect.min_y);
-    painter_draw_rect(painter, x, y, w, h, color);
-}
-
 void node_draw(Painter *painter, TGuiDockerNode *node) {
     if(!node) return;
 
     switch (node->type) {
      
     case TGUI_DOCKER_NODE_WINDOW: {
-        draw_rectangle(painter, node->dim, 0x777777);
+        painter_draw_rectangle(painter, node->dim, 0x777777);
         
         u32 border_color = 0xbbbbbb;
-        painter_draw_hline(painter, node->dim.min_y,   node->dim.min_x, node->dim.max_x-1, border_color);
-        painter_draw_hline(painter, node->dim.max_y-1, node->dim.min_x, node->dim.max_x-1, border_color);
-        painter_draw_vline(painter, node->dim.min_x,   node->dim.min_y, node->dim.max_y, border_color);
-        painter_draw_vline(painter, node->dim.max_x-1, node->dim.min_y, node->dim.max_y, border_color);
+        painter_draw_hline(painter, node->dim.min_y, node->dim.min_x, node->dim.max_x, border_color);
+        painter_draw_hline(painter, node->dim.max_y, node->dim.min_x, node->dim.max_x, border_color);
+        painter_draw_vline(painter, node->dim.min_x, node->dim.min_y, node->dim.max_y, border_color);
+        painter_draw_vline(painter, node->dim.max_x, node->dim.min_y, node->dim.max_y, border_color);
 
         u32 menu_bar_color = 0x555555;
         Rectangle menu_bar_rect = calculate_menu_bar_rect(node);
-        draw_rectangle(painter, menu_bar_rect, menu_bar_color);
+        painter_draw_rectangle(painter, menu_bar_rect, menu_bar_color);
     } break;
 
     case TGUI_DOCKER_NODE_SPLIT: {
-        draw_rectangle(painter, node->dim, 0x444444);
+        painter_draw_rectangle(painter, node->dim, 0x444444);
     } break;
 
 
@@ -476,10 +469,10 @@ void tgui_docker_root_node_draw(Painter *painter) {
     if(docker.grabbing_window) {
         u32 border_color = 0xaaaaff;
         Rectangle dim = docker.preview_window;
-        painter_draw_hline(painter,dim.min_y,   dim.min_x, dim.max_x, border_color);
-        painter_draw_hline(painter,dim.max_y-1, dim.min_x, dim.max_x, border_color);
-        painter_draw_vline(painter,dim.min_x,   dim.min_y, dim.max_y, border_color);
-        painter_draw_vline(painter,dim.max_x-1, dim.min_y, dim.max_y, border_color);
+        painter_draw_hline(painter,dim.min_y, dim.min_x, dim.max_x, border_color);
+        painter_draw_hline(painter,dim.max_y, dim.min_x, dim.max_x, border_color);
+        painter_draw_vline(painter,dim.min_x, dim.min_y, dim.max_y, border_color);
+        painter_draw_vline(painter,dim.max_x, dim.min_y, dim.max_y, border_color);
     }
 }
 
@@ -666,12 +659,12 @@ void tgui_docker_node_recalculate_dim(TGuiDockerNode *node) {
             if(parent->dir == TGUI_SPLIT_DIR_VERTICAL) {
                 
                 node->dim.min_x = parent->dim.min_x;
-                node->dim.max_x = split_next->dim.min_x;
+                node->dim.max_x = split_next->dim.min_x - 1;
             
             } else if(parent->dir == TGUI_SPLIT_DIR_HORIZONTAL) {
 
                 node->dim.min_y = parent->dim.min_y;
-                node->dim.max_y = split_next->dim.min_y;
+                node->dim.max_y = split_next->dim.min_y - 1;
             }
 
         } else if(clink_list_last(node, parent->childs)) {
@@ -683,12 +676,12 @@ void tgui_docker_node_recalculate_dim(TGuiDockerNode *node) {
 
             if(parent->dir == TGUI_SPLIT_DIR_VERTICAL) {
             
-                node->dim.min_x = split_prev->dim.max_x; 
+                node->dim.min_x = split_prev->dim.max_x + 1; 
                 node->dim.max_x = parent->dim.max_x;
 
             } else if(parent->dir == TGUI_SPLIT_DIR_HORIZONTAL) {
 
-                node->dim.min_y = split_prev->dim.max_y; 
+                node->dim.min_y = split_prev->dim.max_y + 1; 
                 node->dim.max_y = parent->dim.max_y;
             }
         
@@ -704,17 +697,17 @@ void tgui_docker_node_recalculate_dim(TGuiDockerNode *node) {
 
             if(parent->dir == TGUI_SPLIT_DIR_VERTICAL) {
 
-                node->dim.min_x = split_prev->dim.max_x; 
-                node->dim.max_x = split_next->dim.min_x;
+                node->dim.min_x = split_prev->dim.max_x + 1; 
+                node->dim.max_x = split_next->dim.min_x - 1;
 
             } else if(parent->dir == TGUI_SPLIT_DIR_HORIZONTAL) {
 
-                node->dim.min_y = split_prev->dim.max_y; 
-                node->dim.max_y = split_next->dim.min_y;
+                node->dim.min_y = split_prev->dim.max_y + 1; 
+                node->dim.max_y = split_next->dim.min_y - 1;
             }
         }
     } else {
-        node->dim = (Rectangle){0, 0, input.resize_w, input.resize_h};
+        node->dim = (Rectangle){0, 0, input.resize_w - 1, input.resize_h - 1};
     }
 
     if(node->type == TGUI_DOCKER_NODE_ROOT) {

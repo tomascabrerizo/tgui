@@ -8,6 +8,10 @@ typedef struct Rectangle {
     s32 max_x, max_y;
 } Rectangle;
 
+s32 rect_width(Rectangle a);
+
+s32 rect_height(Rectangle a);
+
 Rectangle rect_intersection(Rectangle a, Rectangle b);
 
 Rectangle rect_union(Rectangle a, Rectangle b);

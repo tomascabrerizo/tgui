@@ -52,6 +52,6 @@ TGuiInput *tgui_get_input(void);
 
 TGuiCursor tgui_get_cursor_state(void);
 
-b32 tgui_button(struct TGuiDockerNode *window, const char *label, s32 x, s32 y, Painter *painter);
+b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painter *painter);
 
 #endif /* _TGUI_H_ */

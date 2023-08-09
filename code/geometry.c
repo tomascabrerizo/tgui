@@ -1,5 +1,13 @@
 #include "geometry.h"
 
+s32 rect_width(Rectangle a) {
+    return (a.max_x - a.min_x) + 1;
+}
+
+s32 rect_height(Rectangle a) {
+    return (a.max_y - a.min_y) + 1;
+}
+
 Rectangle rect_intersection(Rectangle a, Rectangle b) {
     Rectangle result;
     result.min_x = MAX(a.min_x, b.min_x);

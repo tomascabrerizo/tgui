@@ -63,8 +63,10 @@ void painter_draw_hline(Painter *painter, s32 y, s32 x0, s32 x1, u32 color);
 
 void painter_draw_line(Painter *painter, s32 x0, s32 y0, s32 x1, s32 y1, u32 color);
 
-void painter_draw_bitmap(Painter *painter, s32 x, s32 y, Bitmap *bitmap);
+void painter_draw_bitmap(Painter *painter, s32 x, s32 y, Bitmap *bitmap, u32 tint);
 
-void painter_draw_text(Painter *painter, s32 x, s32 y, char *text);
+void painter_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 color);
+
+Rectangle painter_get_text_dim(Painter *painter, s32 x, s32 y, char *text);
 
 #endif /* _PAINTER_H_ */
