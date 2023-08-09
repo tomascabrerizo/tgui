@@ -437,14 +437,29 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
         painter_draw_rectangle(painter, node->dim, 0x777777);
         
         u32 border_color = 0xbbbbbb;
-        painter_draw_hline(painter, node->dim.min_y, node->dim.min_x, node->dim.max_x, border_color);
-        painter_draw_hline(painter, node->dim.max_y, node->dim.min_x, node->dim.max_x, border_color);
-        painter_draw_vline(painter, node->dim.min_x, node->dim.min_y, node->dim.max_y, border_color);
-        painter_draw_vline(painter, node->dim.max_x, node->dim.min_y, node->dim.max_y, border_color);
+        painter_draw_rectangle_outline(painter, node->dim, border_color);
 
         u32 menu_bar_color = 0x555555;
         Rectangle menu_bar_rect = calculate_menu_bar_rect(node);
         painter_draw_rectangle(painter, menu_bar_rect, menu_bar_color);
+        
+
+        if(node->window_name) {
+
+            Rectangle saved_clip = painter->clip;
+
+            painter->clip = menu_bar_rect;
+            
+            char *label = node->window_name;
+            Rectangle label_rect = painter_get_text_dim(painter, 0, 0, label);
+            
+            s32 label_x = menu_bar_rect.min_x + rect_width(menu_bar_rect) / 2 - rect_width(label_rect) / 2;
+            s32 label_y = menu_bar_rect.min_y + rect_height(menu_bar_rect) / 2 - rect_height(label_rect) / 2;
+            painter_draw_text(painter, label_x, label_y, label, 0xffffff);
+
+            painter->clip = saved_clip;
+        }
+
     } break;
 
     case TGUI_DOCKER_NODE_SPLIT: {
@@ -468,11 +483,7 @@ void tgui_docker_root_node_draw(Painter *painter) {
 
     if(docker.grabbing_window) {
         u32 border_color = 0xaaaaff;
-        Rectangle dim = docker.preview_window;
-        painter_draw_hline(painter,dim.min_y, dim.min_x, dim.max_x, border_color);
-        painter_draw_hline(painter,dim.max_y, dim.min_x, dim.max_x, border_color);
-        painter_draw_vline(painter,dim.min_x, dim.min_y, dim.max_y, border_color);
-        painter_draw_vline(painter,dim.max_x, dim.min_y, dim.max_y, border_color);
+        painter_draw_rectangle_outline(painter, docker.preview_window, border_color);
     }
 }
 
@@ -530,16 +541,18 @@ void tgui_docker_update(void) {
     }
 }
 
-TGuiDockerNode *tgui_docker_create_root_window(void) {
+TGuiDockerNode *tgui_docker_create_root_window(char *name) {
     TGuiDockerNode *window = window_node_alloc(0);
     tgui_docker_set_root_node(window);
+    window->window_name = name;
     return window;
 }
 
-TGuiDockerNode *tgui_docker_split_window(TGuiDockerNode *window, TGuiSplitDirection dir) {
+TGuiDockerNode *tgui_docker_split_window(TGuiDockerNode *window, TGuiSplitDirection dir, char *name) {
     ASSERT(window->type == TGUI_DOCKER_NODE_WINDOW);
     TGuiDockerNode *new_window = window_node_alloc(window->parent);
     tgui_docker_node_split(window, dir, new_window);
+    new_window->window_name = name;
     return new_window;
 }
 

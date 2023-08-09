@@ -8,7 +8,7 @@ static PainterFont painter_font;
 
 void painter_initialize(Arena *arena) {
     //struct OsFont *font = os_font_create(arena, "/usr/share/fonts/truetype/liberation2/LiberationMono-Regular.ttf", 20);
-    struct OsFont *font = os_font_create(arena, "/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf", 20);
+    struct OsFont *font = os_font_create(arena, "/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf", 18);
     
     painter_font.glyph_rage_start = 32;
     painter_font.glyph_rage_end = 126;
@@ -80,6 +80,13 @@ void painter_draw_rectangle(Painter *painter, Rectangle rectangle, u32 color) {
     s32 w = rect_width(rectangle);
     s32 h = rect_height(rectangle);
     painter_draw_rect(painter, x, y, w, h, color);
+}
+
+void painter_draw_rectangle_outline(Painter *painter, Rectangle rectangle, u32 color) {
+    painter_draw_hline(painter, rectangle.min_y, rectangle.min_x, rectangle.max_x, color);
+    painter_draw_hline(painter, rectangle.max_y, rectangle.min_x, rectangle.max_x, color);
+    painter_draw_vline(painter, rectangle.min_x, rectangle.min_y, rectangle.max_y, color);
+    painter_draw_vline(painter, rectangle.max_x, rectangle.min_y, rectangle.max_y, color);
 }
 
 void painter_clear(Painter *painter, u32 color) {

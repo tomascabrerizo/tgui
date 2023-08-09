@@ -96,7 +96,7 @@ u64 tgui_hash(void *bytes, u64 size) {
 /* -------------------------- */
 
 static Rectangle calculate_buttom_rect(TGuiDockerNode *window, s32 x, s32 y) {
-    Rectangle button_rect = (Rectangle){0, 0, 100, 30};
+    Rectangle button_rect = (Rectangle){0, 0, 120, 30};
     Rectangle window_rect = tgui_docker_get_client_rect(window);
     button_rect.min_x = window_rect.min_x + button_rect.min_x + x;
     button_rect.min_y = window_rect.min_y + button_rect.min_y + y;
@@ -113,11 +113,10 @@ b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painte
     
     b32 result = false;
 
-    Rectangle saved_painter_clip = painter->clip;
-
     u64 id = tgui_hash((void *)label, strlen(label));
     Rectangle button_rect = calculate_buttom_rect(window, x, y); 
-
+    
+    Rectangle saved_painter_clip = painter->clip;
     painter->clip = button_rect;
     
     u32 button_color = 0xcccccc;
@@ -151,15 +150,10 @@ b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painte
     
     s32 label_x = button_rect.min_x + rect_width(button_rect) / 2 - rect_width(label_rect) / 2;
     s32 label_y = button_rect.min_y + rect_height(button_rect) / 2 - rect_height(label_rect) / 2;
-
-    painter_draw_text(painter, label_x, label_y, label, 0x111111);
     
-    u32 border_color = 0x111111;
-
-    painter_draw_hline(painter, button_rect.min_y, button_rect.min_x, button_rect.max_x, border_color);
-    painter_draw_hline(painter, button_rect.max_y, button_rect.min_x, button_rect.max_x, border_color);
-    painter_draw_vline(painter, button_rect.min_x, button_rect.min_y, button_rect.max_y,   border_color);
-    painter_draw_vline(painter, button_rect.max_x, button_rect.min_y, button_rect.max_y,   border_color);
+    u32 decoration_color = 0x444444;
+    painter_draw_text(painter, label_x, label_y, label,  decoration_color);
+    painter_draw_rectangle_outline(painter, button_rect, decoration_color);
 
     painter->clip = saved_painter_clip;
 

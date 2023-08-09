@@ -16,10 +16,10 @@ void app_initialize(App *app) {
 
     tgui_initialize();
 
-    app->window0 = tgui_docker_create_root_window();
-    app->window1 = tgui_docker_split_window(app->window0, TGUI_SPLIT_DIR_VERTICAL);
-    app->window2 = tgui_docker_split_window(app->window1, TGUI_SPLIT_DIR_VERTICAL);
-    app->window3 = tgui_docker_split_window(app->window1, TGUI_SPLIT_DIR_HORIZONTAL);
+    app->window0 = tgui_docker_create_root_window("Window 0");
+    app->window1 = tgui_docker_split_window(app->window0, TGUI_SPLIT_DIR_VERTICAL,   "Window 1");
+    app->window2 = tgui_docker_split_window(app->window1, TGUI_SPLIT_DIR_VERTICAL,   "Window 2");
+    app->window3 = tgui_docker_split_window(app->window1, TGUI_SPLIT_DIR_HORIZONTAL, "Window 3");
 
 }
 
@@ -37,6 +37,14 @@ void app_update(App *app, f32 dt, Painter *painter) {
     }
 
     if(tgui_button(app->window0, "Click me to!", 10, 10, painter)) {
+        printf("click me to!\n");
+    }
+
+    if(tgui_button(app->window0, "Click me to! 1", 10, 50, painter)) {
+        printf("click me to!\n");
+    }
+
+    if(tgui_button(app->window0, "Click me to! 2", 10, 90, painter)) {
         printf("click me to!\n");
     }
 

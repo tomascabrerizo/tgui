@@ -34,6 +34,7 @@ typedef struct TGuiDockerNode {
     TGuiSplitDirection dir; /* Only for root nodes */
     struct TGuiDockerNode *childs; /* Only for root nodes   */
     struct TGuiWindow *window;     /* Only for window nodes */
+    char *window_name;
 
 } TGuiDockerNode;
 
@@ -61,9 +62,9 @@ void tgui_docker_node_split(TGuiDockerNode *node, TGuiSplitDirection dir, TGuiDo
 
 void tgui_docker_node_recalculate_dim(TGuiDockerNode *node);
 
-TGuiDockerNode *tgui_docker_create_root_window(void);
+TGuiDockerNode *tgui_docker_create_root_window(char *name);
 
-TGuiDockerNode *tgui_docker_split_window(TGuiDockerNode *window, TGuiSplitDirection dir);
+TGuiDockerNode *tgui_docker_split_window(TGuiDockerNode *window, TGuiSplitDirection dir, char *name);
 
 void tgui_docker_root_node_draw(Painter *painter);
 
