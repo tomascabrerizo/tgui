@@ -3,6 +3,7 @@
 #include "memory.h"
 
 #include <X11/X.h>
+#include <stdio.h>
 #include <time.h>
 #include <sys/mman.h>
 #include <sys/time.h>
@@ -10,6 +11,9 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xcursor/Xcursor.h>
+
+#include <stdlib.h>
+#include "stb_truetype.h"
 
 static u64 g_os_page_size = 0;
 static Display *g_x11_display = 0;
@@ -36,6 +40,97 @@ void os_terminate(void) {
     XCloseDisplay(g_x11_display);
 }
 
+/* -------------------------
+       File Manager 
+   ------------------------- */
+
+typedef struct OsFile {
+    void *data;
+    u64 size;
+} OsFile;
+
+OsFile *os_file_read_entire(const char *path) {
+    OsFile *result = malloc(sizeof(OsFile));
+
+    FILE *file = fopen((char *)path, "rb");
+    if(!file) {
+        printf("Cannot load file: %s\n", path);
+        os_error();
+    }
+    
+    fseek(file, 0, SEEK_END);
+    u64 file_size = (u64)ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    result = (OsFile *)malloc(sizeof(OsFile) + file_size);
+    
+    result->data = result + 1;
+    result->size = file_size;
+
+    ASSERT(((u64)result->data % 8) == 0);
+    fread(result->data, file_size, 1, file);
+    
+    fclose(file);
+
+    return result;
+}
+
+void os_file_free(OsFile *file) {
+    free(file);
+}
+
+/* -------------------------
+        Font Rasterizer 
+   ------------------------- */
+
+
+
+typedef struct OsFont {
+    OsFile *file;
+    stbtt_fontinfo info;
+    u32 size;
+    f32 size_ratio;
+} OsFont;
+
+struct OsFont *os_font_create(struct Arena *arena, const char *path, u32 size) {
+    OsFont *font = arena_push_struct(arena, OsFont, 8);
+    font->size = size;
+    font->file = os_file_read_entire(path);
+    stbtt_InitFont(&font->info, font->file->data, stbtt_GetFontOffsetForIndex(font->file->data,0));
+    font->size_ratio = stbtt_ScaleForPixelHeight(&font->info, size);
+    return font;
+}
+
+void os_font_destroy(struct OsFont *font) {
+    os_file_free(font->file);
+}
+
+void os_font_rasterize_glyph(struct OsFont *font, u32 codepoint, void **buffer, s32 *w, s32 *h, s32 *bpp) {
+   *buffer = stbtt_GetCodepointBitmap(&font->info, 0, font->size_ratio, codepoint, w, h, 0,0);
+   *bpp = 1;
+}
+
+s32 os_font_get_kerning_between(struct OsFont *font, u32 codepoint0, u32 codepoint1) {
+    return stbtt_GetCodepointKernAdvance(&font->info, codepoint0, codepoint1) * font->size_ratio;
+}
+
+void os_font_get_vmetrics(struct OsFont *font, s32 *ascent, s32 *descent, s32 *line_gap) { 
+    stbtt_GetFontVMetrics(&font->info, ascent, descent, line_gap);
+    *ascent   *= font->size_ratio;
+    *descent  *= font->size_ratio;
+    *line_gap *= font->size_ratio;
+}
+
+void os_font_get_glyph_metrics(struct OsFont *font, u32 codepoint, s32 *adv_width, s32 *left_bearing, s32 *top_bearing) {
+    stbtt_GetCodepointHMetrics(&font->info, codepoint, adv_width, left_bearing);
+    *adv_width    *= font->size_ratio;
+    *left_bearing *= font->size_ratio;
+    s32 x0, y0, x1, y1;
+    stbtt_GetCodepointBox(&font->info, codepoint, &x0, &y0, &x1, &y1);
+    y1 *= font->size_ratio;
+    *top_bearing = y1;
+}
+
 /* -------------
        Time 
    ------------- */
@@ -57,7 +152,6 @@ void os_sleep(u64 milliseconds) {
     req.tv_nsec = nanoseconds;
     while(nanosleep(&req, &req) == -1);
 }
-
 
 /* ---------------------------
         Windows and Inputs 

@@ -76,8 +76,6 @@ void tgui_update(void) {
 
     tgui_docker_update();
  
-    input.mouse_button_was_down = input.mouse_button_is_down;
-
 }
 
 TGuiInput *tgui_get_input(void) {
@@ -112,6 +110,8 @@ b32 tgui_button(struct TGuiDockerNode *window, const char *label, s32 x, s32 y, 
     if(!tgui_docker_window_is_visible(window)) {
         return false;
     }
+    
+    b32 result = false;
 
     Rectangle saved_painter_clip = painter->clip;
     painter->clip = tgui_docker_get_client_rect(window);
@@ -120,17 +120,34 @@ b32 tgui_button(struct TGuiDockerNode *window, const char *label, s32 x, s32 y, 
     Rectangle buttom_rect = calculate_buttom_rect(window, x, y); 
     
     u32 button_color = 0xcccccc;
+    b32 mouse_is_over = rect_point_overlaps(buttom_rect, input.mouse_x, input.mouse_y);
+    
+    if(state.active == id) {
+        if(!input.mouse_button_is_down && input.mouse_button_was_down) {
+            if(state.hot == id) result = true;
+            state.active = 0;
+        }
+    } else if(state.hot == id) {
+        if(input.mouse_button_is_down) state.active = id;
+    }
 
-    if(rect_point_overlaps(buttom_rect, input.mouse_x, input.mouse_y)) {
+    if(mouse_is_over && !state.active) {
         state.hot = id;
         button_color = 0xbbbbbb;
     }
-    
+
+    if(!mouse_is_over && state.hot == id) {
+        state.hot = 0;
+    }
+     
+    if(result) button_color = 0x00ff00;
+
+
     /* TODO: Desing a command interface to render the complete UI independently */
     painter_draw_rectangle(painter, buttom_rect, button_color);
     
     painter->clip = saved_painter_clip;
 
-    return false;
+    return result;
 }
 

@@ -15,7 +15,7 @@
 
 #include "app.c"
 
-static OsBackbuffer *realloc_backbuffer(OsBackbuffer *backbuffer, OsWindow *window, s32 w, s32 h) {
+static struct OsBackbuffer *realloc_backbuffer(struct OsBackbuffer *backbuffer, struct OsWindow *window, s32 w, s32 h) {
     
     static Arena arena;
     static b32 arena_is_initialize = false;
@@ -47,8 +47,8 @@ int main(void) {
     
     s32 window_w = 800;
     s32 window_h = 600;
-    OsWindow *window = os_window_create(&arena, "Test Window", 0, 0, window_w, window_h);
-    OsBackbuffer *backbuffer = realloc_backbuffer(0, window, window_w, window_h);
+    struct OsWindow *window = os_window_create(&arena, "Test Window", 0, 0, window_w, window_h);
+    struct OsBackbuffer *backbuffer = realloc_backbuffer(0, window, window_w, window_h);
    
     u64 miliseconds_per_frame = 16;
     f32 seconds_per_frame = (f32)miliseconds_per_frame / 1000.0f;
@@ -63,6 +63,8 @@ int main(void) {
     
     App app;
     app_initialize(&app);
+    
+    painter_initialize(&arena);
 
     while(!os_window_should_close(window)) {
 
@@ -92,10 +94,15 @@ int main(void) {
         }
 
         Painter painter;
-        painter_initialize(&painter, (u32 *)backbuffer->data, (Rectangle){0, 0, window_w, window_h}, 0);
+        painter_start(&painter, (u32 *)backbuffer->data, (Rectangle){0, 0, window_w, window_h}, 0);
 
         app_draw(&app, &painter);
         app_update(&app, seconds_per_frame, &painter);
+        
+        /* NOTE: test draw test */
+        painter_draw_text(&painter, 30, 100, "Hello, World!");
+
+        input->mouse_button_was_down = input->mouse_button_is_down;
         
         u64 current_time = os_get_ticks();
         u64 delta_time = current_time - last_time;
@@ -112,6 +119,8 @@ int main(void) {
         
     }
     
+    painter_terminate();
+
     app_terminate(&app);
 
     os_backbuffer_destroy(backbuffer);

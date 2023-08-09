@@ -2,6 +2,7 @@
 #define _OS_H_
 
 #include "common.h"
+#include "memory.h"
 
 void os_initialize(void);
 
@@ -81,6 +82,25 @@ typedef enum OsCursor {
 } OsCursor;
 
 void os_set_cursor(struct OsWindow *window, OsCursor cursor);
+
+
+/* -------------------------
+        Font Rasterizer 
+   ------------------------- */
+
+struct OsFont;
+
+struct OsFont *os_font_create(struct Arena *arena, const char *path, u32 size);
+
+void os_font_destroy(struct OsFont *font);
+
+void os_font_rasterize_glyph(struct OsFont *font, u32 codepoint, void **buffer, s32 *w, s32 *h, s32 *bpp);
+
+s32 os_font_get_kerning_between(struct OsFont *font, u32 codepoint0, u32 codepoint1);
+
+void os_font_get_vmetrics(struct OsFont *font, s32 *ascent, s32 *descent, s32 *line_gap); 
+
+void os_font_get_glyph_metrics(struct OsFont *font, u32 codepoint, s32 *adv_width, s32 *left_bearing, s32 *top_bearing);
 
 #endif /* _OS_H_ */
 

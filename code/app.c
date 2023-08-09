@@ -36,6 +36,10 @@ void app_update(App *app, f32 dt, Painter *painter) {
         printf("click!\n");
     }
 
+    if(tgui_button(app->window0, "Click me to!", 10, 10, painter)) {
+        printf("click me to!\n");
+    }
+
 }
 
 void app_draw(App *app, Painter *painter) {

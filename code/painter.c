@@ -1,4 +1,53 @@
 #include "painter.h"
+#include "memory.h"
+#include "os.h"
+
+static PainterFont painter_font;
+
+void painter_initialize(Arena *arena) {
+    OsFont *font = os_font_create(arena, "/usr/share/fonts/truetype/liberation2/LiberationMono-Regular.ttf", 20);
+    
+    painter_font.glyph_rage_start = 32;
+    painter_font.glyph_rage_end = 126;
+    painter_font.glyph_count = (painter_font.glyph_rage_end - painter_font.glyph_rage_start + 1);
+    painter_font.glyphs = arena_push_array(arena, PainterGlyph, painter_font.glyph_count, 8);
+    os_font_get_vmetrics(font, &painter_font.ascent, &painter_font.descent, &painter_font.line_gap);
+
+    void *temp_buffer = arena_alloc(arena, 512*512, 8);
+
+    for(u32 glyph_index = painter_font.glyph_rage_start; glyph_index <= painter_font.glyph_rage_end; ++glyph_index) {
+        
+        s32 w, h, bpp;
+        os_font_rasterize_glyph(font, glyph_index, &temp_buffer, &w, &h, &bpp);
+    
+        PainterGlyph *glyph = painter_font.glyphs + (glyph_index - painter_font.glyph_rage_start);
+        glyph->bitmap.pixels = arena_alloc(arena, sizeof(u32)*w*h, 8);
+        glyph->bitmap.width  = w;
+        glyph->bitmap.height = h;
+        
+        memset(glyph->bitmap.pixels, 0, sizeof(u32)*w*h);
+        
+        u8 *src_row  = temp_buffer;
+        u32 *des_row = glyph->bitmap.pixels;
+        for(u32 y = 0; y < (u32)h; ++y) {
+            u8 *src  = src_row;
+            u32 *des = des_row;
+            for(u32 x = 0; x < (u32)w; ++x) { 
+                *des++ = 0x00ffffff | (*src++ << 24); 
+            }
+            src_row += w;
+            des_row += w;
+        }
+
+        os_font_get_glyph_metrics(font, glyph_index, &glyph->adv_width, &glyph->left_bearing, &glyph->top_bearing);
+    }
+    
+    painter_font.font = font;
+}
+
+void painter_terminate(void) {
+    os_font_destroy(painter_font.font);
+}
 
 void painter_draw_pixel(Painter *painter, s32 x, s32 y, u32 color) {
     if(x >= painter->clip.min_x && x < painter->clip.max_x &&
@@ -9,7 +58,7 @@ void painter_draw_pixel(Painter *painter, s32 x, s32 y, u32 color) {
     }
 }
 
-void painter_initialize(Painter *painter, u32 *pixels, Rectangle dim, Rectangle *clip) {
+void painter_start(Painter *painter, u32 *pixels, Rectangle dim, Rectangle *clip) {
     
     painter->pixels = pixels;
     painter->dim = dim;
@@ -91,16 +140,64 @@ void painter_draw_bitmap(Painter *painter, s32 x, s32 y, Bitmap *bitmap) {
 
     u32 painter_w = (painter->dim.max_x - painter->dim.min_x);
     u32 *row = painter->pixels + (rect.min_y * painter_w) + rect.min_x;
-    u32 *src_row = bitmap->pixels + (offset_y * painter_w) + offset_x;
+    u32 *src_row = bitmap->pixels + (offset_y * bitmap->width) + offset_x;
 
     for(y = rect.min_y; y < rect.max_y; ++y) {
         u32 *pixel = row;
         u32 *src_pixel = src_row;
         for(x = rect.min_x; x < rect.max_x; ++x) {
-            *pixel++ = *src_pixel++;
+
+            u32 src = *src_pixel;
+            u32 des = *pixel;
+            
+            u32 sr = (src >> 16) & 0xff;
+            u32 sg = (src >>  8) & 0xff;
+            u32 sb = (src >>  0) & 0xff;
+
+            u32 dr = (des >> 16) & 0xff;
+            u32 dg = (des >>  8) & 0xff;
+            u32 db = (des >>  0) & 0xff;
+
+            f32 sa = ((src >> 24) & 0xff) / 255.0f;
+            
+            u32 cr = (dr * (1.0f - sa) + sr * sa);
+            u32 cg = (dg * (1.0f - sa) + sg * sa);
+            u32 cb = (db * (1.0f - sa) + sb * sa);
+
+            *pixel++ = (cr << 16) | (cg << 8) | (cb << 0);
+            src_pixel++;
         }
         row += painter_w;
         src_row += bitmap->width;
+    }
+}
+
+void painter_draw_text(Painter *painter, s32 x, s32 y, char *text) {
+    
+    s32 cursor = x;
+    s32 base   = y;
+
+    u32 text_len = strlen(text);
+    
+    u32 last_index = 0;
+    for(u32 i = 0; i < text_len; ++i) {
+    
+        u32 index = ((u32)text[i] - painter_font.glyph_rage_start);
+       
+        /* TODO: look like kerning is always zero */
+        u32 kerning = 0;
+        if(last_index) {
+            kerning = os_font_get_kerning_between(painter_font.font, last_index, index);
+            if(kerning) {
+                u32 break_here = 0; (void)break_here;
+            }
+        }
+        
+        PainterGlyph *glyph = painter_font.glyphs + index;
+        painter_draw_bitmap(painter, cursor + glyph->left_bearing - kerning, base - glyph->top_bearing, &glyph->bitmap);
+        cursor += glyph->adv_width;
+
+        last_index = index;
     }
 }
 

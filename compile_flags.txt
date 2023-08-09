@@ -6,3 +6,4 @@
 -std=c99
 -g
 -I./code
+-I./thirdparty
