@@ -283,6 +283,7 @@ static void window_grabbing_start(TGuiDockerNode *window) {
     }
     
     /* TODO: This is a complete hack, program should only start the window grabbing if the click start from the menu bar */
+    if(!(input.mouse_button_is_down && !input.mouse_button_was_down)) return;
     if(!mouse_in_menu_bar(window)) return;
     
     docker.grabbing_window = true;

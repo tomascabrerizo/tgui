@@ -119,7 +119,6 @@ b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painte
     Rectangle saved_painter_clip = painter->clip;
     painter->clip = button_rect;
     
-    u32 button_color = 0xaaaaaa;
     b32 mouse_is_over = rect_point_overlaps(button_rect, input.mouse_x, input.mouse_y);
     
     if(state.active == id) {
@@ -133,17 +132,26 @@ b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painte
 
     if(mouse_is_over && !state.active) {
         state.hot = id;
-        button_color = 0xbbbbbb;
     }
 
     if(!mouse_is_over && state.hot == id) {
         state.hot = 0;
     }
      
-    if(result) button_color = 0x00ff00;
-
-
     /* TODO: Desing a command interface to render the complete UI independently */
+    
+    u32 button_color = 0xaaaaaa;
+    u32 decoration_color = 0x444444;
+    
+    if(state.hot == id) {
+        button_color = 0x999999;
+    }
+
+    if(state.active == id) {
+        button_color = 0x333333;
+        decoration_color = 0x999999;
+    }
+
     painter_draw_rectangle(painter, button_rect, button_color);
 
     Rectangle label_rect = painter_get_text_dim(painter, 0, 0, label);
@@ -151,7 +159,6 @@ b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painte
     s32 label_x = button_rect.min_x + rect_width(button_rect) / 2 - rect_width(label_rect) / 2;
     s32 label_y = button_rect.min_y + rect_height(button_rect) / 2 - rect_height(label_rect) / 2;
     
-    u32 decoration_color = 0x444444;
     painter_draw_text(painter, label_x, label_y, label,  decoration_color);
     painter_draw_rectangle_outline(painter, button_rect, decoration_color);
 

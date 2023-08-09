@@ -123,6 +123,7 @@ int main(void) {
         last_time = current_time; 
         
         os_backbuffer_swap(window, backbuffer);
+        //printf("ms: %lld\n", delta_time);
         
     }
     
