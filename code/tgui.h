@@ -17,7 +17,7 @@ typedef enum TGuiCursor {
 
 } TGuiCursor;
 
-#define TGUI_MAX_TEXT_SIZE 16
+#define TGUI_MAX_TEXT_SIZE 32
 
 typedef struct TGuiInput {
     b32 mouse_button_is_down;
@@ -33,6 +33,9 @@ typedef struct TGuiInput {
     u8 text[TGUI_MAX_TEXT_SIZE];
     u32 text_size;
 
+    b32 r_arrow_down;
+    b32 l_arrow_down;
+    
 } TGuiInput;
 
 typedef struct TGui {

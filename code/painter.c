@@ -205,7 +205,7 @@ void painter_draw_size_cursor(Painter *painter, s32 x, s32 y, char *text, u32 si
     Rectangle cursor_rect = painter_get_size_text_dim(painter, x, y, text, size);
     cursor_rect.min_x += 0;
 
-    for(u32 i = 0; i < size; ++i) {
+    for(u32 i = 0; i < cursor; ++i) {
         PainterGlyph *glyph = painter_font.glyphs + get_codepoint_index(text[i]);
         cursor_rect.min_x += glyph->adv_width;
     }

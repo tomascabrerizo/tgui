@@ -208,8 +208,19 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
     b32 mouse_is_over = rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
     
     if(state.active == id) {
+        
+        if(input.r_arrow_down) {
+            text_input->cursor = MIN(text_input->cursor + 1, text_input->used);
+        }
+
+        if(input.l_arrow_down) {
+            text_input->cursor = MAX((s32)text_input->cursor - 1, 0);
+        }
 
         if(input.text_size > 0) {
+
+            text_input->cursor = text_input->used;
+            
             if((text_input->used + input.text_size) > TGUI_TEXT_INPUT_MAX_CHARACTERS) {
                 input.text_size = (TGUI_TEXT_INPUT_MAX_CHARACTERS - text_input->used);
                 ASSERT((text_input->used + input.text_size) == TGUI_TEXT_INPUT_MAX_CHARACTERS);
@@ -217,11 +228,12 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
 
             memcpy(text_input->buffer + text_input->cursor, input.text, input.text_size);
 
-            text_input->cursor += input.text_size;
             text_input->used   += input.text_size;
-            
-            input.text_size = 0;
+            text_input->cursor = text_input->used;
         }
+
+        
+
     
     } else if(state.hot == id) {
         if(!input.mouse_button_was_down && input.mouse_button_is_down) {

@@ -43,6 +43,8 @@ void os_window_get_mouse_lbutton_state(struct OsWindow *window, b32 *is_down);
 
 void os_window_get_text_input(struct OsWindow *window, u8 *buffer, u32 *size, u32 max_size);
 
+void os_window_get_keyboard_input(struct OsWindow *window, b32 *l_arrow, b32 *r_arrow);
+
 
 /* ---------------------
         Backbuffer 

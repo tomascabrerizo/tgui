@@ -83,6 +83,7 @@ int main(void) {
         os_window_get_mouse_position(window, &input->mouse_x, &input->mouse_y);
         os_window_get_mouse_lbutton_state(window, &input->mouse_button_is_down);
         os_window_get_text_input(window, input->text, &input->text_size, TGUI_MAX_TEXT_SIZE);
+        os_window_get_keyboard_input(window, &input->l_arrow_down, &input->r_arrow_down);
 
 
         switch (tgui_get_cursor_state()) { 
