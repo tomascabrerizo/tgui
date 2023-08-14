@@ -82,6 +82,7 @@ int main(void) {
 
         os_window_get_mouse_position(window, &input->mouse_x, &input->mouse_y);
         os_window_get_mouse_lbutton_state(window, &input->mouse_button_is_down);
+        os_window_get_text_input(window, input->text, &input->text_size, TGUI_MAX_TEXT_SIZE);
 
 
         switch (tgui_get_cursor_state()) { 
@@ -97,6 +98,7 @@ int main(void) {
         painter_start(&painter, (u32 *)backbuffer->data, (Rectangle){0, 0, window_w-1, window_h-1}, 0);
 
         app_draw(&app, &painter);
+        /* TODO: Update doesnt need to draw the widgets, just send the commands to app_draw */
         app_update(&app, seconds_per_frame, &painter);
         
 #if 0

@@ -41,6 +41,8 @@ void os_window_get_mouse_position(struct OsWindow *window, s32 *x, s32 *y);
 
 void os_window_get_mouse_lbutton_state(struct OsWindow *window, b32 *is_down);
 
+void os_window_get_text_input(struct OsWindow *window, u8 *buffer, u32 *size, u32 max_size);
+
 
 /* ---------------------
         Backbuffer 

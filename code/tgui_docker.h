@@ -6,7 +6,7 @@
 #include "geometry.h"
 #include "painter.h"
 
-#define SPLIT_HALF_SIZE 3
+#define SPLIT_HALF_SIZE 1
 #define MENU_BAR_HEIGHT 20
 
 typedef enum TGuiDockerNodeType {

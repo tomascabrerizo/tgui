@@ -4,6 +4,7 @@
 #include "memory.h"
 #include "painter.h"
 #include "tgui_docker.h"
+#include <string.h>
 
 /* -------------------------- */
 /*       Hash Function     */
@@ -91,17 +92,24 @@ u64 tgui_hash(void *bytes, u64 size) {
     return murmur_hash64A(bytes, size, 123);
 }
 
-/* -------------------------- */
-/*       Widgets Function     */
-/* -------------------------- */
+/* ---------------------- */
+/*       TGui Widgets     */
+/* ---------------------- */
+
+static Rectangle calculate_widget_rect(TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 h) {
+    Rectangle window_rect = tgui_docker_get_client_rect(window);
+    Rectangle rect = {
+        window_rect.min_x + x,
+        window_rect.min_y + y,
+        window_rect.min_x + x + w - 1,
+        window_rect.min_y + y + h - 1
+    };
+    return rect;
+}
 
 static Rectangle calculate_buttom_rect(TGuiDockerNode *window, s32 x, s32 y) {
-    Rectangle button_rect = (Rectangle){0, 0, 120, 30};
     Rectangle window_rect = tgui_docker_get_client_rect(window);
-    button_rect.min_x = window_rect.min_x + button_rect.min_x + x;
-    button_rect.min_y = window_rect.min_y + button_rect.min_y + y;
-    button_rect.max_x = button_rect.min_x + button_rect.max_x;
-    button_rect.max_y = button_rect.min_y + button_rect.max_y;
+    Rectangle button_rect = calculate_widget_rect(window, x, y, 120, 30);
     return rect_intersection(button_rect, window_rect);
 }
 
@@ -116,9 +124,6 @@ b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painte
     u64 id = tgui_hash((void *)label, strlen(label));
     Rectangle button_rect = calculate_buttom_rect(window, x, y); 
     
-    Rectangle saved_painter_clip = painter->clip;
-    painter->clip = button_rect;
-    
     b32 mouse_is_over = rect_point_overlaps(button_rect, input.mouse_x, input.mouse_y);
     
     if(state.active == id) {
@@ -127,7 +132,9 @@ b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painte
             state.active = 0;
         }
     } else if(state.hot == id) {
-        if(input.mouse_button_is_down) state.active = id;
+        if(!input.mouse_button_was_down && input.mouse_button_is_down) {
+            state.active = id;
+        }    
     }
 
     if(mouse_is_over && !state.active) {
@@ -152,12 +159,15 @@ b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painte
         decoration_color = 0x999999;
     }
 
+    Rectangle saved_painter_clip = painter->clip;
+    painter->clip = button_rect;
+    
     painter_draw_rectangle(painter, button_rect, button_color);
 
     Rectangle label_rect = painter_get_text_dim(painter, 0, 0, label);
     
-    s32 label_x = button_rect.min_x + rect_width(button_rect) / 2 - rect_width(label_rect) / 2;
-    s32 label_y = button_rect.min_y + rect_height(button_rect) / 2 - rect_height(label_rect) / 2;
+    s32 label_x = button_rect.min_x + (rect_width(button_rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
+    s32 label_y = button_rect.min_y + (rect_height(button_rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2;
     
     painter_draw_text(painter, label_x, label_y, label,  decoration_color);
     painter_draw_rectangle_outline(painter, button_rect, decoration_color);
@@ -167,3 +177,102 @@ b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painte
     return result;
 }
 
+void *_tgui_widget_get_state(u64 id, u64 size) {
+    void *result = NULL;
+
+    result = virtual_map_find(&state.registry, id);
+    if(result == NULL) {
+        result = arena_alloc(&state.arena, size, 8);
+        virtual_map_insert(&state.registry, id, (void *)result);
+    }
+
+    ASSERT(result != NULL);
+    return result;
+}
+
+#define tgui_widget_get_state(id, type) (type*)_tgui_widget_get_state((id), sizeof(type))
+
+TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label, Painter *painter) {
+
+    if(!tgui_docker_window_is_visible(window)) {
+        return false;
+    }
+
+    u64 id = tgui_hash((void *)label, strlen(label));
+    TGuiTextInput *text_input = tgui_widget_get_state(id, TGuiTextInput);
+    
+    Rectangle window_rect = tgui_docker_get_client_rect(window);
+    Rectangle rect = calculate_widget_rect(window, x, y, 140, 30);
+    Rectangle visible_rect = rect_intersection(rect, window_rect);
+
+    b32 mouse_is_over = rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
+    
+    if(state.active == id) {
+
+        if(input.text_size > 0) {
+            if((text_input->used + input.text_size) > TGUI_TEXT_INPUT_MAX_CHARACTERS) {
+                input.text_size = (TGUI_TEXT_INPUT_MAX_CHARACTERS - text_input->used);
+                ASSERT((text_input->used + input.text_size) == TGUI_TEXT_INPUT_MAX_CHARACTERS);
+            }
+
+            memcpy(text_input->buffer + text_input->cursor, input.text, input.text_size);
+
+            text_input->cursor += input.text_size;
+            text_input->used   += input.text_size;
+            
+            input.text_size = 0;
+        }
+    
+    } else if(state.hot == id) {
+        if(!input.mouse_button_was_down && input.mouse_button_is_down) {
+            state.active = id;
+            /* TODO: Find a better aproach to handle text input */
+            input.text_size = 0;
+        }    
+    }
+
+    if(mouse_is_over && !state.active) {
+        state.hot = id;
+    }
+
+    if(!mouse_is_over && state.hot == id) {
+        state.hot = 0;
+    }
+
+    if(state.active == id && !mouse_is_over && input.mouse_button_was_down && !input.mouse_button_is_down) {
+        state.active = 0;
+    }
+    
+    Rectangle saved_painter_clip = painter->clip;
+    painter->clip = window_rect; 
+    
+    u32 color = 0x333333;
+    u32 decoration_color = 0x999999;
+    u32 cursor_color = 0x00ff00;
+    
+    if(state.hot == id) {
+        color = 0x444444;
+    }
+    
+    if(state.active == id) {
+        color = 0x999999;
+        decoration_color = 0x333333;
+    }
+
+    painter_draw_rectangle(painter, rect, color);
+    painter_draw_rectangle_outline(painter, rect, decoration_color);
+
+    painter->clip = rect_intersection(rect, painter->clip);
+    
+    s32 text_x = rect.min_x + 8;
+    s32 text_y = rect.min_y + ((rect_height(rect) - 1) / 2) - ((painter_get_text_max_height(painter) - 1) / 2);
+    painter_draw_size_text(painter, text_x, text_y, (char *)text_input->buffer, text_input->used, decoration_color);
+
+    if(state.active == id) {
+        painter_draw_size_cursor(painter, text_x, text_y, (char *)text_input->buffer, text_input->used, text_input->cursor, cursor_color);
+    }
+    
+    painter->clip = saved_painter_clip;
+
+    return text_input;
+}

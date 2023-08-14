@@ -3,6 +3,7 @@
 #include "geometry.h"
 #include "memory.h"
 #include "os.h"
+#include <string.h>
 
 static PainterFont painter_font;
 
@@ -186,59 +187,87 @@ void painter_draw_bitmap(Painter *painter, s32 x, s32 y, Bitmap *bitmap, u32 tin
     }
 }
 
-void painter_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 color) {
+static u32 get_codepoint_index(u32 codepoint) {
+    
+    if((codepoint < painter_font.glyph_rage_start) || (codepoint > painter_font.glyph_rage_end)) {
+        codepoint = (u32)'?';
+    }
+
+    u32 index = (codepoint - painter_font.glyph_rage_start);
+    return index;
+
+}
+
+void painter_draw_size_cursor(Painter *painter, s32 x, s32 y, char *text, u32 size, u32 cursor, u32 color) {
+    
+    ASSERT(cursor <= size);
+    
+    Rectangle cursor_rect = painter_get_size_text_dim(painter, x, y, text, size);
+    cursor_rect.min_x += 0;
+
+    for(u32 i = 0; i < size; ++i) {
+        PainterGlyph *glyph = painter_font.glyphs + get_codepoint_index(text[i]);
+        cursor_rect.min_x += glyph->adv_width;
+    }
+    cursor_rect.max_x = cursor_rect.min_x;
+
+    painter_draw_rectangle(painter, cursor_rect, color);
+
+}
+
+void painter_draw_size_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u32 color) {
     
     s32 cursor = x;
     s32 base   = y + painter_font.ascent;
 
-    u32 text_len = strlen(text);
+    u32 text_len = size;
     
     u32 last_index = 0; UNUSED(last_index);
     for(u32 i = 0; i < text_len; ++i) {
         
-        u32 codepoint = (u32)text[i];
-        if((codepoint < painter_font.glyph_rage_start) || (codepoint > painter_font.glyph_rage_end)) {
-            codepoint = (u32)'?';
-        }
+        u32 index = get_codepoint_index(text[i]);
 
-        u32 index = (codepoint - painter_font.glyph_rage_start);
-       
-        u32 kerning = 0;
-#if 0
-        /* TODO: look like kerning is always zero */
-        if(last_index) {
-            kerning = os_font_get_kerning_between(painter_font.font, last_index, index);
-        }
-#endif
-        
         PainterGlyph *glyph = painter_font.glyphs + index;
-        painter_draw_bitmap(painter, cursor + glyph->left_bearing - kerning, base - glyph->top_bearing, &glyph->bitmap, color);
+        painter_draw_bitmap(painter, cursor + glyph->left_bearing, base - glyph->top_bearing, &glyph->bitmap, color);
         cursor += glyph->adv_width;
 
         last_index = index;
     }
 }
 
-Rectangle painter_get_text_dim(Painter *painter, s32 x, s32 y, char *text) {
+void painter_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 color) {
+    painter_draw_size_text(painter, x, y, text, strlen(text), color);
+}
+
+s32 painter_get_text_max_height(Painter *painter) {
+    UNUSED(painter);
+    return painter_font.ascent - painter_font.descent;
+}
+
+Rectangle painter_get_size_text_dim(Painter *painter, s32 x, s32 y, char *text, u32 size) {
     UNUSED(painter);
     Rectangle result;
     
     s32 w = 0;
-    s32 h = painter_font.ascent - painter_font.descent + painter_font.line_gap;
+    s32 h = painter_get_text_max_height(painter);
 
-    u32 text_len = strlen(text);
+    u32 text_len = size;
     for(u32 i = 0; i < text_len; ++i) {
-        u32 index = ((u32)text[i] - painter_font.glyph_rage_start);
-        PainterGlyph *glyph = painter_font.glyphs + index;
+        PainterGlyph *glyph = painter_font.glyphs + get_codepoint_index(text[i]);
         w += glyph->adv_width;
     }
 
     result.min_x = x;
     result.min_y = y;
-    result.max_x = result.min_x + w;
-    result.max_y = result.min_y + h;
+    result.max_x = result.min_x + w - 1;
+    result.max_y = result.min_y + h - 1;
 
     return result;
+}
+
+
+Rectangle painter_get_text_dim(Painter *painter, s32 x, s32 y, char *text) { 
+    return painter_get_size_text_dim(painter, x, y, text, strlen(text));
 }
 
 void painter_draw_vline(Painter *painter, s32 x, s32 y0, s32 y1, u32 color) {

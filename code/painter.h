@@ -69,6 +69,14 @@ void painter_draw_bitmap(Painter *painter, s32 x, s32 y, Bitmap *bitmap, u32 tin
 
 void painter_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 color);
 
+void painter_draw_size_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u32 color);
+
+void painter_draw_size_cursor(Painter *painter, s32 x, s32 y, char *text, u32 size, u32 cursor, u32 color);
+
+Rectangle painter_get_size_text_dim(Painter *painter, s32 x, s32 y, char *text, u32 size);
+
 Rectangle painter_get_text_dim(Painter *painter, s32 x, s32 y, char *text);
+
+s32 painter_get_text_max_height(Painter *painter);
 
 #endif /* _PAINTER_H_ */

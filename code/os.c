@@ -4,6 +4,7 @@
 
 #include <X11/X.h>
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 #include <sys/mman.h>
 #include <sys/time.h>
@@ -157,6 +158,8 @@ void os_sleep(u64 milliseconds) {
         Windows and Inputs 
    --------------------------- */
 
+#define OS_WINDOW_MAX_TEXT_SIZE 32
+
 typedef struct OsWindow {
     s32 width;
     s32 height;
@@ -170,6 +173,9 @@ typedef struct OsWindow {
 
     Window os_window;
     Atom delete_message;
+
+    char text_buffer[OS_WINDOW_MAX_TEXT_SIZE];
+    s32 text_size;
 
 } OsWindow;
 
@@ -195,6 +201,7 @@ void os_set_cursor(OsWindow *window, OsCursor cursor) {
 
 struct OsWindow *os_window_create(struct Arena *arena, char *title, u32 x, u32 y, u32 w, u32 h) {
     OsWindow *window = arena_push_struct(arena, OsWindow, 8);
+    memset(window, 0, sizeof(OsWindow));
     
     Display *d = g_x11_display;
     
@@ -202,7 +209,7 @@ struct OsWindow *os_window_create(struct Arena *arena, char *title, u32 x, u32 y
     window->height = h;
     window->os_window = XCreateSimpleWindow(d, DefaultRootWindow(d), x, y, w, h, 1, 0, 0);
     XStoreName(d, window->os_window, title);
-    XSelectInput(d, window->os_window, StructureNotifyMask|ExposureMask|ButtonPressMask|ButtonReleaseMask|KeyPressMask);
+    XSelectInput(d, window->os_window, StructureNotifyMask|ExposureMask|ButtonPressMask|ButtonReleaseMask|KeyPressMask|KeyReleaseMask|KeymapStateMask);
     XMapWindow(d, window->os_window);
     
     /* TODO: investigate why is necesary to do this to catch WM_DELETE_WINDOW message */
@@ -250,12 +257,20 @@ void os_window_get_mouse_lbutton_state(struct OsWindow *window, b32 *is_down) {
     *is_down = window->mouse_button_down;
 }
 
+void os_window_get_text_input(struct OsWindow *window, u8 *buffer, u32 *size, u32 max_size) {
+    if(window->text_size > 0) {
+        *size = MIN((u32)window->text_size, max_size);
+        memcpy(buffer, window->text_buffer, *size);
+    } else {
+        *size = 0;
+    }
+}
+
 void os_window_poll_events(struct OsWindow *window) {
     
-    UNUSED(window);
-
     Display *d = g_x11_display;
     XEvent e; 
+    window->text_size = 0;
 
     while(XPending(d)) {
      
@@ -281,7 +296,17 @@ void os_window_poll_events(struct OsWindow *window) {
         case Expose: {
 
         } break;
-    
+        
+        case KeymapNotify: {
+            XRefreshKeyboardMapping(&e.xmapping);
+        } break;
+        
+        case KeyPress: {
+            KeySym sym;
+            window->text_size = XLookupString(&e.xkey, window->text_buffer, OS_WINDOW_MAX_TEXT_SIZE, &sym, NULL);
+            if(window->text_size < 0) window->text_size = 0;
+        } break;
+
         case ButtonPress: {
             if(e.xbutton.button == 1) {
                 window->mouse_button_down = true;

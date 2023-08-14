@@ -47,6 +47,10 @@ void app_update(App *app, f32 dt, Painter *painter) {
     if(tgui_button(app->window0, "Click me to! 2", 10, 90, painter)) {
         printf("click me to!\n");
     }
+    
+    TGuiTextInput *input = tgui_text_input(app->window2, 10, 10, "text input", painter);
+    TGuiTextInput *input1 = tgui_text_input(app->window1, 10, 10, "text input 1", painter);
+    UNUSED(input); UNUSED(input1);
 
 }
 
