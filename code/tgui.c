@@ -264,7 +264,7 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
         /* Calculate the ofset of the text */
         if(text_input->cursor > text_input->offset + visible_glyphs) {
             text_input->offset += 1;
-        } else if(text_input->offset > 0 && text_input->cursor <= text_input->offset) {
+        } else if(text_input->offset > 0 && text_input->cursor < text_input->offset) {
             text_input->offset -= 1;
         }
     
