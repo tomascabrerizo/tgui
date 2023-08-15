@@ -79,4 +79,6 @@ Rectangle painter_get_text_dim(Painter *painter, s32 x, s32 y, char *text);
 
 s32 painter_get_text_max_height(Painter *painter);
 
+void painter_get_font_default_dim(Painter *painter, u32 *font_width, u32 *font_height);
+
 #endif /* _PAINTER_H_ */

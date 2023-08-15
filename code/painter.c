@@ -270,6 +270,12 @@ Rectangle painter_get_text_dim(Painter *painter, s32 x, s32 y, char *text) {
     return painter_get_size_text_dim(painter, x, y, text, strlen(text));
 }
 
+void painter_get_font_default_dim(Painter *painter, u32 *font_width, u32 *font_height) {
+    PainterGlyph *glyph = painter_font.glyphs + get_codepoint_index(' '); 
+    *font_width = glyph->adv_width;
+    *font_height = painter_get_text_max_height(painter);
+}
+
 void painter_draw_vline(Painter *painter, s32 x, s32 y0, s32 y1, u32 color) {
    
     if(x < painter->clip.min_x)  return;

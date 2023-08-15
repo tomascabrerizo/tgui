@@ -45,7 +45,7 @@ typedef struct TGuiInput {
     u32 text_size;
 
     TGuiKeyboard keyboard;
-    
+ 
 } TGuiInput;
 
 typedef struct TGui {
@@ -81,6 +81,13 @@ typedef struct TGuiTextInput {
     u8 buffer[TGUI_TEXT_INPUT_MAX_CHARACTERS];
     u32 used;
     u32 cursor;
+    
+    u32 offset;
+    
+    b32 initilize;
+    u32 font_width;
+    u32 font_height;
+
 } TGuiTextInput;
 
 TGuiTextInput *tgui_text_input(struct TGuiDockerNode *window, s32 x, s32 y, char *label, Painter *painter);

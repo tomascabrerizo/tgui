@@ -183,6 +183,7 @@ void *_tgui_widget_get_state(u64 id, u64 size) {
     result = virtual_map_find(&state.registry, id);
     if(result == NULL) {
         result = arena_alloc(&state.arena, size, 8);
+        memset(result, 0, size);
         virtual_map_insert(&state.registry, id, (void *)result);
     }
 
@@ -198,23 +199,29 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
         return false;
     }
 
-    u64 id = tgui_hash((void *)label, strlen(label));
-    TGuiTextInput *text_input = tgui_widget_get_state(id, TGuiTextInput);
-    
     Rectangle window_rect = tgui_docker_get_client_rect(window);
     Rectangle rect = calculate_widget_rect(window, x, y, 140, 30);
     Rectangle visible_rect = rect_intersection(rect, window_rect);
     
     TGuiKeyboard *keyboard = &input.keyboard;
-
     b32 mouse_is_over = rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
+
+    u64 id = tgui_hash((void *)label, strlen(label));
+    TGuiTextInput *text_input = tgui_widget_get_state(id, TGuiTextInput);
     
+    if(!text_input->initilize) {
+        painter_get_font_default_dim(painter, &text_input->font_width, &text_input->font_height);
+        text_input->initilize = true;
+    }
+
+    u32 visible_glyphs = MAX(rect_width(visible_rect)/text_input->font_width - 2, 0);
+
     if(state.active == id) {
         
         if(keyboard->k_r_arrow_down) {
             
             text_input->cursor = MIN(text_input->cursor + 1, text_input->used);
-        
+  
         } else if(keyboard->k_l_arrow_down) {
         
             text_input->cursor = MAX((s32)text_input->cursor - 1, 0);
@@ -252,6 +259,13 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
 
             text_input->used   += input.text_size;
             text_input->cursor += input.text_size;
+        }
+        
+        /* Calculate the ofset of the text */
+        if(text_input->cursor > text_input->offset + visible_glyphs) {
+            text_input->offset += 1;
+        } else if(text_input->offset > 0 && text_input->cursor <= text_input->offset) {
+            text_input->offset -= 1;
         }
     
     } else if(state.hot == id) {
@@ -297,10 +311,17 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
     
     s32 text_x = rect.min_x + 8;
     s32 text_y = rect.min_y + ((rect_height(rect) - 1) / 2) - ((painter_get_text_max_height(painter) - 1) / 2);
-    painter_draw_size_text(painter, text_x, text_y, (char *)text_input->buffer, text_input->used, decoration_color);
+    painter_draw_size_text(painter, text_x, text_y, (char *)text_input->buffer + text_input->offset,
+            text_input->used - text_input->offset, decoration_color);
 
     if(state.active == id) {
-        painter_draw_size_cursor(painter, text_x, text_y, (char *)text_input->buffer, text_input->used, text_input->cursor, cursor_color);
+        Rectangle cursor_rect = {
+            text_x + ((text_input->cursor - text_input->offset) * text_input->font_width),
+            text_y,
+            text_x + ((text_input->cursor - text_input->offset) * text_input->font_width) + 1,
+            text_y + text_input->font_height,
+        };
+        painter_draw_rectangle(painter, cursor_rect, cursor_color);
     }
     
     painter->clip = saved_painter_clip;
