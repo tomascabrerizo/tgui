@@ -19,6 +19,17 @@ typedef enum TGuiCursor {
 
 #define TGUI_MAX_TEXT_SIZE 32
 
+typedef struct TGuiKeyboard {
+
+    b32 k_r_arrow_down;
+    b32 k_l_arrow_down;
+    b32 k_delete;
+    b32 k_backspace;
+    b32 k_ctrl;
+    b32 k_shift;
+
+} TGuiKeyboard;
+
 typedef struct TGuiInput {
     b32 mouse_button_is_down;
     b32 mouse_button_was_down;
@@ -33,8 +44,7 @@ typedef struct TGuiInput {
     u8 text[TGUI_MAX_TEXT_SIZE];
     u32 text_size;
 
-    b32 r_arrow_down;
-    b32 l_arrow_down;
+    TGuiKeyboard keyboard;
     
 } TGuiInput;
 
@@ -66,7 +76,7 @@ TGuiCursor tgui_get_cursor_state(void);
 
 b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painter *painter);
 
-#define TGUI_TEXT_INPUT_MAX_CHARACTERS 256
+#define TGUI_TEXT_INPUT_MAX_CHARACTERS 124 
 typedef struct TGuiTextInput {
     u8 buffer[TGUI_TEXT_INPUT_MAX_CHARACTERS];
     u32 used;

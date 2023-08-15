@@ -204,36 +204,55 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
     Rectangle window_rect = tgui_docker_get_client_rect(window);
     Rectangle rect = calculate_widget_rect(window, x, y, 140, 30);
     Rectangle visible_rect = rect_intersection(rect, window_rect);
+    
+    TGuiKeyboard *keyboard = &input.keyboard;
 
     b32 mouse_is_over = rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
     
     if(state.active == id) {
         
-        if(input.r_arrow_down) {
-            text_input->cursor = MIN(text_input->cursor + 1, text_input->used);
-        }
-
-        if(input.l_arrow_down) {
-            text_input->cursor = MAX((s32)text_input->cursor - 1, 0);
-        }
-
-        if(input.text_size > 0) {
-
-            text_input->cursor = text_input->used;
+        if(keyboard->k_r_arrow_down) {
             
+            text_input->cursor = MIN(text_input->cursor + 1, text_input->used);
+        
+        } else if(keyboard->k_l_arrow_down) {
+        
+            text_input->cursor = MAX((s32)text_input->cursor - 1, 0);
+        
+        } else if(keyboard->k_backspace) {
+            
+            if(text_input->cursor > 0) {
+                memmove(text_input->buffer + text_input->cursor - 1,
+                        text_input->buffer + text_input->cursor,
+                        text_input->used - text_input->cursor);
+                text_input->cursor -= 1;
+                text_input->used   -= 1;
+            }
+        
+        } else if(keyboard->k_delete) {
+           
+            if(text_input->cursor < text_input->used) {
+                memmove(text_input->buffer + text_input->cursor,
+                        text_input->buffer + text_input->cursor + 1,
+                        text_input->used - text_input->cursor - 1);
+                text_input->used -= 1;
+            }
+
+        } else if(input.text_size > 0) {
+
             if((text_input->used + input.text_size) > TGUI_TEXT_INPUT_MAX_CHARACTERS) {
                 input.text_size = (TGUI_TEXT_INPUT_MAX_CHARACTERS - text_input->used);
                 ASSERT((text_input->used + input.text_size) == TGUI_TEXT_INPUT_MAX_CHARACTERS);
             }
 
+            memmove(text_input->buffer + text_input->cursor + input.text_size, 
+                    text_input->buffer + text_input->cursor, 
+                    (text_input->used - text_input->cursor));
             memcpy(text_input->buffer + text_input->cursor, input.text, input.text_size);
 
             text_input->used   += input.text_size;
-            text_input->cursor = text_input->used;
+            text_input->cursor += input.text_size;
         }
-
-        
-
     
     } else if(state.hot == id) {
         if(!input.mouse_button_was_down && input.mouse_button_is_down) {

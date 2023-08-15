@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "memory.h"
+#include "tgui.h"
 
 void os_initialize(void);
 
@@ -22,6 +23,7 @@ void os_sleep(u64 milliseconds);
 
 struct Arena;
 struct OsWindow;
+struct TGuiKeyboard;
 
 struct OsWindow *os_window_create(struct Arena *arena, char *title, u32 x, u32 y, u32 w, u32 h);
 
@@ -43,7 +45,7 @@ void os_window_get_mouse_lbutton_state(struct OsWindow *window, b32 *is_down);
 
 void os_window_get_text_input(struct OsWindow *window, u8 *buffer, u32 *size, u32 max_size);
 
-void os_window_get_keyboard_input(struct OsWindow *window, b32 *l_arrow, b32 *r_arrow);
+void os_window_get_keyboard_input(struct OsWindow *window, struct TGuiKeyboard *keyborad);
 
 
 /* ---------------------

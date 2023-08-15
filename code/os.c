@@ -1,6 +1,7 @@
 #include "os.h"
 #include "common.h"
 #include "memory.h"
+#include "tgui.h"
 
 #include <X11/X.h>
 #include <stdio.h>
@@ -83,8 +84,6 @@ void os_file_free(OsFile *file) {
 /* -------------------------
         Font Rasterizer 
    ------------------------- */
-
-
 
 typedef struct OsFont {
     OsFile *file;
@@ -176,10 +175,9 @@ typedef struct OsWindow {
 
     char text_buffer[OS_WINDOW_MAX_TEXT_SIZE];
     s32 text_size;
-
-    b32 r_arrow_down;
-    b32 l_arrow_down;
-
+    
+    TGuiKeyboard keyboard;
+    
 } OsWindow;
 
 
@@ -269,18 +267,18 @@ void os_window_get_text_input(struct OsWindow *window, u8 *buffer, u32 *size, u3
     }
 }
 
-void os_window_get_keyboard_input(struct OsWindow *window, b32 *l_arrow, b32 *r_arrow) {
-    *l_arrow = window->l_arrow_down;
-    *r_arrow = window->r_arrow_down;
+
+void os_window_get_keyboard_input(struct OsWindow *window, struct TGuiKeyboard *keyborad) {
+    *keyborad = window->keyboard;
 }
 
 void os_window_poll_events(struct OsWindow *window) {
     
     Display *d = g_x11_display;
     XEvent e; 
+    TGuiKeyboard *keyboard = &window->keyboard;
     window->text_size = 0;
-    window->r_arrow_down = 0;
-    window->l_arrow_down = 0;
+    memset(keyboard, 0, sizeof(TGuiKeyboard));
 
     while(XPending(d)) {
      
@@ -316,9 +314,21 @@ void os_window_poll_events(struct OsWindow *window) {
             KeySym sym = XLookupKeysym(&e.xkey, 0);
 
             if(sym == XK_Right) {
-                window->r_arrow_down = true;
+            
+                keyboard->k_r_arrow_down = true;
+            
             } else if(sym == XK_Left) {
-                window->l_arrow_down = true;
+            
+                keyboard->k_l_arrow_down = true;
+            
+            } else if(sym == XK_BackSpace) {
+            
+                keyboard->k_backspace = true;
+            
+            } else if(sym == XK_Delete) {
+            
+                keyboard->k_delete = true;
+            
             } else {
                 window->text_size = XLookupString(&e.xkey, window->text_buffer, OS_WINDOW_MAX_TEXT_SIZE, &sym, NULL);
                 if(window->text_size < 0) window->text_size = 0;
