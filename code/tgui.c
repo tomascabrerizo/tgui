@@ -3,12 +3,8 @@
 #include "geometry.h"
 #include "memory.h"
 #include "painter.h"
+#include "os.h"
 #include "tgui_docker.h"
-#include <string.h>
-
-/* -------------------------- */
-/*         TGui Font          */
-/* -------------------------- */
 
 
 /* -------------------------- */
@@ -54,9 +50,128 @@
         return h;
 } 
 
+/* TODO: This global variables should be static */
+
 TGui state;
 TGuiInput input;
+TGuiFont font;
 extern TGuiDocker docker;
+
+/* ---------------------- */
+/*       TGui Font        */
+/* ---------------------- */
+
+static u32 get_codepoint_index(u32 codepoint) {
+    
+    if((codepoint < font.glyph_rage_start) || (codepoint > font.glyph_rage_end)) {
+        codepoint = (u32)'?';
+    }
+
+    u32 index = (codepoint - font.glyph_rage_start);
+    return index;
+}
+
+void tgui_font_initilize(Arena *arena) {
+    
+    struct OsFont *os_font = os_font_create(arena, "/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf", 18);
+    
+    font.glyph_rage_start = 32;
+    font.glyph_rage_end = 126;
+    font.glyph_count = (font.glyph_rage_end - font.glyph_rage_start + 1);
+    font.glyphs = arena_push_array(arena, TGuiGlyph, font.glyph_count, 8);
+    os_font_get_vmetrics(os_font, &font.ascent, &font.descent, &font.line_gap);
+
+    void *temp_buffer = arena_alloc(arena, 512*512, 8);
+
+    for(u32 glyph_index = font.glyph_rage_start; glyph_index <= font.glyph_rage_end; ++glyph_index) {
+        
+        s32 w, h, bpp;
+        os_font_rasterize_glyph(os_font, glyph_index, &temp_buffer, &w, &h, &bpp);
+    
+        TGuiGlyph *glyph = font.glyphs + (glyph_index - font.glyph_rage_start);
+        glyph->bitmap.pixels = arena_alloc(arena, sizeof(u32)*w*h, 8);
+        glyph->bitmap.width  = w;
+        glyph->bitmap.height = h;
+        
+        memset(glyph->bitmap.pixels, 0, sizeof(u32)*w*h);
+        
+        u8 *src_row  = temp_buffer;
+        u32 *des_row = glyph->bitmap.pixels;
+        for(u32 y = 0; y < (u32)h; ++y) {
+            u8 *src  = src_row;
+            u32 *des = des_row;
+            for(u32 x = 0; x < (u32)w; ++x) { 
+                *des++ = 0x00ffffff | (*src++ << 24); 
+            }
+            src_row += w;
+            des_row += w;
+        }
+
+        os_font_get_glyph_metrics(os_font, glyph_index, &glyph->adv_width, &glyph->left_bearing, &glyph->top_bearing);
+    }
+    
+    font.font = os_font;
+
+    TGuiGlyph *default_glyph = font.glyphs + get_codepoint_index(' '); 
+    font.max_glyph_width  = default_glyph->adv_width;
+    font.max_glyph_height = font.ascent - font.descent;
+
+}
+
+void tgui_font_terminate(void) {
+    os_font_destroy(font.font);
+}
+
+TGuiGlyph *tgui_font_get_codepoint_glyph(u32 codepoint) {
+    return font.glyphs + get_codepoint_index(codepoint);
+}
+
+Rectangle tgui_get_size_text_dim(s32 x, s32 y, char *text, u32 size) {
+    Rectangle result;
+    
+    s32 w = 0;
+    s32 h = font.max_glyph_height;
+
+    u32 text_len = size;
+    for(u32 i = 0; i < text_len; ++i) {
+        TGuiGlyph *glyph = font.glyphs + get_codepoint_index(text[i]);
+        w += glyph->adv_width;
+    }
+
+    result.min_x = x;
+    result.min_y = y;
+    result.max_x = result.min_x + w - 1;
+    result.max_y = result.min_y + h - 1;
+
+    return result;
+}
+
+Rectangle tgui_get_text_dim(s32 x, s32 y, char *text) {
+    return tgui_get_size_text_dim(x, y, text, strlen(text));
+}
+
+void tgui_font_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u32 color) {
+    s32 cursor = x;
+    s32 base   = y + font.ascent;
+
+    u32 text_len = size;
+    
+    u32 last_index = 0; UNUSED(last_index);
+    for(u32 i = 0; i < text_len; ++i) {
+        
+        u32 index = get_codepoint_index(text[i]);
+
+        TGuiGlyph *glyph = font.glyphs + index;
+        painter_draw_bitmap(painter, cursor + glyph->left_bearing, base - glyph->top_bearing, &glyph->bitmap, color);
+        cursor += glyph->adv_width;
+
+        last_index = index;
+    }
+}
+
+/* ---------------------- */
+/*       TGui Fuction     */
+/* ---------------------- */
 
 void tgui_initialize(void) {
     
@@ -65,12 +180,14 @@ void tgui_initialize(void) {
     arena_initialize(&state.arena, 0, ARENA_TYPE_VIRTUAL);
     virtual_map_initialize(&state.registry);
     
+    tgui_font_initilize(&state.arena);
     tgui_docker_initialize();
 }
 
 void tgui_terminate(void) {
     
     tgui_docker_terminate();
+    tgui_font_terminate();
 
     virtual_map_terminate(&state.registry);
     arena_terminate(&state.arena);
@@ -137,9 +254,8 @@ void *_tgui_widget_get_state(u64 id, u64 size) {
     return result;
 }
 
-#define tgui_widget_get_state(id, type) (type*)_tgui_widget_get_state((id), sizeof(type))
-
 b32 _tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painter *painter, char *tgui_id) {
+    (void)label;
     
     if(!tgui_docker_window_is_visible(window)) {
         return false;
@@ -184,18 +300,19 @@ b32 _tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Paint
         button_color = 0x333333;
         decoration_color = 0x999999;
     }
+    
+    /* TODO: All this rendering is temporal, the API should have a render independent way to give render primitives to the user */
 
     Rectangle saved_painter_clip = painter->clip;
     painter->clip = button_rect;
     
     painter_draw_rectangle(painter, button_rect, button_color);
-
-    Rectangle label_rect = painter_get_text_dim(painter, 0, 0, label);
+    
+    Rectangle label_rect = tgui_get_text_dim(0, 0, label);
     
     s32 label_x = button_rect.min_x + (rect_width(button_rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
     s32 label_y = button_rect.min_y + (rect_height(button_rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2;
-    
-    painter_draw_text(painter, label_x, label_y, label,  decoration_color);
+    tgui_font_draw_text(painter, label_x, label_y, label,  strlen(label), decoration_color);
     painter_draw_rectangle_outline(painter, button_rect, decoration_color);
 
     painter->clip = saved_painter_clip;
@@ -213,10 +330,10 @@ static Rectangle calculate_selection_rect(TGuiTextInput *text_input, s32 x, s32 
     ASSERT(start <= end);
 
     Rectangle result = {
-        x + (start - text_input->offset) * text_input->font_width,
+        x + (start - text_input->offset) * font.max_glyph_width,
         y,
-        x + (end - text_input->offset) * text_input->font_width,
-        y + text_input->font_height,
+        x + (end - text_input->offset) * font.max_glyph_width,
+        y + font.max_glyph_height,
     };
 
     return result;
@@ -267,8 +384,6 @@ TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *p
     
     if(!text_input->initilize) {
         
-        painter_get_font_default_dim(painter, &text_input->font_width, &text_input->font_height);
-        
         text_input->selection = false;
         text_input->selection_start = 0;
         text_input->selection_end = 0;
@@ -296,7 +411,7 @@ TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *p
         }
     }
 
-    u32 visible_glyphs = MAX(rect_width(visible_rect)/text_input->font_width - 2, 0);
+    u32 visible_glyphs = MAX(rect_width(visible_rect)/font.max_glyph_width - 2, 0);
 
     if(state.active == id) {
         
@@ -453,7 +568,7 @@ TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *p
     painter->clip = rect_intersection(rect, painter->clip);
     
     s32 text_x = rect.min_x + 8;
-    s32 text_y = rect.min_y + ((rect_height(rect) - 1) / 2) - ((painter_get_text_max_height(painter) - 1) / 2);
+    s32 text_y = rect.min_y + ((rect_height(rect) - 1) / 2) - ((font.max_glyph_height - 1) / 2);
     
 
     if(text_input->selection) {
@@ -461,15 +576,15 @@ TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *p
         painter_draw_rectangle(painter, selection_rect, 0x7777ff);
     }
 
-    painter_draw_size_text(painter, text_x, text_y, (char *)text_input->buffer + text_input->offset,
+    tgui_font_draw_text(painter, text_x, text_y, (char *)text_input->buffer + text_input->offset,
             text_input->used - text_input->offset, decoration_color);
 
     if(state.active == id && text_input->draw_cursor) {
         Rectangle cursor_rect = {
-            text_x + ((text_input->cursor - text_input->offset) * text_input->font_width),
+            text_x + ((text_input->cursor - text_input->offset) * font.max_glyph_width),
             text_y,
-            text_x + ((text_input->cursor - text_input->offset) * text_input->font_width),
-            text_y + text_input->font_height,
+            text_x + ((text_input->cursor - text_input->offset) * font.max_glyph_width),
+            text_y + font.max_glyph_height,
         };
         painter_draw_rectangle(painter, cursor_rect, cursor_color);
     }
@@ -478,3 +593,4 @@ TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *p
 
     return text_input;
 }
+

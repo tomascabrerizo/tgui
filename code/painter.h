@@ -9,45 +9,13 @@ typedef struct Point {
     s32 x, y;
 } Point;
 
-typedef struct Bitmap {
-    u32 *pixels;
-    u32 width, height;
-} Bitmap;
-
 typedef struct Painter {
     u32 *pixels;
     Rectangle dim;
     Rectangle clip;
 } Painter;
 
-typedef struct PainterGlyph {
-    Bitmap bitmap;
-    s32 codepoint;
-
-    s32 top_bearing;
-    s32 left_bearing;
-    s32 adv_width;
-
-} PainterGlyph;
-
-typedef struct PainterFont {
-    PainterGlyph *glyphs;
-    
-    u32 glyph_count;
-    u32 glyph_rage_start;
-    u32 glyph_rage_end;
-
-    s32 ascent;
-    s32 descent;
-    s32 line_gap;
-    
-    struct OsFont *font;
-
-} PainterFont;
-
-void painter_initialize(Arena *arena);
-
-void painter_terminate(void);
+struct TGuiBitmap;
 
 void painter_start(Painter *painter, u32 *pixels, Rectangle dim, Rectangle *clip);
 
@@ -65,20 +33,6 @@ void painter_draw_hline(Painter *painter, s32 y, s32 x0, s32 x1, u32 color);
 
 void painter_draw_line(Painter *painter, s32 x0, s32 y0, s32 x1, s32 y1, u32 color);
 
-void painter_draw_bitmap(Painter *painter, s32 x, s32 y, Bitmap *bitmap, u32 tint);
-
-void painter_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 color);
-
-void painter_draw_size_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u32 color);
-
-void painter_draw_size_cursor(Painter *painter, s32 x, s32 y, char *text, u32 size, u32 cursor, u32 color);
-
-Rectangle painter_get_size_text_dim(Painter *painter, s32 x, s32 y, char *text, u32 size);
-
-Rectangle painter_get_text_dim(Painter *painter, s32 x, s32 y, char *text);
-
-s32 painter_get_text_max_height(Painter *painter);
-
-void painter_get_font_default_dim(Painter *painter, u32 *font_width, u32 *font_height);
+void painter_draw_bitmap(Painter *painter, s32 x, s32 y, struct TGuiBitmap *bitmap, u32 tint);
 
 #endif /* _PAINTER_H_ */

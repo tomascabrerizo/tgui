@@ -3,55 +3,7 @@
 #include "geometry.h"
 #include "memory.h"
 #include "os.h"
-#include <string.h>
-
-static PainterFont painter_font;
-
-void painter_initialize(Arena *arena) {
-    //struct OsFont *font = os_font_create(arena, "/usr/share/fonts/truetype/liberation2/LiberationMono-Regular.ttf", 20);
-    struct OsFont *font = os_font_create(arena, "/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf", 18);
-    
-    painter_font.glyph_rage_start = 32;
-    painter_font.glyph_rage_end = 126;
-    painter_font.glyph_count = (painter_font.glyph_rage_end - painter_font.glyph_rage_start + 1);
-    painter_font.glyphs = arena_push_array(arena, PainterGlyph, painter_font.glyph_count, 8);
-    os_font_get_vmetrics(font, &painter_font.ascent, &painter_font.descent, &painter_font.line_gap);
-
-    void *temp_buffer = arena_alloc(arena, 512*512, 8);
-
-    for(u32 glyph_index = painter_font.glyph_rage_start; glyph_index <= painter_font.glyph_rage_end; ++glyph_index) {
-        
-        s32 w, h, bpp;
-        os_font_rasterize_glyph(font, glyph_index, &temp_buffer, &w, &h, &bpp);
-    
-        PainterGlyph *glyph = painter_font.glyphs + (glyph_index - painter_font.glyph_rage_start);
-        glyph->bitmap.pixels = arena_alloc(arena, sizeof(u32)*w*h, 8);
-        glyph->bitmap.width  = w;
-        glyph->bitmap.height = h;
-        
-        memset(glyph->bitmap.pixels, 0, sizeof(u32)*w*h);
-        
-        u8 *src_row  = temp_buffer;
-        u32 *des_row = glyph->bitmap.pixels;
-        for(u32 y = 0; y < (u32)h; ++y) {
-            u8 *src  = src_row;
-            u32 *des = des_row;
-            for(u32 x = 0; x < (u32)w; ++x) { 
-                *des++ = 0x00ffffff | (*src++ << 24); 
-            }
-            src_row += w;
-            des_row += w;
-        }
-
-        os_font_get_glyph_metrics(font, glyph_index, &glyph->adv_width, &glyph->left_bearing, &glyph->top_bearing);
-    }
-    
-    painter_font.font = font;
-}
-
-void painter_terminate(void) {
-    os_font_destroy(painter_font.font);
-}
+#include "tgui.h"
 
 void painter_draw_pixel(Painter *painter, s32 x, s32 y, u32 color) {
     if(x >= painter->clip.min_x && x <= painter->clip.max_x &&
@@ -138,7 +90,7 @@ void painter_draw_rect(Painter *painter, s32 x, s32 y, s32 w, s32 h, u32 color) 
     }
 }
 
-void painter_draw_bitmap(Painter *painter, s32 x, s32 y, Bitmap *bitmap, u32 tint) {
+void painter_draw_bitmap(Painter *painter, s32 x, s32 y, TGuiBitmap *bitmap, u32 tint) {
     Rectangle rect;
     rect.min_x = x;
     rect.min_y = y;
@@ -187,34 +139,7 @@ void painter_draw_bitmap(Painter *painter, s32 x, s32 y, Bitmap *bitmap, u32 tin
     }
 }
 
-static u32 get_codepoint_index(u32 codepoint) {
-    
-    if((codepoint < painter_font.glyph_rage_start) || (codepoint > painter_font.glyph_rage_end)) {
-        codepoint = (u32)'?';
-    }
-
-    u32 index = (codepoint - painter_font.glyph_rage_start);
-    return index;
-
-}
-
-void painter_draw_size_cursor(Painter *painter, s32 x, s32 y, char *text, u32 size, u32 cursor, u32 color) {
-    
-    ASSERT(cursor <= size);
-    
-    Rectangle cursor_rect = painter_get_size_text_dim(painter, x, y, text, size);
-    cursor_rect.min_x += 0;
-
-    for(u32 i = 0; i < cursor; ++i) {
-        PainterGlyph *glyph = painter_font.glyphs + get_codepoint_index(text[i]);
-        cursor_rect.min_x += glyph->adv_width;
-    }
-    cursor_rect.max_x = cursor_rect.min_x;
-
-    painter_draw_rectangle(painter, cursor_rect, color);
-
-}
-
+#if 0
 void painter_draw_size_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u32 color) {
     
     s32 cursor = x;
@@ -234,47 +159,7 @@ void painter_draw_size_text(Painter *painter, s32 x, s32 y, char *text, u32 size
         last_index = index;
     }
 }
-
-void painter_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 color) {
-    painter_draw_size_text(painter, x, y, text, strlen(text), color);
-}
-
-s32 painter_get_text_max_height(Painter *painter) {
-    UNUSED(painter);
-    return painter_font.ascent - painter_font.descent;
-}
-
-Rectangle painter_get_size_text_dim(Painter *painter, s32 x, s32 y, char *text, u32 size) {
-    UNUSED(painter);
-    Rectangle result;
-    
-    s32 w = 0;
-    s32 h = painter_get_text_max_height(painter);
-
-    u32 text_len = size;
-    for(u32 i = 0; i < text_len; ++i) {
-        PainterGlyph *glyph = painter_font.glyphs + get_codepoint_index(text[i]);
-        w += glyph->adv_width;
-    }
-
-    result.min_x = x;
-    result.min_y = y;
-    result.max_x = result.min_x + w - 1;
-    result.max_y = result.min_y + h - 1;
-
-    return result;
-}
-
-
-Rectangle painter_get_text_dim(Painter *painter, s32 x, s32 y, char *text) { 
-    return painter_get_size_text_dim(painter, x, y, text, strlen(text));
-}
-
-void painter_get_font_default_dim(Painter *painter, u32 *font_width, u32 *font_height) {
-    PainterGlyph *glyph = painter_font.glyphs + get_codepoint_index(' '); 
-    *font_width = glyph->adv_width;
-    *font_height = painter_get_text_max_height(painter);
-}
+#endif
 
 void painter_draw_vline(Painter *painter, s32 x, s32 y0, s32 y1, u32 color) {
    

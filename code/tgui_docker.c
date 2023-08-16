@@ -450,13 +450,12 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
             Rectangle saved_clip = painter->clip;
 
             painter->clip = menu_bar_rect;
-            
             char *label = node->window_name;
-            Rectangle label_rect = painter_get_text_dim(painter, 0, 0, label);
+            Rectangle label_rect = tgui_get_text_dim(0, 0, label);
             
             s32 label_x = menu_bar_rect.min_x + rect_width(menu_bar_rect) / 2 - rect_width(label_rect) / 2;
             s32 label_y = menu_bar_rect.min_y + rect_height(menu_bar_rect) / 2 - rect_height(label_rect) / 2;
-            painter_draw_text(painter, label_x, label_y, label, 0xffffff);
+            tgui_font_draw_text(painter, label_x, label_y, label, strlen(label), 0xffffff);
 
             painter->clip = saved_clip;
         }

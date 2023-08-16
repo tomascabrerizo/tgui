@@ -14,8 +14,6 @@
 #include "tgui_docker.c"
 
 #include "app.c"
-#include <stdio.h>
-#include <string.h>
 
 static struct OsBackbuffer *realloc_backbuffer(struct OsBackbuffer *backbuffer, struct OsWindow *window, s32 w, s32 h) {
     
@@ -66,8 +64,6 @@ int main(void) {
     App app;
     app_initialize(&app);
     
-    painter_initialize(&arena);
-
     while(!os_window_should_close(window)) {
 
         os_window_poll_events(window);
@@ -104,16 +100,6 @@ int main(void) {
         /* TODO: Update doesnt need to draw the widgets, just send the commands to app_draw */
         app_update(&app, seconds_per_frame, &painter);
         
-#if 0
-        /* NOTE: test draw test */
-        s32 test_pos_x = 40;
-        s32 test_pos_y = 100;
-        char *test = "Tomas Cabrerizo";
-        Rectangle text_rect = painter_get_text_dim(&painter, test_pos_x, test_pos_y, test);
-        painter_draw_rectangle(&painter, text_rect, 0x000000);
-        painter_draw_text(&painter, test_pos_x, test_pos_y, test, 0xa6edaf);
-#endif
-
         input->mouse_button_was_down = input->mouse_button_is_down;
         
         u64 current_time = os_get_ticks();
@@ -132,8 +118,6 @@ int main(void) {
         
     }
     
-    painter_terminate();
-
     app_terminate(&app);
 
     os_backbuffer_destroy(backbuffer);

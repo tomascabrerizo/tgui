@@ -32,19 +32,19 @@ void app_update(App *app, f32 dt, Painter *painter) {
     UNUSED(app); UNUSED(dt);
     tgui_update(dt);
 
-    if(tgui_button(app->window3, "button", 10, 10, painter)) {
+    if(tgui_button(app->window0, "button", 10, 10, painter)) {
         printf("click! 0\n");
     }
 
-    if(tgui_button(app->window0, "button", 10, 10, painter)) {
+    if(tgui_button(app->window0, "button", 10, 50, painter)) {
         printf("click! 1\n");
     }
 
-    if(tgui_button(app->window0, "button", 10, 50, painter)) {
+    if(tgui_button(app->window0, "button", 10, 90, painter)) {
         printf("click! 2\n");
     }
 
-    if(tgui_button(app->window0, "button", 10, 90, painter)) {
+    if(tgui_button(app->window3, "button", 10, 10, painter)) {
         printf("click! 3\n");
     }
     

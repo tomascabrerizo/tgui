@@ -80,8 +80,12 @@ TGuiCursor tgui_get_cursor_state(void);
 /*       TGui Widgets     */
 /* ---------------------- */
 
-b32 _tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painter *painter, char *tgui_id);
+#define tgui_widget_get_state(id, type) (type*)_tgui_widget_get_state((id), sizeof(type))
+
 #define tgui_button(window, label, x, y, painter) _tgui_button(window, label, x, y, painter, TGUI_ID)
+#define tgui_text_input(window, x, y, painter) _tgui_text_input(window, x, y, painter, TGUI_ID)
+
+b32 _tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painter *painter, char *tgui_id);
 
 #define TGUI_TEXT_INPUT_MAX_CHARACTERS 124 
 typedef struct TGuiTextInput {
@@ -92,9 +96,6 @@ typedef struct TGuiTextInput {
     u32 offset;
     
     b32 initilize;
-    
-    u32 font_width;
-    u32 font_height;
     
     b32 selection;
     u32 selection_start;
@@ -110,6 +111,53 @@ typedef struct TGuiTextInput {
 } TGuiTextInput;
 
 TGuiTextInput *_tgui_text_input(struct TGuiDockerNode *window, s32 x, s32 y, Painter *painter, char *tgui_id);
-#define tgui_text_input(window, x, y, painter) _tgui_text_input(window, x, y, painter, TGUI_ID)
+
+/* ---------------------- */
+/*       TGui Font        */
+/* ---------------------- */
+
+typedef struct TGuiBitmap {
+    u32 *pixels;
+    u32 width, height;
+} TGuiBitmap;
+
+typedef struct TGuiGlyph {
+    TGuiBitmap bitmap;
+    s32 codepoint;
+
+    s32 top_bearing;
+    s32 left_bearing;
+    s32 adv_width;
+
+} TGuiGlyph;
+
+typedef struct TGuiFont {
+    TGuiGlyph *glyphs;
+    
+    u32 glyph_count;
+    u32 glyph_rage_start;
+    u32 glyph_rage_end;
+
+    s32 ascent;
+    s32 descent;
+    s32 line_gap;
+
+    u32 max_glyph_height;
+    u32 max_glyph_width;
+    
+    struct OsFont *font;
+} TGuiFont;
+
+void tgui_font_initilize(Arena *arena);
+
+void tgui_font_terminate(void);
+
+TGuiGlyph *tgui_font_get_codepoint_glyph(u32 codepoint);
+
+Rectangle tgui_get_size_text_dim(s32 x, s32 y, char *text, u32 size);
+
+Rectangle tgui_get_text_dim(s32 x, s32 y, char *text);
+
+void tgui_font_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u32 color);
 
 #endif /* _TGUI_H_ */
