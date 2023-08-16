@@ -32,24 +32,24 @@ void app_update(App *app, f32 dt, Painter *painter) {
     UNUSED(app); UNUSED(dt);
     tgui_update(dt);
 
-    if(tgui_button(app->window3, "Click me!", 10, 10, painter)) {
-        printf("click!\n");
+    if(tgui_button(app->window3, "button", 10, 10, painter)) {
+        printf("click! 0\n");
     }
 
-    if(tgui_button(app->window0, "Click me to!", 10, 10, painter)) {
-        printf("click me to!\n");
+    if(tgui_button(app->window0, "button", 10, 10, painter)) {
+        printf("click! 1\n");
     }
 
-    if(tgui_button(app->window0, "Click me to! 1", 10, 50, painter)) {
-        printf("click me to!\n");
+    if(tgui_button(app->window0, "button", 10, 50, painter)) {
+        printf("click! 2\n");
     }
 
-    if(tgui_button(app->window0, "Click me to! 2", 10, 90, painter)) {
-        printf("click me to!\n");
+    if(tgui_button(app->window0, "button", 10, 90, painter)) {
+        printf("click! 3\n");
     }
     
-    TGuiTextInput *input = tgui_text_input(app->window2, 10, 10, "text input", painter);
-    TGuiTextInput *input1 = tgui_text_input(app->window1, 10, 10, "text input 1", painter);
+    TGuiTextInput *input = tgui_text_input(app->window2, 10, 10, painter);
+    TGuiTextInput *input1 = tgui_text_input(app->window1, 10, 10, painter);
     UNUSED(input); UNUSED(input1);
 
 }

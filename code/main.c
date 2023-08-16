@@ -14,6 +14,8 @@
 #include "tgui_docker.c"
 
 #include "app.c"
+#include <stdio.h>
+#include <string.h>
 
 static struct OsBackbuffer *realloc_backbuffer(struct OsBackbuffer *backbuffer, struct OsWindow *window, s32 w, s32 h) {
     
@@ -38,7 +40,7 @@ static struct OsBackbuffer *realloc_backbuffer(struct OsBackbuffer *backbuffer, 
 }
 
 int main(void) {
-
+    
     os_initialize();
     
     Arena arena;

@@ -5,6 +5,10 @@
 #include "memory.h"
 #include "painter.h"
 
+#define TGUI_ID3(a, b) a#b
+#define TGUI_ID2(a, b) TGUI_ID3(a, b)
+#define TGUI_ID TGUI_ID2(__FILE__, __LINE__)
+
 /* TODO: Create actual TGuiWindow instead of using the TGuiDockerNode */
 struct TGuiDockerNode;
 
@@ -76,7 +80,8 @@ TGuiCursor tgui_get_cursor_state(void);
 /*       TGui Widgets     */
 /* ---------------------- */
 
-b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painter *painter);
+b32 _tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painter *painter, char *tgui_id);
+#define tgui_button(window, label, x, y, painter) _tgui_button(window, label, x, y, painter, TGUI_ID)
 
 #define TGUI_TEXT_INPUT_MAX_CHARACTERS 124 
 typedef struct TGuiTextInput {
@@ -104,6 +109,7 @@ typedef struct TGuiTextInput {
 
 } TGuiTextInput;
 
-TGuiTextInput *tgui_text_input(struct TGuiDockerNode *window, s32 x, s32 y, char *label, Painter *painter);
+TGuiTextInput *_tgui_text_input(struct TGuiDockerNode *window, s32 x, s32 y, Painter *painter, char *tgui_id);
+#define tgui_text_input(window, x, y, painter) _tgui_text_input(window, x, y, painter, TGUI_ID)
 
 #endif /* _TGUI_H_ */

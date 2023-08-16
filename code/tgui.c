@@ -7,6 +7,11 @@
 #include <string.h>
 
 /* -------------------------- */
+/*         TGui Font          */
+/* -------------------------- */
+
+
+/* -------------------------- */
 /*       Hash Function     */
 /* -------------------------- */
 
@@ -113,7 +118,28 @@ static Rectangle calculate_buttom_rect(TGuiDockerNode *window, s32 x, s32 y) {
     return rect_intersection(button_rect, window_rect);
 }
 
-b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painter *painter) {
+u64 tgui_get_widget_id(char *tgui_id) {
+    u64 id = tgui_hash(tgui_id, strlen(tgui_id));
+    return id;
+}
+
+void *_tgui_widget_get_state(u64 id, u64 size) {
+    void *result = NULL;
+
+    result = virtual_map_find(&state.registry, id);
+    if(result == NULL) {
+        result = arena_alloc(&state.arena, size, 8);
+        memset(result, 0, size);
+        virtual_map_insert(&state.registry, id, (void *)result);
+    }
+
+    ASSERT(result != NULL);
+    return result;
+}
+
+#define tgui_widget_get_state(id, type) (type*)_tgui_widget_get_state((id), sizeof(type))
+
+b32 _tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painter *painter, char *tgui_id) {
     
     if(!tgui_docker_window_is_visible(window)) {
         return false;
@@ -121,7 +147,7 @@ b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painte
     
     b32 result = false;
 
-    u64 id = tgui_hash((void *)label, strlen(label));
+    u64 id = tgui_get_widget_id(tgui_id);
     Rectangle button_rect = calculate_buttom_rect(window, x, y); 
     
     b32 mouse_is_over = rect_point_overlaps(button_rect, input.mouse_x, input.mouse_y);
@@ -177,22 +203,6 @@ b32 tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painte
     return result;
 }
 
-void *_tgui_widget_get_state(u64 id, u64 size) {
-    void *result = NULL;
-
-    result = virtual_map_find(&state.registry, id);
-    if(result == NULL) {
-        result = arena_alloc(&state.arena, size, 8);
-        memset(result, 0, size);
-        virtual_map_insert(&state.registry, id, (void *)result);
-    }
-
-    ASSERT(result != NULL);
-    return result;
-}
-
-#define tgui_widget_get_state(id, type) (type*)_tgui_widget_get_state((id), sizeof(type))
-
 static Rectangle calculate_selection_rect(TGuiTextInput *text_input, s32 x, s32 y, u32 start, u32 end) {
 
     if(start > end) {
@@ -239,7 +249,7 @@ static void delete_selection(TGuiTextInput *text_input) {
     }
 }
 
-TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label, Painter *painter) {
+TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *painter, char *tgui_id) {
 
     if(!tgui_docker_window_is_visible(window)) {
         return false;
@@ -252,7 +262,7 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
     TGuiKeyboard *keyboard = &input.keyboard;
     b32 mouse_is_over = rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
 
-    u64 id = tgui_hash((void *)label, strlen(label));
+    u64 id = tgui_get_widget_id(tgui_id);
     TGuiTextInput *text_input = tgui_widget_get_state(id, TGuiTextInput);
     
     if(!text_input->initilize) {
