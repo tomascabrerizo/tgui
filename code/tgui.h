@@ -43,7 +43,7 @@ typedef struct TGuiInput {
     
     u8 text[TGUI_MAX_TEXT_SIZE];
     u32 text_size;
-
+    
     TGuiKeyboard keyboard;
  
 } TGuiInput;
@@ -85,8 +85,13 @@ typedef struct TGuiTextInput {
     u32 offset;
     
     b32 initilize;
+    
     u32 font_width;
     u32 font_height;
+    
+    b32 selection;
+    u32 selection_start;
+    u32 selection_end;
 
 } TGuiTextInput;
 

@@ -312,6 +312,9 @@ void os_window_poll_events(struct OsWindow *window) {
         case KeyPress: {
 
             KeySym sym = XLookupKeysym(&e.xkey, 0);
+            
+            keyboard->k_shift = (e.xkey.state & ShiftMask)   != 0;
+            keyboard->k_ctrl  = (e.xkey.state & ControlMask) != 0;
 
             if(sym == XK_Right) {
             

@@ -193,6 +193,51 @@ void *_tgui_widget_get_state(u64 id, u64 size) {
 
 #define tgui_widget_get_state(id, type) (type*)_tgui_widget_get_state((id), sizeof(type))
 
+static Rectangle calculate_selection_rect(TGuiTextInput *text_input, s32 x, s32 y, u32 start, u32 end) {
+
+    if(start > end) {
+        u32 temp = start;
+        start = end;
+        end = temp;
+    }
+    ASSERT(start <= end);
+
+    Rectangle result = {
+        x + (start - text_input->offset) * text_input->font_width,
+        y,
+        x + (end - text_input->offset) * text_input->font_width,
+        y + text_input->font_height,
+    };
+
+    return result;
+}
+
+static void delete_selection(TGuiTextInput *text_input) {
+    
+    u32 start = text_input->selection_start;
+    u32 end = text_input->selection_end;
+
+    if(start > end) {
+        u32 temp = start;
+        start = end;
+        end = temp;
+    }
+    ASSERT(start <= end);
+
+    ASSERT(text_input->selection == true);
+    memmove(text_input->buffer + start,
+            text_input->buffer + end,
+            text_input->used - end);
+    
+    ASSERT((end - start) <= text_input->used);
+    
+
+    text_input->used -= (end - start);
+    text_input->selection = false;
+    text_input->cursor = start;
+    text_input->offset = start;
+}
+
 TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label, Painter *painter) {
 
     if(!tgui_docker_window_is_visible(window)) {
@@ -210,7 +255,12 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
     TGuiTextInput *text_input = tgui_widget_get_state(id, TGuiTextInput);
     
     if(!text_input->initilize) {
+        
         painter_get_font_default_dim(painter, &text_input->font_width, &text_input->font_height);
+        text_input->selection = false;
+        text_input->selection_start = 0;
+        text_input->selection_end = 0;
+
         text_input->initilize = true;
     }
 
@@ -220,15 +270,45 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
         
         if(keyboard->k_r_arrow_down) {
             
+            /* NOTE: Start selection */
+            if(!keyboard->k_shift) {
+                text_input->selection = false;
+            } else if(keyboard->k_shift && !text_input->selection) {
+                text_input->selection = true;
+                text_input->selection_start = text_input->cursor;
+            }
+
             text_input->cursor = MIN(text_input->cursor + 1, text_input->used);
+
+            /* NOTE: End selection */
+            if(text_input->selection) {
+                text_input->selection_end = text_input->cursor;
+                ASSERT(ABS((s32)text_input->selection_end - (s32)text_input->selection_start) <= (s32)text_input->used);
+            }
   
         } else if(keyboard->k_l_arrow_down) {
         
+            /* NOTE: Start selection */
+            if(!keyboard->k_shift) {
+                text_input->selection = false;
+            } else if(keyboard->k_shift && !text_input->selection) {
+                text_input->selection = true;
+                text_input->selection_start = text_input->cursor;
+            }
+            
             text_input->cursor = MAX((s32)text_input->cursor - 1, 0);
+
+            /* NOTE: End selection */
+            if(text_input->selection) {
+                text_input->selection_end = text_input->cursor;
+                ASSERT(ABS((s32)text_input->selection_end - (s32)text_input->selection_start) <= (s32)text_input->used);
+            }
         
         } else if(keyboard->k_backspace) {
             
-            if(text_input->cursor > 0) {
+            if(text_input->selection) {
+                delete_selection(text_input);
+            } else if(text_input->cursor > 0) {
                 memmove(text_input->buffer + text_input->cursor - 1,
                         text_input->buffer + text_input->cursor,
                         text_input->used - text_input->cursor);
@@ -237,8 +317,10 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
             }
         
         } else if(keyboard->k_delete) {
-           
-            if(text_input->cursor < text_input->used) {
+
+            if(text_input->selection) {
+                delete_selection(text_input);
+            } else if(text_input->cursor < text_input->used) {
                 memmove(text_input->buffer + text_input->cursor,
                         text_input->buffer + text_input->cursor + 1,
                         text_input->used - text_input->cursor - 1);
@@ -246,6 +328,10 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
             }
 
         } else if(input.text_size > 0) {
+
+            if(text_input->selection) {
+                delete_selection(text_input);
+            }
 
             if((text_input->used + input.text_size) > TGUI_TEXT_INPUT_MAX_CHARACTERS) {
                 input.text_size = (TGUI_TEXT_INPUT_MAX_CHARACTERS - text_input->used);
@@ -311,6 +397,13 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
     
     s32 text_x = rect.min_x + 8;
     s32 text_y = rect.min_y + ((rect_height(rect) - 1) / 2) - ((painter_get_text_max_height(painter) - 1) / 2);
+    
+
+    if(text_input->selection) {
+        Rectangle selection_rect = calculate_selection_rect(text_input, text_x, text_y, text_input->selection_start, text_input->selection_end);
+        painter_draw_rectangle(painter, selection_rect, 0x7777ff);
+    }
+
     painter_draw_size_text(painter, text_x, text_y, (char *)text_input->buffer + text_input->offset,
             text_input->used - text_input->offset, decoration_color);
 
@@ -318,7 +411,7 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
         Rectangle cursor_rect = {
             text_x + ((text_input->cursor - text_input->offset) * text_input->font_width),
             text_y,
-            text_x + ((text_input->cursor - text_input->offset) * text_input->font_width) + 1,
+            text_x + ((text_input->cursor - text_input->offset) * text_input->font_width),
             text_y + text_input->font_height,
         };
         painter_draw_rectangle(painter, cursor_rect, cursor_color);
