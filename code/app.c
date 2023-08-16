@@ -30,7 +30,7 @@ void app_terminate(App *app) {
 
 void app_update(App *app, f32 dt, Painter *painter) {
     UNUSED(app); UNUSED(dt);
-    tgui_update();
+    tgui_update(dt);
 
     if(tgui_button(app->window3, "Click me!", 10, 10, painter)) {
         printf("click!\n");

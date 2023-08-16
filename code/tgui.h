@@ -57,6 +57,8 @@ typedef struct TGui {
 
     u64 hot;
     u64 active;
+    
+    f32 dt;
 
 } TGui;
 
@@ -64,7 +66,7 @@ void tgui_initialize(void);
 
 void tgui_terminate(void);
 
-void tgui_update(void);
+void tgui_update(f32 dt);
 
 TGuiInput *tgui_get_input(void);
 
@@ -92,6 +94,13 @@ typedef struct TGuiTextInput {
     b32 selection;
     u32 selection_start;
     u32 selection_end;
+    
+    f32 cursor_inactive_acumulator;
+    f32 cursor_inactive_target;
+    f32 cursor_blink_acumulator;
+    f32 cursor_blink_target;
+    b32 blink_cursor;
+    b32 draw_cursor;
 
 } TGuiTextInput;
 

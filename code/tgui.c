@@ -73,8 +73,8 @@ void tgui_terminate(void) {
 }
 
 
-void tgui_update(void) {
-
+void tgui_update(f32 dt) {
+    state.dt = dt;
     tgui_docker_update();
  
 }
@@ -231,11 +231,12 @@ static void delete_selection(TGuiTextInput *text_input) {
     
     ASSERT((end - start) <= text_input->used);
     
-
     text_input->used -= (end - start);
     text_input->selection = false;
     text_input->cursor = start;
-    text_input->offset = start;
+    if(text_input->offset > start) {
+        text_input->offset = start;
+    }
 }
 
 TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label, Painter *painter) {
@@ -257,11 +258,32 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
     if(!text_input->initilize) {
         
         painter_get_font_default_dim(painter, &text_input->font_width, &text_input->font_height);
+        
         text_input->selection = false;
         text_input->selection_start = 0;
         text_input->selection_end = 0;
+        
+        text_input->cursor_inactive_acumulator = 0;
+        text_input->cursor_inactive_target = 0.5f;
+        text_input->cursor_blink_target = 0.4f; 
+        text_input->cursor_blink_acumulator = 0; 
+        text_input->blink_cursor = false;
+        text_input->draw_cursor  = true;
 
         text_input->initilize = true;
+    }
+    
+    text_input->cursor_inactive_acumulator += state.dt;
+    if(text_input->cursor_inactive_acumulator >= text_input->cursor_inactive_target) {
+        text_input->blink_cursor = true;
+    }
+
+    if(text_input->blink_cursor) {
+        text_input->cursor_blink_acumulator += state.dt;
+        if(text_input->cursor_blink_acumulator >= text_input->cursor_blink_target) {
+            text_input->draw_cursor = !text_input->draw_cursor;
+            text_input->cursor_blink_acumulator = 0;
+        }
     }
 
     u32 visible_glyphs = MAX(rect_width(visible_rect)/text_input->font_width - 2, 0);
@@ -270,6 +292,11 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
         
         if(keyboard->k_r_arrow_down) {
             
+            /* NOTE: Not blick cursor */
+            text_input->blink_cursor = false;
+            text_input->draw_cursor = true;
+            text_input->cursor_inactive_acumulator = 0;
+
             /* NOTE: Start selection */
             if(!keyboard->k_shift) {
                 text_input->selection = false;
@@ -287,6 +314,11 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
             }
   
         } else if(keyboard->k_l_arrow_down) {
+
+            /* NOTE: Not blick cursor */
+            text_input->blink_cursor = false;
+            text_input->draw_cursor = true;
+            text_input->cursor_inactive_acumulator = 0;
         
             /* NOTE: Start selection */
             if(!keyboard->k_shift) {
@@ -305,6 +337,11 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
             }
         
         } else if(keyboard->k_backspace) {
+
+            /* NOTE: Not blick cursor */
+            text_input->blink_cursor = false;
+            text_input->draw_cursor = true;
+            text_input->cursor_inactive_acumulator = 0;
             
             if(text_input->selection) {
                 delete_selection(text_input);
@@ -318,6 +355,11 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
         
         } else if(keyboard->k_delete) {
 
+            /* NOTE: Not blick cursor */
+            text_input->blink_cursor = false;
+            text_input->draw_cursor = true;
+            text_input->cursor_inactive_acumulator = 0;
+
             if(text_input->selection) {
                 delete_selection(text_input);
             } else if(text_input->cursor < text_input->used) {
@@ -328,6 +370,11 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
             }
 
         } else if(input.text_size > 0) {
+
+            /* NOTE: Not blick cursor */
+            text_input->blink_cursor = false;
+            text_input->draw_cursor = true;
+            text_input->cursor_inactive_acumulator = 0;
 
             if(text_input->selection) {
                 delete_selection(text_input);
@@ -407,7 +454,7 @@ TGuiTextInput *tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, char *label
     painter_draw_size_text(painter, text_x, text_y, (char *)text_input->buffer + text_input->offset,
             text_input->used - text_input->offset, decoration_color);
 
-    if(state.active == id) {
+    if(state.active == id && text_input->draw_cursor) {
         Rectangle cursor_rect = {
             text_x + ((text_input->cursor - text_input->offset) * text_input->font_width),
             text_y,
