@@ -114,7 +114,7 @@ void tgui_font_initilize(Arena *arena) {
 
     TGuiGlyph *default_glyph = font.glyphs + get_codepoint_index(' '); 
     font.max_glyph_width  = default_glyph->adv_width;
-    font.max_glyph_height = font.ascent - font.descent;
+    font.max_glyph_height = font.ascent - font.descent + font.line_gap;
 
 }
 
@@ -411,7 +411,8 @@ TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *p
         }
     }
 
-    u32 visible_glyphs = MAX(rect_width(visible_rect)/font.max_glyph_width - 2, 0);
+    u32 padding_x = 8;
+    u32 visible_glyphs = MAX(((s32)rect_width(visible_rect) - padding_x*2)/font.max_glyph_width, 0);
 
     if(state.active == id) {
         
@@ -565,9 +566,12 @@ TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *p
     painter_draw_rectangle(painter, rect, color);
     painter_draw_rectangle_outline(painter, rect, decoration_color);
 
-    painter->clip = rect_intersection(rect, painter->clip);
+    Rectangle clipping_rect = rect;
+    clipping_rect.min_x += padding_x;
+    clipping_rect.max_x -= padding_x;
+    painter->clip = rect_intersection(clipping_rect, painter->clip);
     
-    s32 text_x = rect.min_x + 8;
+    s32 text_x = rect.min_x + padding_x;
     s32 text_y = rect.min_y + ((rect_height(rect) - 1) / 2) - ((font.max_glyph_height - 1) / 2);
     
 

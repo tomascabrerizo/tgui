@@ -31,6 +31,7 @@ void app_terminate(App *app) {
 void app_update(App *app, f32 dt, Painter *painter) {
     UNUSED(app); UNUSED(dt);
     tgui_update(dt);
+    tgui_docker_root_node_draw(painter);
 
     if(tgui_button(app->window0, "button", 10, 10, painter)) {
         printf("click! 0\n");
@@ -48,14 +49,6 @@ void app_update(App *app, f32 dt, Painter *painter) {
         printf("click! 3\n");
     }
     
-    TGuiTextInput *input = tgui_text_input(app->window2, 10, 10, painter);
-    TGuiTextInput *input1 = tgui_text_input(app->window1, 10, 10, painter);
-    UNUSED(input); UNUSED(input1);
-
-}
-
-void app_draw(App *app, Painter *painter) {
-    UNUSED(app); UNUSED(painter);
-    painter_clear(painter, 0x00);
-    tgui_docker_root_node_draw(painter);
+    tgui_text_input(app->window2, 10, 10, painter);
+    tgui_text_input(app->window1, 10, 10, painter);
 }

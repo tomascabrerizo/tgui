@@ -53,7 +53,7 @@ int main(void) {
     struct OsBackbuffer *backbuffer = realloc_backbuffer(0, window, window_w, window_h);
    
     u64 miliseconds_per_frame = 16;
-    f32 seconds_per_frame = (f32)miliseconds_per_frame / 1000.0f;
+    f32 seconds_per_frame = (f32)miliseconds_per_frame / 1000.0f; (void)seconds_per_frame;
     u64 last_time = os_get_ticks();
      
 
@@ -74,6 +74,12 @@ int main(void) {
 
             window_w = os_window_width(window);
             window_h = os_window_height(window);
+            
+            if(window_w <= 1) {
+                u32 break_here = 0;
+                (void)break_here;
+            }
+
             backbuffer = realloc_backbuffer(backbuffer, window, window_w, window_h);
             input->window_resize = true;
             input->resize_w = window_w;
@@ -97,10 +103,14 @@ int main(void) {
 
         Painter painter;
         painter_start(&painter, (u32 *)backbuffer->data, (Rectangle){0, 0, window_w-1, window_h-1}, 0);
+        painter_clear(&painter, 0x00);
 
-        app_draw(&app, &painter);
         /* TODO: Update doesnt need to draw the widgets, just send the commands to app_draw */
+        /* TODO: Update need to happend before draw to actually draw the update gui for the frame */
+        /* app_update(&app, seconds_per_frame, &painter); */
+
         app_update(&app, seconds_per_frame, &painter);
+
         
         input->mouse_button_was_down = input->mouse_button_is_down;
         

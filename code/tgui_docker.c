@@ -466,7 +466,6 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
         painter_draw_rectangle(painter, node->dim, 0x444444);
     } break;
 
-
     case TGUI_DOCKER_NODE_ROOT: {
         TGuiDockerNode * child = node->childs->next;
         while (!clink_list_end(child, node->childs)) { 
@@ -523,7 +522,7 @@ void tgui_docker_update(void) {
     }
      
     TGuiDockerNode *mouse_over_node = get_node_in_position(docker.root, input.mouse_x, input.mouse_y);
-    ASSERT(mouse_over_node);
+    if(!mouse_over_node) return;
 
     set_cursor_state(mouse_over_node);
 
@@ -730,7 +729,7 @@ void tgui_docker_node_recalculate_dim(TGuiDockerNode *node) {
             }
         }
     } else {
-        node->dim = (Rectangle){0, 0, input.resize_w - 1, input.resize_h - 1};
+        node->dim = (Rectangle){0, 0, (s32)input.resize_w - 1, (s32)input.resize_h};
     }
 
     if(node->type == TGUI_DOCKER_NODE_ROOT) {
