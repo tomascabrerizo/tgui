@@ -3,6 +3,7 @@
 #include "painter.h"
 #include "tgui.h"
 #include "tgui_docker.h"
+#include <stdio.h>
 
 typedef struct App {
     TGuiDockerNode *window0;
@@ -29,7 +30,7 @@ void app_terminate(App *app) {
 }
 
 void app_update(App *app, f32 dt, Painter *painter) {
-    UNUSED(app); UNUSED(dt);
+    
     tgui_update(dt);
     tgui_docker_root_node_draw(painter);
 
@@ -51,4 +52,20 @@ void app_update(App *app, f32 dt, Painter *painter) {
     
     tgui_text_input(app->window2, 10, 10, painter);
     tgui_text_input(app->window1, 10, 10, painter);
+
+    if(tgui_button(app->window2, "button", 10, 110, painter)) {
+        printf("click! 3\n");
+    }
+
+    _tgui_drop_down_menu_begin(app->window2, 10, 60, painter, TGUI_ID);
+    if(_tgui_drop_down_menu_item("item1", painter)) {
+    }
+    if(_tgui_drop_down_menu_item("item2", painter)) {
+    }
+    if(_tgui_drop_down_menu_item("item3", painter)) {
+    }
+    if(_tgui_drop_down_menu_item("item4", painter)) {
+    }
+    _tgui_drop_down_menu_end(painter);
+
 }

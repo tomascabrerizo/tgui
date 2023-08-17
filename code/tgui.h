@@ -2,8 +2,10 @@
 #define _TGUI_H_
 
 #include "common.h"
+#include "geometry.h"
 #include "memory.h"
 #include "painter.h"
+#include "tgui_docker.h"
 
 #define TGUI_ID3(a, b) a#b
 #define TGUI_ID2(a, b) TGUI_ID3(a, b)
@@ -63,6 +65,7 @@ typedef struct TGui {
     u64 active;
     
     f32 dt;
+    void *active_data;
 
 } TGui;
 
@@ -111,6 +114,25 @@ typedef struct TGuiTextInput {
 } TGuiTextInput;
 
 TGuiTextInput *_tgui_text_input(struct TGuiDockerNode *window, s32 x, s32 y, Painter *painter, char *tgui_id);
+
+typedef struct TGuiDropMenu {
+    Rectangle rect;
+    Rectangle parent_rect;
+
+    b32 active;
+    s32 selected_item;
+    s32 running_index;
+
+    Rectangle saved_clip;
+
+    b32 initlialize;
+} TGuiDropMenu;
+
+void _tgui_drop_down_menu_begin(struct TGuiDockerNode *window, s32 x, s32 y, Painter *painter, char *tgui_id);
+
+b32 _tgui_drop_down_menu_item(char *label, Painter *painter);
+
+void _tgui_drop_down_menu_end(Painter *painter);
 
 /* ---------------------- */
 /*       TGui Font        */

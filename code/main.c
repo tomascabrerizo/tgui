@@ -105,10 +105,6 @@ int main(void) {
         painter_start(&painter, (u32 *)backbuffer->data, (Rectangle){0, 0, window_w-1, window_h-1}, 0);
         painter_clear(&painter, 0x00);
 
-        /* TODO: Update doesnt need to draw the widgets, just send the commands to app_draw */
-        /* TODO: Update need to happend before draw to actually draw the update gui for the frame */
-        /* app_update(&app, seconds_per_frame, &painter); */
-
         app_update(&app, seconds_per_frame, &painter);
 
         
