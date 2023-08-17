@@ -53,7 +53,7 @@ void app_update(App *app, f32 dt, Painter *painter) {
     tgui_text_input(app->window2, 10, 10, painter);
     tgui_text_input(app->window1, 10, 10, painter);
 
-    if(tgui_button(app->window2, "button", 10, 110, painter)) {
+    if(tgui_button(app->window2, "button", 180, 60, painter)) {
         printf("click! 3\n");
     }
 

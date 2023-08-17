@@ -549,12 +549,12 @@ TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *p
     Rectangle saved_painter_clip = painter->clip;
     painter->clip = window_rect; 
     
-    u32 color = 0x333333;
-    u32 decoration_color = 0x999999;
+    u32 color = 0x888888;
+    u32 decoration_color = 0x333333;
     u32 cursor_color = 0x00ff00;
     
     if(state.hot == id) {
-        color = 0x444444;
+        color = 0x888888;
     }
     
     if(state.active == id) {
@@ -646,16 +646,15 @@ void _tgui_drop_down_menu_begin(struct TGuiDockerNode *window, s32 x, s32 y, Pai
     drop_menu->saved_clip = painter->clip;
     painter->clip = window_rect; 
 
-    u32 color = 0x0000ff;
-    u32 decoration_color = 0x00ff00;
+    u32 color = 0x333333;
+    u32 decoration_color = 0x999999;
     
     if(state.hot == id) {
-        color = 0x000088;
+        color = 0x444444;
     }
     
     if(state.active == id) {
-        decoration_color = 0x00ff00;
-        color = 0x0000ff;
+        color = 0x444444;
     }
     
     painter_draw_rectangle(painter, visible_rect, color);
@@ -666,7 +665,7 @@ void _tgui_drop_down_menu_begin(struct TGuiDockerNode *window, s32 x, s32 y, Pai
         Rectangle label_rect = tgui_get_text_dim(0, 0, label);
         s32 label_x = rect.min_x + (rect_width(rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
         s32 label_y = (rect.min_y + (rect_height(rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2);
-        tgui_font_draw_text(painter, label_x, label_y, label,  strlen(label), 0x00ff00);
+        tgui_font_draw_text(painter, label_x, label_y, label,  strlen(label), 0x999999);
     }
 }
 
@@ -681,9 +680,9 @@ b32 _tgui_drop_down_menu_item(char *label, Painter *painter) {
         
         Rectangle visible_rect = rect_intersection(rect, painter->clip);
 
-        u32 color = 0x0000ff;
+        u32 color = 0x999999;
         if(rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y)) {
-            color = 0x000088;
+            color = 0x888888;
 
             if(input.mouse_button_was_down && !input.mouse_button_is_down) {
                 drop_menu->selected_item = drop_menu->running_index;
@@ -692,12 +691,13 @@ b32 _tgui_drop_down_menu_item(char *label, Painter *painter) {
         }
 
         painter_draw_rectangle(painter, rect, color);
-        painter_draw_rectangle_outline(painter, rect, 0x00ff00);
+        painter_draw_hline(painter, rect.max_y, rect.min_x, rect.max_x, 0x444444);
+        //painter_draw_rectangle_outline(painter, rect, 0x444444);
 
         Rectangle label_rect = tgui_get_text_dim(0, 0, label);
         s32 label_x = drop_menu->parent_rect.min_x + (rect_width(drop_menu->parent_rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
         s32 label_y = rect_height(drop_menu->parent_rect) * (drop_menu->running_index + 1) + (drop_menu->parent_rect.min_y + (rect_height(drop_menu->parent_rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2);
-        tgui_font_draw_text(painter, label_x, label_y, label,  strlen(label), 0x00ff00);
+        tgui_font_draw_text(painter, label_x, label_y, label,  strlen(label), 0x444444);
 
     }
     
@@ -706,7 +706,7 @@ b32 _tgui_drop_down_menu_item(char *label, Painter *painter) {
         Rectangle label_rect = tgui_get_text_dim(0, 0, label);
         s32 label_x = drop_menu->parent_rect.min_x + (rect_width(drop_menu->parent_rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
         s32 label_y = (drop_menu->parent_rect.min_y + (rect_height(drop_menu->parent_rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2);
-        tgui_font_draw_text(painter, label_x, label_y, label,  strlen(label), 0x00ff00);
+        tgui_font_draw_text(painter, label_x, label_y, label,  strlen(label), 0x999999);
     }
 
     ++drop_menu->running_index;
