@@ -1,5 +1,14 @@
 #include "geometry.h"
 
+Rectangle rect_from_wh(u32 x, u32 y, u32 w, u32 h) {
+    Rectangle result;
+    result.min_x = x;
+    result.max_x = x + w - 1;
+    result.min_y = y;
+    result.max_y = y + h - 1;
+    return result;
+}
+
 s32 rect_width(Rectangle a) {
     return (a.max_x - a.min_x) + 1;
 }

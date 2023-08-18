@@ -758,8 +758,8 @@ static u32 u32_color_mix(u32 color0, f32 t, u32 color1) {
 
 static void colorpicker_calculate_radiant(TGuiBitmap *bitmap, u32 color) {
     
-    ASSERT(((s32)bitmap->width - 1) >= 1);
-    f32 inv_w = 1.0f / (f32)(bitmap->width - 1);
+    u32 w = (bitmap->width - 1) != 0 ? (bitmap->width - 1) : 1;
+    f32 inv_w = 1.0f / w;
 
     u32 *pixel = bitmap->pixels;
     for(u32 x = 0; x < bitmap->width; ++x) { 
@@ -767,16 +767,69 @@ static void colorpicker_calculate_radiant(TGuiBitmap *bitmap, u32 color) {
         *pixel++ = u32_color_mix(0xffffff, t, color);
     }
     
-    ASSERT(((s32)bitmap->height - 1) >= 1);
-    f32 inv_h = 1.0f / (f32)(bitmap->height - 1);
+    u32 h = (bitmap->height - 1) != 0 ? (bitmap->height - 1) : 1;
+    f32 inv_h = 1.0f / h;
+    
     for(u32 x = 0; x < bitmap->width; ++x) {
         u32 color = bitmap->pixels[x];
-        for(u32 y = 1; y < bitmap->width; ++y) {
+        for(u32 y = 1; y < bitmap->height; ++y) {
             f32 t = (f32)y * inv_h;
             bitmap->pixels[y*bitmap->width+x] = u32_color_mix(color, t, 0x000000);
         }
     } 
 
+
+}
+
+static void colorpicker_claculate_section(TGuiBitmap *bitmap, u32 *cursor_x, u32 advance, u32 color0, u32 color1) {
+
+    f32 inv_advance = advance != 0 ? (1.0f / advance) : 1.0f;
+
+    for(u32 y = 0; y < bitmap->height; ++y) {
+        u32 xx = *cursor_x;
+        for(u32 x = 0; x < advance; ++x) {
+            f32 t = x * inv_advance;
+            bitmap->pixels[y*bitmap->width+xx++] = u32_color_mix(color0, t, color1);
+        }
+    }
+
+    *cursor_x += advance;
+}
+
+static void colorpicker_calculate_mini_radiant(TGuiBitmap *bitmap) {
+    
+    u32 advance = 0;
+    u32 cursor_x = 0;
+    
+    u32 color0 = 0xff0000;
+    u32 color1 = 0xffff00;
+    advance = (bitmap->width * 1.0f/6.0f);
+    colorpicker_claculate_section(bitmap, &cursor_x, advance - cursor_x, color0, color1);
+    
+    color0 = 0xffff00;
+    color1 = 0x00ff00;
+    advance = (bitmap->width * 2.0f/6.0f);
+    colorpicker_claculate_section(bitmap, &cursor_x, advance - cursor_x, color0, color1);
+    
+    color0 = 0x00ff00;
+    color1 = 0x00ffff;
+    advance = (bitmap->width * 3.0f/6.0f);
+    colorpicker_claculate_section(bitmap, &cursor_x, advance - cursor_x, color0, color1);
+    
+    color0 = 0x00ffff;
+    color1 = 0x0000ff;
+    advance = (bitmap->width * 4.0f/6.0f);
+    colorpicker_claculate_section(bitmap, &cursor_x, advance - cursor_x, color0, color1);
+    
+    color0 = 0x0000ff;
+    color1 = 0xff00ff;
+    advance = (bitmap->width * 5.0f/6.0f);
+    colorpicker_claculate_section(bitmap, &cursor_x, advance - cursor_x, color0, color1);
+    
+    color0 = 0xff00ff;
+    color1 = 0xff0000;
+    advance = bitmap->width;
+    colorpicker_claculate_section(bitmap, &cursor_x, advance - cursor_x, color0, color1);
 
 }
 
@@ -802,19 +855,22 @@ void tgui_u32_color_to_hsv_color(u32 color, f32 *h, f32 *s, f32 *v) {
     }
 
     f32 hue = 0.166666666667f * hue2; 
-    f32 value = M / 255.0f;
     f32 saturation = 0;
     if(M != 0) {
         saturation = chroma / (f32)M;
     }
+    f32 value = M / 255.0f;
 
     *h = hue;
     *s = saturation;
     *v = value;
 }
 
+static u32 colorpicker_get_color_hue(TGuiColorPicker *colorpicker) {
+    return colorpicker->mini_radiant.pixels[(u32)(colorpicker->hue * colorpicker->mini_radiant.width)];
+}
+
 u32 _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 h, Painter *painter, char *tgui_id) {
-    UNUSED(window); UNUSED(x); UNUSED(y); UNUSED(w); UNUSED(h); UNUSED(painter); UNUSED(tgui_id);
 
     if(!tgui_docker_window_is_visible(window)) {
         return 0;
@@ -822,22 +878,80 @@ u32 _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 h
     
     Rectangle window_rect = tgui_docker_get_client_rect(window);
     Rectangle rect = calculate_widget_rect(window, x, y, w, h);
+    Rectangle visible_rect = rect_intersection(rect, window_rect);
 
     u64 id = tgui_get_widget_id(tgui_id);
     TGuiColorPicker *colorpicker = tgui_widget_get_state(id, TGuiColorPicker);
 
+    f32 radiant_h = h * 0.75f; 
+    f32 mini_radiant_h = h * 0.2f;
+    
     if(!colorpicker->initialize) {
+         
+        colorpicker->mini_radiant = tgui_bitmap_create_empty(w, mini_radiant_h);
+        colorpicker_calculate_mini_radiant(&colorpicker->mini_radiant);
+        colorpicker->hue = 0;
         
-        colorpicker->radiant = tgui_bitmap_create_empty(w, h);
-        colorpicker_calculate_radiant(&colorpicker->radiant, 0x0000ff);
+        colorpicker->saved_radiant_color = colorpicker_get_color_hue(colorpicker);
+        colorpicker->radiant = tgui_bitmap_create_empty(w, radiant_h);
+        colorpicker_calculate_radiant(&colorpicker->radiant, colorpicker->saved_radiant_color);
+        
+        colorpicker->hue_cursor_active = false;
 
         colorpicker->initialize = true;
     }
     
+    u32 radiant_color = colorpicker_get_color_hue(colorpicker);
+    if(colorpicker->saved_radiant_color != radiant_color) {
+        colorpicker_calculate_radiant(&colorpicker->radiant, radiant_color);
+        colorpicker->saved_radiant_color = radiant_color;
+    }
+
+    tgui_calculate_hot_widget(visible_rect, id);
+
+    Rectangle radiant_rect = rect_from_wh(rect.min_x, rect.min_y, colorpicker->radiant.width, colorpicker->radiant.height);
+    Rectangle mini_radiant_rect = rect_from_wh(rect.min_x, rect.max_y - mini_radiant_h, colorpicker->mini_radiant.width, colorpicker->mini_radiant.height);
+    Rectangle hue_cursor = mini_radiant_rect;
+    
+    hue_cursor.min_x += (colorpicker->hue * colorpicker->mini_radiant.width) - 3; 
+    hue_cursor.max_x = hue_cursor.min_x + 6;  
+
+    if(state.hot == id) {
+        b32 mouse_is_over = rect_point_overlaps(mini_radiant_rect, input.mouse_x, input.mouse_y); 
+        if(mouse_is_over && input.mouse_button_is_down && !input.mouse_button_was_down) {
+            state.active = id;
+            colorpicker->hue_cursor_active = true;
+        }
+    }
+    
+    if(state.active == id && input.mouse_button_was_down && !input.mouse_button_is_down) {
+        state.active = 0;
+        colorpicker->hue_cursor_active = false;
+    }
+
+    if(colorpicker->hue_cursor_active) {
+        colorpicker->hue = CLAMP((input.mouse_x - mini_radiant_rect.min_x) / (f32)colorpicker->mini_radiant.width, 0, 1);
+    }
+
+    
     Rectangle saved_clip = painter->clip;
     painter->clip = window_rect;
-    painter_draw_bitmap_no_alpha(painter, rect.min_x, rect.min_y, &colorpicker->radiant);
+    
+    painter_draw_bitmap_no_alpha(painter, radiant_rect.min_x, radiant_rect.min_y, &colorpicker->radiant);
+    
+    painter_draw_bitmap_no_alpha(painter, mini_radiant_rect.min_x, mini_radiant_rect.min_y, &colorpicker->mini_radiant);
+
+    painter_draw_rectangle_outline(painter, radiant_rect, 0x444444);
+    painter_draw_rectangle_outline(painter, mini_radiant_rect, 0x444444);
+    
+    painter_draw_rectangle(painter, hue_cursor, 0x444444);
+    painter_draw_rectangle_outline(painter, hue_cursor, 0x888888);
+
     painter->clip = saved_clip;
-    return 0xffffff;
+    
+    u32 color_x = colorpicker->saturation * colorpicker->radiant.width;
+    u32 color_y = colorpicker->value      * colorpicker->radiant.height;
+    
+    return colorpicker->radiant.pixels[color_y*colorpicker->radiant.width + color_x];
 }
 

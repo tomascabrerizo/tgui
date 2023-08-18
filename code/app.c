@@ -90,5 +90,6 @@ void app_update(App *app, f32 dt, Painter *painter) {
 #endif
 
     _tgui_color_picker(app->window2, 180, 60, 256, 256, painter, TGUI_ID);
+    _tgui_color_picker(app->window1, 10, 10, 128, 128, painter, TGUI_ID);
 
 }

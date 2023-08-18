@@ -144,11 +144,14 @@ typedef struct TGuiColorPicker {
     TGuiBitmap radiant;
     TGuiBitmap mini_radiant;
     
-    u32 selected_color;
+    u32 saved_radiant_color;
 
-    u32 selected_x;
-    u32 selected_y;
+    f32 hue;
+    f32 saturation;
+    f32 value;
     
+    b32 hue_cursor_active;
+
     b32 initialize;
 
 } TGuiColorPicker;
