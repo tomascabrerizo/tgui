@@ -11,6 +11,9 @@ typedef struct App {
     TGuiDockerNode *window2;
     TGuiDockerNode *window3;
 
+    u32 color0;
+    u32 color1;
+
 } App;
 
 void app_initialize(App *app) {
@@ -22,12 +25,17 @@ void app_initialize(App *app) {
     app->window2 = tgui_docker_split_window(app->window1, TGUI_SPLIT_DIR_VERTICAL,   "Window 2");
     app->window3 = tgui_docker_split_window(app->window1, TGUI_SPLIT_DIR_HORIZONTAL, "Window 3");
 
+    app->color0 = 0x0022ff;
+    app->color1 = 0xff0000;
+
 }
 
 void app_terminate(App *app) {
     UNUSED(app);
     tgui_terminate();
 }
+
+
 
 void app_update(App *app, f32 dt, Painter *painter) {
     
@@ -88,8 +96,8 @@ void app_update(App *app, f32 dt, Painter *painter) {
     }
     _tgui_drop_down_menu_end(painter);
 #endif
-
-    _tgui_color_picker(app->window2, 180, 60, 256, 256, painter, TGUI_ID);
-    _tgui_color_picker(app->window1, 10, 10, 128, 128, painter, TGUI_ID);
+    
+    _tgui_color_picker(app->window2, 180, 60, 256, 256, &app->color0, painter, TGUI_ID);
+    _tgui_color_picker(app->window1, 10, 10, 128, 128, &app->color1, painter, TGUI_ID);
 
 }
