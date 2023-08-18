@@ -57,6 +57,19 @@ TGuiInput input;
 TGuiFont font;
 extern TGuiDocker docker;
 
+
+/* ---------------------- */
+/*       TGui Bitmap      */
+/* ---------------------- */
+
+TGuiBitmap tgui_bitmap_create_empty(u32 w, u32 h) {
+    TGuiBitmap result;
+    result.pixels = arena_alloc(&state.arena, w*h*sizeof(u32), 8);
+    result.width  = w; 
+    result.height = h;
+    return result;
+}
+
 /* ---------------------- */
 /*       TGui Font        */
 /* ---------------------- */
@@ -73,7 +86,8 @@ static u32 get_codepoint_index(u32 codepoint) {
 
 void tgui_font_initilize(Arena *arena) {
     
-    struct OsFont *os_font = os_font_create(arena, "/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf", 18);
+    struct OsFont *os_font = os_font_create(arena, "/usr/share/fonts/truetype/liberation2/LiberationMono-Regular.ttf", 18);
+    //struct OsFont *os_font = os_font_create(arena, "/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf", 18);
     
     font.glyph_rage_start = 32;
     font.glyph_rage_end = 126;
@@ -294,16 +308,15 @@ b32 _tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Paint
 
     /* TODO: Desing a command interface to render the complete UI independently */
     
-    u32 button_color = 0xaaaaaa;
+    u32 button_color = 0x999999;
     u32 decoration_color = 0x444444;
     
     if(state.hot == id) {
-        button_color = 0x999999;
+        button_color = 0x888888;
     }
 
     if(state.active == id) {
-        button_color = 0x333333;
-        decoration_color = 0x999999;
+        button_color = 0x777777;
     }
     
     /* TODO: All this rendering is temporal, the API should have a render independent way to give render primitives to the user */
@@ -610,6 +623,7 @@ void _tgui_drop_down_menu_begin(struct TGuiDockerNode *window, s32 x, s32 y, Pai
     state.active_data = (void *)drop_menu;
 
     if(!tgui_docker_window_is_visible(window)) {
+        drop_menu->active = false;
         return;
     }
     
@@ -724,5 +738,74 @@ void _tgui_drop_down_menu_end(Painter *painter) {
     drop_menu->rect.max_y += rect_height(drop_menu->parent_rect) * (drop_menu->running_index);
 
     state.active_data = NULL;
+}
+
+static u32 u32_color_mix(u32 color0, f32 t, u32 color1) {
+
+    u32 r0 = ((color0 >> 16) & 0xff);
+    u32 g0 = ((color0 >>  8) & 0xff);
+    u32 b0 = ((color0 >>  0) & 0xff);
+
+    u32 r1 = ((color1 >> 16) & 0xff);
+    u32 g1 = ((color1 >>  8) & 0xff);
+    u32 b1 = ((color1 >>  0) & 0xff);
+
+    u32 cr = (r0 * (1.0f - t) + r1 * t);
+    u32 cg = (g0 * (1.0f - t) + g1 * t);
+    u32 cb = (b0 * (1.0f - t) + b1 * t);
+    
+    return (cr << 16) | (cg << 8) | (cb << 0);
+}
+
+static void colorpicker_calculate_radiant(TGuiBitmap *bitmap, u32 color) {
+    
+    ASSERT(((s32)bitmap->width - 1) >= 1);
+    f32 inv_w = 1.0f / (f32)(bitmap->width - 1);
+
+    u32 *pixel = bitmap->pixels;
+    for(u32 x = 0; x < bitmap->width; ++x) { 
+        f32 t = (f32)x * inv_w;
+        *pixel++ = u32_color_mix(0xffffff, t, color);
+    }
+    
+    ASSERT(((s32)bitmap->height - 1) >= 1);
+    f32 inv_h = 1.0f / (f32)(bitmap->height - 1);
+    for(u32 x = 0; x < bitmap->width; ++x) {
+        u32 color = bitmap->pixels[x];
+        for(u32 y = 1; y < bitmap->width; ++y) {
+            f32 t = (f32)y * inv_h;
+            bitmap->pixels[y*bitmap->width+x] = u32_color_mix(color, t, 0x000000);
+        }
+    } 
+
+
+}
+
+u32 _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 h, Painter *painter, char *tgui_id) {
+    UNUSED(window); UNUSED(x); UNUSED(y); UNUSED(w); UNUSED(h); UNUSED(painter); UNUSED(tgui_id);
+
+    if(!tgui_docker_window_is_visible(window)) {
+        return 0;
+    }
+    
+    Rectangle window_rect = tgui_docker_get_client_rect(window);
+    Rectangle rect = calculate_widget_rect(window, x, y, w, h);
+
+    u64 id = tgui_get_widget_id(tgui_id);
+    TGuiColorPicker *colorpicker = tgui_widget_get_state(id, TGuiColorPicker);
+
+    if(!colorpicker->initialize) {
+        
+        colorpicker->radiant = tgui_bitmap_create_empty(w, h);
+        colorpicker_calculate_radiant(&colorpicker->radiant, 0x0000ff);
+
+        colorpicker->initialize = true;
+    }
+    
+    Rectangle saved_clip = painter->clip;
+    painter->clip = window_rect;
+    painter_draw_bitmap_no_alpha(painter, rect.min_x, rect.min_y, &colorpicker->radiant);
+    painter->clip = saved_clip;
+    return 0xffffff;
 }
 

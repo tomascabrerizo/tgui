@@ -35,4 +35,6 @@ void painter_draw_line(Painter *painter, s32 x0, s32 y0, s32 x1, s32 y1, u32 col
 
 void painter_draw_bitmap(Painter *painter, s32 x, s32 y, struct TGuiBitmap *bitmap, u32 tint);
 
+void painter_draw_bitmap_no_alpha(Painter *painter, s32 x, s32 y, struct TGuiBitmap *bitmap);
+
 #endif /* _PAINTER_H_ */

@@ -90,6 +90,32 @@ void painter_draw_rect(Painter *painter, s32 x, s32 y, s32 w, s32 h, u32 color) 
     }
 }
 
+void painter_draw_bitmap_no_alpha(Painter *painter, s32 x, s32 y, struct TGuiBitmap *bitmap) {
+    Rectangle rect;
+    rect.min_x = x;
+    rect.min_y = y;
+    rect.max_x = x + bitmap->width  - 1;
+    rect.max_y = y + bitmap->height - 1;
+    
+    s32 offset_x;
+    s32 offset_y;
+    clip_rectangle(&rect, painter->clip, &offset_x, &offset_y);
+
+    u32 painter_w = rect_width(painter->dim);
+    u32 *row = painter->pixels + (rect.min_y * painter_w) + rect.min_x;
+    u32 *src_row = bitmap->pixels + (offset_y * bitmap->width) + offset_x;
+
+    for(y = rect.min_y; y <= rect.max_y; ++y) {
+        u32 *pixel = row;
+        u32 *src_pixel = src_row;
+        for(x = rect.min_x; x <= rect.max_x; ++x) {
+            *pixel++ = *src_pixel++;
+        }
+        row += painter_w;
+        src_row += bitmap->width;
+    }
+}
+
 void painter_draw_bitmap(Painter *painter, s32 x, s32 y, TGuiBitmap *bitmap, u32 tint) {
     Rectangle rect;
     rect.min_x = x;

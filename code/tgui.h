@@ -54,6 +54,11 @@ typedef struct TGuiInput {
  
 } TGuiInput;
 
+typedef struct TGuiBitmap {
+    u32 *pixels;
+    u32 width, height;
+} TGuiBitmap;
+
 typedef struct TGui {
 
     TGuiCursor cursor;
@@ -134,14 +139,25 @@ b32 _tgui_drop_down_menu_item(char *label, Painter *painter);
 
 void _tgui_drop_down_menu_end(Painter *painter);
 
+typedef struct TGuiColorPicker {
+    
+    TGuiBitmap radiant;
+    TGuiBitmap mini_radiant;
+    
+    u32 selected_color;
+
+    u32 selected_x;
+    u32 selected_y;
+    
+    b32 initialize;
+
+} TGuiColorPicker;
+
+u32 _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 h, Painter *painter, char *tgui_id);
+
 /* ---------------------- */
 /*       TGui Font        */
 /* ---------------------- */
-
-typedef struct TGuiBitmap {
-    u32 *pixels;
-    u32 width, height;
-} TGuiBitmap;
 
 typedef struct TGuiGlyph {
     TGuiBitmap bitmap;

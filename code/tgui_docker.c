@@ -437,10 +437,10 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
     case TGUI_DOCKER_NODE_WINDOW: {
         painter_draw_rectangle(painter, node->dim, 0x777777);
         
-        u32 border_color = 0xbbbbbb;
+        u32 border_color = 0x333333;
         painter_draw_rectangle_outline(painter, node->dim, border_color);
 
-        u32 menu_bar_color = 0x555555;
+        u32 menu_bar_color = 0x333333;
         Rectangle menu_bar_rect = calculate_menu_bar_rect(node);
         painter_draw_rectangle(painter, menu_bar_rect, menu_bar_color);
         
@@ -729,7 +729,7 @@ void tgui_docker_node_recalculate_dim(TGuiDockerNode *node) {
             }
         }
     } else {
-        node->dim = (Rectangle){0, 0, (s32)input.resize_w - 1, (s32)input.resize_h};
+        node->dim = (Rectangle){0, 0, (s32)input.resize_w - 1, (s32)input.resize_h - 1};
     }
 
     if(node->type == TGUI_DOCKER_NODE_ROOT) {
