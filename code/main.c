@@ -39,8 +39,6 @@ static struct OsBackbuffer *realloc_backbuffer(struct OsBackbuffer *backbuffer, 
 
 int main(void) {
 
-    /* Test */
-    
     os_initialize();
     
     Arena arena;

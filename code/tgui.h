@@ -153,6 +153,8 @@ typedef struct TGuiColorPicker {
 
 } TGuiColorPicker;
 
+void tgui_u32_color_to_hsv_color(u32 color, f32 *h, f32 *s, f32 *v);
+
 u32 _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 h, Painter *painter, char *tgui_id);
 
 /* ---------------------- */

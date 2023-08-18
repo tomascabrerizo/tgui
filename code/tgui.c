@@ -6,7 +6,6 @@
 #include "os.h"
 #include "tgui_docker.h"
 
-
 /* -------------------------- */
 /*       Hash Function     */
 /* -------------------------- */
@@ -779,6 +778,39 @@ static void colorpicker_calculate_radiant(TGuiBitmap *bitmap, u32 color) {
     } 
 
 
+}
+
+void tgui_u32_color_to_hsv_color(u32 color, f32 *h, f32 *s, f32 *v) {
+    
+    u32 r = ((color >> 16) & 0xff);
+    u32 g = ((color >>  8) & 0xff);
+    u32 b = ((color >>  0) & 0xff);
+
+    u32 M = MAX3(r, g, b);
+    u32 m = MIN3(r, g, b);
+    f32 chroma = M - m;
+    
+    f32 hue2 = 0;
+    if(chroma != 0) {
+        if(M == r) {
+            hue2 = fmod(((g-b) / chroma), 6);
+        } else if(M == g) {
+            hue2 = ((b-r) / chroma) + 2;
+        } else if(M == b) {
+            hue2 = ((r-g) / chroma) + 4;
+        }
+    }
+
+    f32 hue = 0.166666666667f * hue2; 
+    f32 value = M / 255.0f;
+    f32 saturation = 0;
+    if(M != 0) {
+        saturation = chroma / (f32)M;
+    }
+
+    *h = hue;
+    *s = saturation;
+    *v = value;
 }
 
 u32 _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 h, Painter *painter, char *tgui_id) {

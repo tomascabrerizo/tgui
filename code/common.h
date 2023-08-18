@@ -7,12 +7,17 @@
 #include <assert.h>
 #include <errno.h>
 #include <unistd.h>
+#include <math.h>
 
 #define ASSERT(expr) assert((expr))
 #define UNUSED(var) ((void)(var))
 #define IS_POWER_OF_TWO(expr) (((expr) & (expr - 1)) == 0)
+
 #define MAX(a, b) ((a) >= (b) ? (a) : (b))
 #define MIN(a, b) ((a) <= (b) ? (a) : (b))
+#define MAX3(a, b, c) MAX(MAX(a, b), c)
+#define MIN3(a, b, c) MIN(MIN(a, b), c)
+
 #define ABS(a) ((a) >= 0 ? (a) : (-(a)))
 #define CLAMP(value, min, max) MAX(MIN(value, max), min)
 
