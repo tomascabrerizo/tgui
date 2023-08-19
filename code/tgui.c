@@ -847,7 +847,7 @@ void tgui_u32_color_to_hsv_color(u32 color, f32 *h, f32 *s, f32 *v) {
     f32 hue = 0;
     if(chroma > 0.00001f) {
         if(M <= r) {
-            hue = (g-b)/chroma;
+            hue = fmod((g-b)/chroma, 6);
         } else if(M <= g) {
             hue = 2.0f + (b-r)/chroma;
         } else if(M <= b) {
@@ -869,7 +869,7 @@ void tgui_u32_color_to_hsv_color(u32 color, f32 *h, f32 *s, f32 *v) {
 }
 
 static u32 colorpicker_get_color_hue(TGuiColorPicker *colorpicker) {
-    return colorpicker->mini_radiant.pixels[(u32)(colorpicker->hue * colorpicker->mini_radiant.width)];
+    return colorpicker->mini_radiant.pixels[(u32)(colorpicker->hue * (colorpicker->mini_radiant.width - 0))];
 }
 
 void _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 h, u32 *color, Painter *painter, char *tgui_id) {
@@ -885,7 +885,11 @@ void _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 
     u64 id = tgui_get_widget_id(tgui_id);
     TGuiColorPicker *colorpicker = tgui_widget_get_state(id, TGuiColorPicker);
 
-    tgui_u32_color_to_hsv_color(*color, &colorpicker->hue, &colorpicker->saturation, &colorpicker->value);
+    f32 hue;
+    tgui_u32_color_to_hsv_color(*color, &hue, &colorpicker->saturation, &colorpicker->value);
+    if(ABS(colorpicker->hue - hue) > 0.001) {
+        colorpicker->hue = hue;
+    }
 
     f32 radiant_h = h * 0.75f; 
     f32 mini_radiant_h = h * 0.2f;
@@ -956,6 +960,9 @@ void _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 
     u32 color_x = colorpicker->saturation * (colorpicker->radiant.width -  1);
     u32 color_y = (1.0f - colorpicker->value) * (colorpicker->radiant.height - 1);
     
-    *color = colorpicker->radiant.pixels[color_y*colorpicker->radiant.width + color_x];
+    (void)color_x; (void)color_y;
+    //*color = colorpicker->radiant.pixels[color_y*colorpicker->radiant.width + color_x];
+    
+    *color = colorpicker_get_color_hue(colorpicker);
 }
 
