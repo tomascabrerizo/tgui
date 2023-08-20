@@ -54,7 +54,7 @@ void app_update(App *app, f32 dt, Painter *painter) {
     if(tgui_button(app->window3, "button", 160, 10, painter)) {
         printf("click! 3\n");
     }
-    if(tgui_button(app->window3, "button", 320, 10, painter)) {
+    if(tgui_button(app->window3, "button", 310, 10, painter)) {
         printf("click! 4\n");
     }
     

@@ -961,8 +961,8 @@ void _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 
     painter_draw_bitmap_no_alpha(painter, radiant_rect.min_x, radiant_rect.min_y, &colorpicker->radiant);
     painter_draw_rectangle_outline(painter, radiant_rect, 0x444444);
     
-    painter_draw_hline(painter, radiant_rect.min_y + color_y, radiant_rect.min_x, radiant_rect.max_x, 0xffffff);
-    painter_draw_vline(painter, radiant_rect.min_x + color_x, radiant_rect.min_y, radiant_rect.max_y, 0xffffff);
+    painter_draw_hline(painter, radiant_rect.min_y + color_y, radiant_rect.min_x, radiant_rect.max_x, 0x444444);
+    painter_draw_vline(painter, radiant_rect.min_x + color_x, radiant_rect.min_y, radiant_rect.max_y, 0x444444);
     
     painter_draw_bitmap_no_alpha(painter, mini_radiant_rect.min_x, mini_radiant_rect.min_y, &colorpicker->mini_radiant);
     painter_draw_rectangle_outline(painter, mini_radiant_rect, 0x444444);
