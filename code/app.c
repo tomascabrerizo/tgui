@@ -35,8 +35,6 @@ void app_terminate(App *app) {
     tgui_terminate();
 }
 
-
-
 void app_update(App *app, f32 dt, Painter *painter) {
     
     tgui_update(dt);
@@ -98,6 +96,11 @@ void app_update(App *app, f32 dt, Painter *painter) {
 #endif
     
     _tgui_color_picker(app->window2, 180, 60, 256, 256, &app->color0, painter, TGUI_ID);
-    _tgui_color_picker(app->window1, 10, 10, 128, 128, &app->color1, painter, TGUI_ID);
+    
+    _tgui_color_picker(app->window1, 10, 10, 300, 100, &app->color1, painter, TGUI_ID);
+
+
+    painter_draw_rect(painter, 100, 120, 100, 100, app->color0);
+    painter_draw_rect(painter, 210, 120, 100, 100, app->color1);
 
 }

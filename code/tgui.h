@@ -151,6 +151,7 @@ typedef struct TGuiColorPicker {
     f32 value;
     
     b32 hue_cursor_active;
+    b32 sv_cursor_active;
 
     b32 initialize;
 

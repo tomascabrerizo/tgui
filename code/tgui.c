@@ -33,16 +33,16 @@
         const unsigned char * data2 = (const unsigned char*)data;
 
         switch(len & 7) {
-            case 7: h ^= (u64)(data2[6]) << 48;
+            case 7: h ^= (u64)(data2[6]) << 48; 
             case 6: h ^= (u64)(data2[5]) << 40;
             case 5: h ^= (u64)(data2[4]) << 32;
             case 4: h ^= (u64)(data2[3]) << 24;
             case 3: h ^= (u64)(data2[2]) << 16;
             case 2: h ^= (u64)(data2[1]) << 8;
             case 1: h ^= (u64)(data2[0]);
-                h *= m;
+            h *= m;
         };
- 
+        
         h ^= h >> r;
         h *= m;
         h ^= h >> r;
@@ -429,7 +429,7 @@ TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *p
     }
 
     u32 padding_x = 8;
-    u32 visible_glyphs = MAX(((s32)rect_width(visible_rect) - padding_x*2)/font.max_glyph_width, 0);
+    u32 visible_glyphs = MAX((s32)((rect_width(visible_rect) - padding_x*2)/font.max_glyph_width), (s32)0);
 
     if(state.active == id) {
         
@@ -885,11 +885,9 @@ void _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 
     u64 id = tgui_get_widget_id(tgui_id);
     TGuiColorPicker *colorpicker = tgui_widget_get_state(id, TGuiColorPicker);
 
-    f32 hue;
-    tgui_u32_color_to_hsv_color(*color, &hue, &colorpicker->saturation, &colorpicker->value);
-    if(ABS(colorpicker->hue - hue) > 0.001) {
-        colorpicker->hue = hue;
-    }
+    f32 hue, saturation, value;
+    tgui_u32_color_to_hsv_color(*color, &hue, &saturation, &value);
+    /* TODO: Actually use hue saturation and value from the color */
 
     f32 radiant_h = h * 0.75f; 
     f32 mini_radiant_h = h * 0.2f;
@@ -903,11 +901,13 @@ void _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 
         colorpicker->radiant = tgui_bitmap_create_empty(w, radiant_h);
         colorpicker_calculate_radiant(&colorpicker->radiant, colorpicker->saved_radiant_color);
         
+        colorpicker->sv_cursor_active = false;
         colorpicker->hue_cursor_active = false;
 
         colorpicker->initialize = true;
     }
 
+    /* TODO: pass the window to calculate hot widet instead of visible_rect */ 
     tgui_calculate_hot_widget(visible_rect, id);
 
     Rectangle radiant_rect = rect_from_wh(rect.min_x, rect.min_y, colorpicker->radiant.width, colorpicker->radiant.height);
@@ -919,15 +919,27 @@ void _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 
             state.active = id;
             colorpicker->hue_cursor_active = true;
         }
+
+        mouse_is_over = rect_point_overlaps(radiant_rect, input.mouse_x, input.mouse_y); 
+        if(mouse_is_over && input.mouse_button_is_down && !input.mouse_button_was_down) {
+            state.active = id;
+            colorpicker->sv_cursor_active = true;
+        }
     }
     
     if(state.active == id && input.mouse_button_was_down && !input.mouse_button_is_down) {
         state.active = 0;
+        colorpicker->sv_cursor_active = false;
         colorpicker->hue_cursor_active = false;
     }
 
     if(colorpicker->hue_cursor_active) {
         colorpicker->hue = CLAMP((input.mouse_x - mini_radiant_rect.min_x) / (f32)colorpicker->mini_radiant.width, 0, 1);
+    }
+
+    if(colorpicker->sv_cursor_active) {
+        colorpicker->saturation =  CLAMP((input.mouse_x - radiant_rect.min_x) / (f32)colorpicker->radiant.width, 0, 1);
+        colorpicker->value      =  CLAMP((input.mouse_y - radiant_rect.min_y) / (f32)colorpicker->radiant.height, 0, 1);
     }
 
     Rectangle hue_cursor = mini_radiant_rect;
@@ -942,12 +954,17 @@ void _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 
     
     Rectangle saved_clip = painter->clip;
     painter->clip = window_rect;
+
+    u32 color_x = colorpicker->saturation * (colorpicker->radiant.width -  1);
+    u32 color_y = colorpicker->value * (colorpicker->radiant.height - 1);
     
     painter_draw_bitmap_no_alpha(painter, radiant_rect.min_x, radiant_rect.min_y, &colorpicker->radiant);
+    painter_draw_rectangle_outline(painter, radiant_rect, 0x444444);
+    
+    painter_draw_hline(painter, radiant_rect.min_y + color_y, radiant_rect.min_x, radiant_rect.max_x, 0xffffff);
+    painter_draw_vline(painter, radiant_rect.min_x + color_x, radiant_rect.min_y, radiant_rect.max_y, 0xffffff);
     
     painter_draw_bitmap_no_alpha(painter, mini_radiant_rect.min_x, mini_radiant_rect.min_y, &colorpicker->mini_radiant);
-
-    painter_draw_rectangle_outline(painter, radiant_rect, 0x444444);
     painter_draw_rectangle_outline(painter, mini_radiant_rect, 0x444444);
     
     painter->clip = rect_intersection(window_rect, mini_radiant_rect);
@@ -957,12 +974,6 @@ void _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 
 
     painter->clip = saved_clip;
     
-    u32 color_x = colorpicker->saturation * (colorpicker->radiant.width -  1);
-    u32 color_y = (1.0f - colorpicker->value) * (colorpicker->radiant.height - 1);
-    
-    (void)color_x; (void)color_y;
-    //*color = colorpicker->radiant.pixels[color_y*colorpicker->radiant.width + color_x];
-    
-    *color = colorpicker_get_color_hue(colorpicker);
+    *color = colorpicker->radiant.pixels[color_y*colorpicker->radiant.width + color_x];
 }
 
