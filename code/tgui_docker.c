@@ -362,7 +362,13 @@ static void window_grabbing_start(TGuiDockerNode *window) {
     if(tgui_docker_window_has_tabs(window)) {
         
         TGuiWindow *w = get_window_from_mouse_over_tab(window);
-        window->active_window = w->prev;
+        if(window->active_window == w) {
+            window->active_window = w->prev;
+            if(window->active_window == window->windows) {
+                window->active_window = window->active_window->prev;
+            }
+        }
+
         tgui_docker_window_node_remove_window(w);
         
         TGuiDockerNode *new_window_node = window_node_alloc(0);

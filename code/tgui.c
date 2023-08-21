@@ -427,13 +427,16 @@ static void delete_selection(TGuiTextInput *text_input) {
 
 TGuiTextInput *_tgui_text_input(TGuiWindow *window, s32 x, s32 y, Painter *painter, char *tgui_id) {
     
-    if(!tgui_window_update_widget(window)) {
-        return 0;
-    }
-
     TGuiKeyboard *keyboard = &input.keyboard;
 
     u64 id = tgui_get_widget_id(tgui_id);
+
+    if(!tgui_window_update_widget(window)) {
+        if(state.active == id) {
+            state.active = 0;
+        }
+        return 0;
+    }
     
     Rectangle rect = calculate_widget_rect(window, x, y, 140, 30);
     tgui_calculate_hot_widget(window, rect, id);
@@ -720,9 +723,15 @@ void _tgui_drop_down_menu_begin(struct TGuiWindow *window, s32 x, s32 y, Painter
     }
 }
 
-b32 _tgui_drop_down_menu_item(char *label, Painter *painter) {
+b32 _tgui_drop_down_menu_item(TGuiWindow *window, char *label, Painter *painter) {
+
     ASSERT(state.active_data != NULL);
     TGuiDropMenu *drop_menu = (TGuiDropMenu *)state.active_data;
+
+    if(!tgui_window_update_widget(window)) {
+        drop_menu->active = false;
+        return false;
+    }
 
     if(drop_menu->active) {
         Rectangle rect = drop_menu->parent_rect;
@@ -764,10 +773,15 @@ b32 _tgui_drop_down_menu_item(char *label, Painter *painter) {
     return item_is_selected;
 }
 
-void _tgui_drop_down_menu_end(Painter *painter) {
+void _tgui_drop_down_menu_end(TGuiWindow *window, Painter *painter) {
 
     ASSERT(state.active_data != NULL);
     TGuiDropMenu *drop_menu = (TGuiDropMenu *)state.active_data;
+
+    if(!tgui_window_update_widget(window)) {
+        drop_menu->active = false;
+        return;
+    }
     
     painter->clip = drop_menu->saved_clip; 
 

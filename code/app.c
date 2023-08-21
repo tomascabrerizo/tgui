@@ -62,25 +62,25 @@ void app_update(App *app, f32 dt, Painter *painter) {
     tgui_text_input(app->window2, 180, 10, painter);
 
     tgui_drop_down_menu_begin(app->window2, 10, 60, painter);
-    if(tgui_drop_down_menu_item("item 1", painter)) {
+    if(tgui_drop_down_menu_item(app->window2, "item 1", painter)) {
     }
-    if(tgui_drop_down_menu_item("item 2", painter)) {
+    if(tgui_drop_down_menu_item(app->window2, "item 2", painter)) {
     }
-    if(tgui_drop_down_menu_item("item 3", painter)) {
+    if(tgui_drop_down_menu_item(app->window2, "item 3", painter)) {
     }
-    if(tgui_drop_down_menu_item("item 4", painter)) {
+    if(tgui_drop_down_menu_item(app->window2, "item 4", painter)) {
     }
-    if(tgui_drop_down_menu_item("item 5", painter)) {
+    if(tgui_drop_down_menu_item(app->window2, "item 5", painter)) {
     }
-    if(tgui_drop_down_menu_item("item 6", painter)) {
+    if(tgui_drop_down_menu_item(app->window2, "item 6", painter)) {
     }
-    if(tgui_drop_down_menu_item("item 7", painter)) {
+    if(tgui_drop_down_menu_item(app->window2, "item 7", painter)) {
     }
-    if(tgui_drop_down_menu_item("item 8", painter)) {
+    if(tgui_drop_down_menu_item(app->window2, "item 8", painter)) {
     }
-    if(tgui_drop_down_menu_item("item 9", painter)) {
+    if(tgui_drop_down_menu_item(app->window2, "item 9", painter)) {
     }
-    tgui_drop_down_menu_end(painter);
+    tgui_drop_down_menu_end(app->window2, painter);
 
     
     tgui_color_picker(app->window2, 180, 60, 256, 256, &app->color0, painter);

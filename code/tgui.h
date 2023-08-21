@@ -118,9 +118,9 @@ TGuiCursor tgui_get_cursor_state(void);
 
 #define tgui_drop_down_menu_begin(window, x, y, painter) _tgui_drop_down_menu_begin((window), (x), (y), (painter), TGUI_ID)
 
-#define tgui_drop_down_menu_item(label, painter) _tgui_drop_down_menu_item((label), (painter))
+#define tgui_drop_down_menu_item(window, label, painter) _tgui_drop_down_menu_item((window), (label), (painter))
 
-#define tgui_drop_down_menu_end(painter) _tgui_drop_down_menu_end((painter));
+#define tgui_drop_down_menu_end(window, painter) _tgui_drop_down_menu_end((window), (painter));
 
 #define tgui_widget_get_state(id, type) (type*)_tgui_widget_get_state((id), sizeof(type))
 
@@ -168,9 +168,9 @@ typedef struct TGuiDropMenu {
 
 void _tgui_drop_down_menu_begin(struct TGuiWindow *window, s32 x, s32 y, Painter *painter, char *tgui_id);
 
-b32 _tgui_drop_down_menu_item(char *label, Painter *painter);
+b32 _tgui_drop_down_menu_item(struct TGuiWindow *window, char *label, Painter *painter);
 
-void _tgui_drop_down_menu_end(Painter *painter);
+void _tgui_drop_down_menu_end(struct TGuiWindow *window, Painter *painter);
 
 typedef struct TGuiColorPicker {
     
