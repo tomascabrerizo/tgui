@@ -59,12 +59,36 @@ typedef struct TGuiBitmap {
     u32 width, height;
 } TGuiBitmap;
 
+/* ---------------------- */
+/*       TGui Window      */
+/* ---------------------- */
+
+typedef struct TGuiWindow {
+    
+    Rectangle dim;
+    char *name;
+
+    struct TGuiDockerNode *parent;
+
+    struct TGuiWindow *next;
+    struct TGuiWindow *prev;
+
+} TGuiWindow;
+
+TGuiWindow *tgui_create_root_window(char *name);
+
+TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name);
+
+#define TGUI_MAX_WINDOW_REGISTRY 256
+
 typedef struct TGui {
 
     TGuiCursor cursor;
-
+    
     Arena arena;
     VirtualMap registry;
+    TGuiWindow window_registry[TGUI_MAX_WINDOW_REGISTRY];
+    u32 window_registry_used;
 
     u64 hot;
     u64 active;
@@ -88,12 +112,21 @@ TGuiCursor tgui_get_cursor_state(void);
 /*       TGui Widgets     */
 /* ---------------------- */
 
+#define tgui_button(window, label, x, y, painter) _tgui_button((window), (label), (x), (y), (painter), TGUI_ID)
+
+#define tgui_text_input(window, x, y, painter) _tgui_text_input((window), (x), (y), (painter), TGUI_ID)
+
+#define tgui_drop_down_menu_begin(window, x, y, painter) _tgui_drop_down_menu_begin((window), (x), (y), (painter), TGUI_ID)
+
+#define tgui_drop_down_menu_item(label, painter) _tgui_drop_down_menu_item((label), (painter))
+
+#define tgui_drop_down_menu_end(painter) _tgui_drop_down_menu_end((painter));
+
 #define tgui_widget_get_state(id, type) (type*)_tgui_widget_get_state((id), sizeof(type))
 
-#define tgui_button(window, label, x, y, painter) _tgui_button(window, label, x, y, painter, TGUI_ID)
-#define tgui_text_input(window, x, y, painter) _tgui_text_input(window, x, y, painter, TGUI_ID)
+#define tgui_color_picker(window, x, y, w, h, color, painter) _tgui_color_picker((window), (x), (y), (w), (h), (color), (painter), TGUI_ID)
 
-b32 _tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painter *painter, char *tgui_id);
+b32 _tgui_button(struct TGuiWindow *window, char *label, s32 x, s32 y, Painter *painter, char *tgui_id);
 
 #define TGUI_TEXT_INPUT_MAX_CHARACTERS 124 
 typedef struct TGuiTextInput {
@@ -118,7 +151,7 @@ typedef struct TGuiTextInput {
 
 } TGuiTextInput;
 
-TGuiTextInput *_tgui_text_input(struct TGuiDockerNode *window, s32 x, s32 y, Painter *painter, char *tgui_id);
+TGuiTextInput *_tgui_text_input(struct TGuiWindow *window, s32 x, s32 y, Painter *painter, char *tgui_id);
 
 typedef struct TGuiDropMenu {
     Rectangle rect;
@@ -133,7 +166,7 @@ typedef struct TGuiDropMenu {
     b32 initlialize;
 } TGuiDropMenu;
 
-void _tgui_drop_down_menu_begin(struct TGuiDockerNode *window, s32 x, s32 y, Painter *painter, char *tgui_id);
+void _tgui_drop_down_menu_begin(struct TGuiWindow *window, s32 x, s32 y, Painter *painter, char *tgui_id);
 
 b32 _tgui_drop_down_menu_item(char *label, Painter *painter);
 
@@ -159,7 +192,7 @@ typedef struct TGuiColorPicker {
 
 void tgui_u32_color_to_hsv_color(u32 color, f32 *h, f32 *s, f32 *v);
 
-void _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 h, u32 *color, Painter *painter, char *tgui_id);
+void _tgui_color_picker(struct TGuiWindow *window, s32 x, s32 y, s32 w, s32 h, u32 *color, Painter *painter, char *tgui_id);
 
 /* ---------------------- */
 /*       TGui Font        */

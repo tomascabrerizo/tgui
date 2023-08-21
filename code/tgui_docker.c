@@ -1,6 +1,7 @@
 #include "tgui_docker.h"
 #include "common.h"
 #include "geometry.h"
+#include "memory.h"
 #include "painter.h"
 #include "tgui.h"
 
@@ -50,6 +51,11 @@ TGuiDockerNode *window_node_alloc(TGuiDockerNode *parent) {
 
     node->type = TGUI_DOCKER_NODE_WINDOW;
     node->parent = parent;
+
+    TGuiWindow *dummy = arena_push_struct(&state.arena, TGuiWindow, 8);
+    clink_list_init(dummy);
+    node->windows = dummy;
+    node->windows_count = 0;
 
     return node;
 }
@@ -445,12 +451,14 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
         painter_draw_rectangle(painter, menu_bar_rect, menu_bar_color);
         
 
-        if(node->window_name) {
+        if(node->windows_count  == 1) {
+            
+            TGuiWindow *window = node->windows->next;
 
             Rectangle saved_clip = painter->clip;
 
             painter->clip = menu_bar_rect;
-            char *label = node->window_name;
+            char *label = window->name;
             Rectangle label_rect = tgui_get_text_dim(0, 0, label);
             
             s32 label_x = menu_bar_rect.min_x + rect_width(menu_bar_rect) / 2 - rect_width(label_rect) / 2;
@@ -458,6 +466,9 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
             tgui_font_draw_text(painter, label_x, label_y, label, strlen(label), 0xffffff);
 
             painter->clip = saved_clip;
+        
+        } else {
+            ASSERT(!"Draw window name in tabs is not implemented yet!");
         }
 
     } break;
@@ -550,21 +561,6 @@ void tgui_docker_update(void) {
     }
 }
 
-TGuiDockerNode *tgui_docker_create_root_window(char *name) {
-    TGuiDockerNode *window = window_node_alloc(0);
-    tgui_docker_set_root_node(window);
-    window->window_name = name;
-    return window;
-}
-
-TGuiDockerNode *tgui_docker_split_window(TGuiDockerNode *window, TGuiSplitDirection dir, char *name) {
-    ASSERT(window->type == TGUI_DOCKER_NODE_WINDOW);
-    TGuiDockerNode *new_window = window_node_alloc(window->parent);
-    tgui_docker_node_split(window, dir, new_window);
-    new_window->window_name = name;
-    return new_window;
-}
-
 void tgui_docker_set_root_node(TGuiDockerNode *node) {
     ASSERT(node->type == TGUI_DOCKER_NODE_ROOT || node->type == TGUI_DOCKER_NODE_WINDOW);
     docker.root = node;
@@ -581,6 +577,13 @@ void tgui_docker_root_set_child(TGuiDockerNode *root, TGuiDockerNode *node) {
         clink_list_insert_front(root->childs, node);
     }
 
+}
+
+void tgui_docker_window_node_add_window(TGuiDockerNode *window_node, struct TGuiWindow *window) {
+    clink_list_insert_back(window_node->windows, window)
+    window_node->windows_count += 1;
+
+    window->parent = window_node;
 }
 
 b32 tgui_docker_window_is_visible(TGuiDockerNode *window) {

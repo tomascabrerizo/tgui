@@ -212,6 +212,11 @@ void tgui_terminate(void) {
 void tgui_update(f32 dt) {
     state.dt = dt;
     tgui_docker_update();
+
+    for(u32 i = 0; i < state.window_registry_used; ++i) {
+        TGuiWindow *window = &state.window_registry[i];
+        window->dim = tgui_docker_get_client_rect(window->parent);
+    }
  
 }
 
@@ -229,11 +234,48 @@ u64 tgui_hash(void *bytes, u64 size) {
 }
 
 /* ---------------------- */
+/*       TGui Window      */
+/* ---------------------- */
+
+TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name) {
+    ASSERT(state.window_registry_used < TGUI_MAX_WINDOW_REGISTRY);
+    TGuiWindow *window = &state.window_registry[state.window_registry_used++];
+    tgui_docker_window_node_add_window(parent, window);
+    window->name =  name;
+    return window;
+}
+
+TGuiWindow *tgui_create_root_window(char *name) {
+    TGuiDockerNode *window_node = window_node_alloc(0);
+    tgui_docker_set_root_node(window_node);
+    TGuiWindow *window = tgui_window_alloc(window_node, name);
+    ASSERT(window);
+    return window;
+}
+
+TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name) {
+    
+    TGuiDockerNode *window_node = window->parent; 
+    ASSERT(window_node->type == TGUI_DOCKER_NODE_WINDOW);
+
+    TGuiDockerNode *new_window_node = window_node_alloc(window_node->parent);
+    tgui_docker_node_split(window_node, dir, new_window_node);
+    
+    TGuiWindow *new_window = tgui_window_alloc(new_window_node, name);
+    ASSERT(new_window);
+    return new_window;
+}
+
+b32 tgui_window_update_widget(TGuiWindow *window) {
+    return tgui_docker_window_is_visible(window->parent);
+}
+
+/* ---------------------- */
 /*       TGui Widgets     */
 /* ---------------------- */
 
-static Rectangle calculate_widget_rect(TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 h) {
-    Rectangle window_rect = tgui_docker_get_client_rect(window);
+static Rectangle calculate_widget_rect(TGuiWindow *window, s32 x, s32 y, s32 w, s32 h) {
+    Rectangle window_rect = window->dim;
     Rectangle rect = {
         window_rect.min_x + x,
         window_rect.min_y + y,
@@ -241,12 +283,6 @@ static Rectangle calculate_widget_rect(TGuiDockerNode *window, s32 x, s32 y, s32
         window_rect.min_y + y + h - 1
     };
     return rect;
-}
-
-static Rectangle calculate_buttom_rect(TGuiDockerNode *window, s32 x, s32 y) {
-    Rectangle window_rect = tgui_docker_get_client_rect(window);
-    Rectangle button_rect = calculate_widget_rect(window, x, y, 120, 30);
-    return rect_intersection(button_rect, window_rect);
 }
 
 u64 tgui_get_widget_id(char *tgui_id) {
@@ -268,9 +304,10 @@ void *_tgui_widget_get_state(u64 id, u64 size) {
     return result;
 }
 
-void tgui_calculate_hot_widget(Rectangle rect, u64 id) {
+void tgui_calculate_hot_widget(TGuiWindow *window, Rectangle rect, u64 id) {
 
-    b32 mouse_is_over = rect_point_overlaps(rect, input.mouse_x, input.mouse_y);
+    Rectangle visible_rect = rect_intersection(rect, window->dim);
+    b32 mouse_is_over = rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
     
     if(mouse_is_over && !state.active) {
         state.hot = id;
@@ -279,19 +316,23 @@ void tgui_calculate_hot_widget(Rectangle rect, u64 id) {
     if(!mouse_is_over && state.hot == id) {
         state.hot = 0;
     }
+
+    if(docker.grabbing_window == true) {
+        state.hot = 0;
+    }
 }
 
-b32 _tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Painter *painter, char *tgui_id) {
-    (void)label;
-    
-    if(!tgui_docker_window_is_visible(window)) {
+b32 _tgui_button(struct TGuiWindow *window, char *label, s32 x, s32 y, Painter *painter, char *tgui_id) {
+
+    if(!tgui_window_update_widget(window)) {
         return false;
     }
-    
-    b32 result = false;
 
     u64 id = tgui_get_widget_id(tgui_id);
-    Rectangle button_rect = calculate_buttom_rect(window, x, y); 
+    Rectangle rect = calculate_widget_rect(window, x, y, 120, 30); 
+    tgui_calculate_hot_widget(window, rect, id);
+
+    b32 result = false;
     
     if(state.active == id) {
         if(!input.mouse_button_is_down && input.mouse_button_was_down) {
@@ -304,7 +345,6 @@ b32 _tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Paint
         }    
     }
 
-    tgui_calculate_hot_widget(button_rect, id);
 
     /* TODO: Desing a command interface to render the complete UI independently */
     
@@ -322,16 +362,16 @@ b32 _tgui_button(struct TGuiDockerNode *window, char *label, s32 x, s32 y, Paint
     /* TODO: All this rendering is temporal, the API should have a render independent way to give render primitives to the user */
 
     Rectangle saved_painter_clip = painter->clip;
-    painter->clip = button_rect;
+    painter->clip = rect_intersection(rect, window->dim);
     
-    painter_draw_rectangle(painter, button_rect, button_color);
+    painter_draw_rectangle(painter, rect, button_color);
     
     Rectangle label_rect = tgui_get_text_dim(0, 0, label);
     
-    s32 label_x = button_rect.min_x + (rect_width(button_rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
-    s32 label_y = button_rect.min_y + (rect_height(button_rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2;
+    s32 label_x = rect.min_x + (rect_width(rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
+    s32 label_y = rect.min_y + (rect_height(rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2;
     tgui_font_draw_text(painter, label_x, label_y, label,  strlen(label), decoration_color);
-    painter_draw_rectangle_outline(painter, button_rect, decoration_color);
+    painter_draw_rectangle_outline(painter, rect, decoration_color);
 
     painter->clip = saved_painter_clip;
 
@@ -384,19 +424,19 @@ static void delete_selection(TGuiTextInput *text_input) {
     }
 }
 
-TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *painter, char *tgui_id) {
-
-    if(!tgui_docker_window_is_visible(window)) {
-        return false;
+TGuiTextInput *_tgui_text_input(TGuiWindow *window, s32 x, s32 y, Painter *painter, char *tgui_id) {
+    
+    if(!tgui_window_update_widget(window)) {
+        return 0;
     }
 
-    Rectangle window_rect = tgui_docker_get_client_rect(window);
-    Rectangle rect = calculate_widget_rect(window, x, y, 140, 30);
-    Rectangle visible_rect = rect_intersection(rect, window_rect);
-    
     TGuiKeyboard *keyboard = &input.keyboard;
 
     u64 id = tgui_get_widget_id(tgui_id);
+    
+    Rectangle rect = calculate_widget_rect(window, x, y, 140, 30);
+    tgui_calculate_hot_widget(window, rect, id);
+    
     TGuiTextInput *text_input = tgui_widget_get_state(id, TGuiTextInput);
     
     if(!text_input->initilize) {
@@ -414,6 +454,7 @@ TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *p
 
         text_input->initilize = true;
     }
+
     
     text_input->cursor_inactive_acumulator += state.dt;
     if(text_input->cursor_inactive_acumulator >= text_input->cursor_inactive_target) {
@@ -428,6 +469,7 @@ TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *p
         }
     }
 
+    Rectangle visible_rect = rect_intersection(rect, window->dim);
     u32 padding_x = 8;
     u32 visible_glyphs = MAX((s32)((rect_width(visible_rect) - padding_x*2)/font.max_glyph_width), (s32)0);
 
@@ -556,11 +598,9 @@ TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *p
     if(state.active == id && !mouse_is_over && input.mouse_button_was_down && !input.mouse_button_is_down) {
         state.active = 0;
     }
-
-    tgui_calculate_hot_widget(visible_rect, id);
-    
+ 
     Rectangle saved_painter_clip = painter->clip;
-    painter->clip = window_rect; 
+    painter->clip = window->dim; 
     
     u32 color = 0x888888;
     u32 decoration_color = 0x333333;
@@ -610,19 +650,19 @@ TGuiTextInput *_tgui_text_input(TGuiDockerNode *window, s32 x, s32 y, Painter *p
     return text_input;
 }
 
-void _tgui_drop_down_menu_begin(struct TGuiDockerNode *window, s32 x, s32 y, Painter *painter, char *tgui_id) {
-
-    Rectangle window_rect = tgui_docker_get_client_rect(window);
-    Rectangle rect = calculate_widget_rect(window, x, y, 140, 30);
-    Rectangle visible_rect = rect_intersection(rect, window_rect);
+void _tgui_drop_down_menu_begin(struct TGuiWindow *window, s32 x, s32 y, Painter *painter, char *tgui_id) {
 
     u64 id = tgui_get_widget_id(tgui_id);
+
+    Rectangle rect = calculate_widget_rect(window, x, y, 140, 30);
+    tgui_calculate_hot_widget(window, rect, id);
+
     TGuiDropMenu *drop_menu = tgui_widget_get_state(id, TGuiDropMenu);
     drop_menu->running_index = 0;
     drop_menu->parent_rect = rect;
     state.active_data = (void *)drop_menu;
 
-    if(!tgui_docker_window_is_visible(window)) {
+    if(!tgui_window_update_widget(window)) {
         drop_menu->active = false;
         return;
     }
@@ -642,7 +682,7 @@ void _tgui_drop_down_menu_begin(struct TGuiDockerNode *window, s32 x, s32 y, Pai
         }   
     }
 
-    b32 mouse_is_over = rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
+    b32 mouse_is_over = rect_point_overlaps(rect, input.mouse_x, input.mouse_y);
     if(state.active == id && !mouse_is_over && input.mouse_button_was_down && !input.mouse_button_is_down) {
         if(!rect_point_overlaps(drop_menu->rect, input.mouse_x, input.mouse_y)) {
             state.active = 0;
@@ -654,11 +694,8 @@ void _tgui_drop_down_menu_begin(struct TGuiDockerNode *window, s32 x, s32 y, Pai
         state.active = 0;
     }
 
-    tgui_calculate_hot_widget(visible_rect, id);
-
-
     drop_menu->saved_clip = painter->clip;
-    painter->clip = window_rect; 
+    painter->clip = window->dim; 
 
     u32 color = 0x333333;
     u32 decoration_color = 0x999999;
@@ -671,8 +708,8 @@ void _tgui_drop_down_menu_begin(struct TGuiDockerNode *window, s32 x, s32 y, Pai
         color = 0x444444;
     }
     
-    painter_draw_rectangle(painter, visible_rect, color);
-    painter_draw_rectangle_outline(painter, visible_rect, decoration_color);
+    painter_draw_rectangle(painter, rect, color);
+    painter_draw_rectangle_outline(painter, rect, decoration_color);
 
     if(drop_menu->selected_item == -1) {
         char *label = "Drop down menu";
@@ -872,17 +909,17 @@ static u32 colorpicker_get_color_hue(TGuiColorPicker *colorpicker) {
     return colorpicker->mini_radiant.pixels[(u32)(colorpicker->hue * (colorpicker->mini_radiant.width - 0))];
 }
 
-void _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 h, u32 *color, Painter *painter, char *tgui_id) {
-
-    if(!tgui_docker_window_is_visible(window)) {
+void _tgui_color_picker(struct TGuiWindow *window, s32 x, s32 y, s32 w, s32 h, u32 *color, Painter *painter, char *tgui_id) {
+    
+    if(!tgui_window_update_widget(window)) {
         return;
     }
     
-    Rectangle window_rect = tgui_docker_get_client_rect(window);
-    Rectangle rect = calculate_widget_rect(window, x, y, w, h);
-    Rectangle visible_rect = rect_intersection(rect, window_rect);
-
     u64 id = tgui_get_widget_id(tgui_id);
+    
+    Rectangle rect = calculate_widget_rect(window, x, y, w, h);
+    tgui_calculate_hot_widget(window, rect, id);
+
     TGuiColorPicker *colorpicker = tgui_widget_get_state(id, TGuiColorPicker);
 
     f32 hue, saturation, value;
@@ -906,9 +943,6 @@ void _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 
 
         colorpicker->initialize = true;
     }
-
-    /* TODO: pass the window to calculate hot widet instead of visible_rect */ 
-    tgui_calculate_hot_widget(visible_rect, id);
 
     Rectangle radiant_rect = rect_from_wh(rect.min_x, rect.min_y, colorpicker->radiant.width, colorpicker->radiant.height);
     Rectangle mini_radiant_rect = rect_from_wh(rect.min_x, rect.max_y - mini_radiant_h, colorpicker->mini_radiant.width, colorpicker->mini_radiant.height);
@@ -953,7 +987,7 @@ void _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 
     }
     
     Rectangle saved_clip = painter->clip;
-    painter->clip = window_rect;
+    painter->clip = window->dim;
 
     u32 color_x = colorpicker->saturation * (colorpicker->radiant.width -  1);
     u32 color_y = colorpicker->value * (colorpicker->radiant.height - 1);
@@ -967,7 +1001,7 @@ void _tgui_color_picker(struct TGuiDockerNode *window, s32 x, s32 y, s32 w, s32 
     painter_draw_bitmap_no_alpha(painter, mini_radiant_rect.min_x, mini_radiant_rect.min_y, &colorpicker->mini_radiant);
     painter_draw_rectangle_outline(painter, mini_radiant_rect, 0x444444);
     
-    painter->clip = rect_intersection(window_rect, mini_radiant_rect);
+    painter->clip = rect_intersection(window->dim, mini_radiant_rect);
 
     painter_draw_rectangle(painter, hue_cursor, 0x444444);
     painter_draw_rectangle_outline(painter, hue_cursor, 0x888888);

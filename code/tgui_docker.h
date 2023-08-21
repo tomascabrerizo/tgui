@@ -9,6 +9,8 @@
 #define SPLIT_HALF_SIZE 1
 #define MENU_BAR_HEIGHT 20
 
+struct TGuiWindow;
+
 typedef enum TGuiDockerNodeType {
     TGUI_DOCKER_NODE_ROOT = 0,
     TGUI_DOCKER_NODE_WINDOW,
@@ -33,8 +35,9 @@ typedef struct TGuiDockerNode {
     float split_position; /* Only for split nodes */
     TGuiSplitDirection dir; /* Only for root nodes */
     struct TGuiDockerNode *childs; /* Only for root nodes   */
-    struct TGuiWindow *window;     /* Only for window nodes */
-    char *window_name;
+    
+    struct TGuiWindow *windows;     /* Only for window nodes */
+    u32 windows_count;     /* Only for window nodes */
 
 } TGuiDockerNode;
 
@@ -62,14 +65,22 @@ void tgui_docker_node_split(TGuiDockerNode *node, TGuiSplitDirection dir, TGuiDo
 
 void tgui_docker_node_recalculate_dim(TGuiDockerNode *node);
 
-TGuiDockerNode *tgui_docker_create_root_window(char *name);
+void tgui_docker_window_node_add_window(TGuiDockerNode *window_node, struct TGuiWindow *window);
 
-TGuiDockerNode *tgui_docker_split_window(TGuiDockerNode *window, TGuiSplitDirection dir, char *name);
 
 void tgui_docker_root_node_draw(Painter *painter);
 
 Rectangle tgui_docker_get_client_rect(TGuiDockerNode *window);
 
 b32 tgui_docker_window_is_visible(TGuiDockerNode *window);
+
+
+TGuiDockerNode *node_alloc(void);
+
+TGuiDockerNode *root_node_alloc(TGuiDockerNode *parent);
+
+TGuiDockerNode *window_node_alloc(TGuiDockerNode *parent);
+
+TGuiDockerNode *split_node_alloc(TGuiDockerNode *parent, f32 position);
 
 #endif /* _TGUI_DOCKER_H_ */

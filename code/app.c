@@ -6,10 +6,10 @@
 #include <stdio.h>
 
 typedef struct App {
-    TGuiDockerNode *window0;
-    TGuiDockerNode *window1;
-    TGuiDockerNode *window2;
-    TGuiDockerNode *window3;
+    TGuiWindow *window0;
+    TGuiWindow *window1;
+    TGuiWindow *window2;
+    TGuiWindow *window3;
 
     u32 color0;
     u32 color1;
@@ -20,10 +20,10 @@ void app_initialize(App *app) {
 
     tgui_initialize();
 
-    app->window0 = tgui_docker_create_root_window("Window 0");
-    app->window1 = tgui_docker_split_window(app->window0, TGUI_SPLIT_DIR_VERTICAL,   "Window 1");
-    app->window2 = tgui_docker_split_window(app->window1, TGUI_SPLIT_DIR_VERTICAL,   "Window 2");
-    app->window3 = tgui_docker_split_window(app->window1, TGUI_SPLIT_DIR_HORIZONTAL, "Window 3");
+    app->window0 = tgui_create_root_window("Window 0");
+    app->window1 = tgui_split_window(app->window0, TGUI_SPLIT_DIR_HORIZONTAL, "Window 1");
+    app->window2 = tgui_split_window(app->window0, TGUI_SPLIT_DIR_VERTICAL,   "Window 2");
+    app->window3 = tgui_split_window(app->window1, TGUI_SPLIT_DIR_HORIZONTAL, "Window 3");
 
     app->color0 = 0x0022ff;
     app->color1 = 0xff0000;
@@ -61,46 +61,33 @@ void app_update(App *app, f32 dt, Painter *painter) {
     tgui_text_input(app->window2, 10, 10, painter);
     tgui_text_input(app->window2, 180, 10, painter);
 
-    _tgui_drop_down_menu_begin(app->window2, 10, 60, painter, TGUI_ID);
-    if(_tgui_drop_down_menu_item("item 1", painter)) {
+    tgui_drop_down_menu_begin(app->window2, 10, 60, painter);
+    if(tgui_drop_down_menu_item("item 1", painter)) {
     }
-    if(_tgui_drop_down_menu_item("item 2", painter)) {
+    if(tgui_drop_down_menu_item("item 2", painter)) {
     }
-    if(_tgui_drop_down_menu_item("item 3", painter)) {
+    if(tgui_drop_down_menu_item("item 3", painter)) {
     }
-    if(_tgui_drop_down_menu_item("item 4", painter)) {
+    if(tgui_drop_down_menu_item("item 4", painter)) {
     }
-    if(_tgui_drop_down_menu_item("item 5", painter)) {
+    if(tgui_drop_down_menu_item("item 5", painter)) {
     }
-    if(_tgui_drop_down_menu_item("item 6", painter)) {
+    if(tgui_drop_down_menu_item("item 6", painter)) {
     }
-    if(_tgui_drop_down_menu_item("item 7", painter)) {
+    if(tgui_drop_down_menu_item("item 7", painter)) {
     }
-    if(_tgui_drop_down_menu_item("item 8", painter)) {
+    if(tgui_drop_down_menu_item("item 8", painter)) {
     }
-    if(_tgui_drop_down_menu_item("item 9", painter)) {
+    if(tgui_drop_down_menu_item("item 9", painter)) {
     }
-    _tgui_drop_down_menu_end(painter);
+    tgui_drop_down_menu_end(painter);
 
-#if 0
-    _tgui_drop_down_menu_begin(app->window1, 10, 60, painter, TGUI_ID);
-    if(_tgui_drop_down_menu_item("dimond", painter)) {
-    }
-    if(_tgui_drop_down_menu_item("restone", painter)) {
-    }
-    if(_tgui_drop_down_menu_item("dirt", painter)) {
-    }
-    if(_tgui_drop_down_menu_item("grass", painter)) {
-    }
-    _tgui_drop_down_menu_end(painter);
-#endif
     
-    _tgui_color_picker(app->window2, 180, 60, 256, 256, &app->color0, painter, TGUI_ID);
+    tgui_color_picker(app->window2, 180, 60, 256, 256, &app->color0, painter);
     
-    _tgui_color_picker(app->window1, 10, 10, 300, 100, &app->color1, painter, TGUI_ID);
+    tgui_color_picker(app->window1, 10, 10, 300, 100, &app->color1, painter);
 
-
-    painter_draw_rect(painter, 100, 120, 100, 100, app->color0);
-    painter_draw_rect(painter, 210, 120, 100, 100, app->color1);
+    //painter_draw_rect(painter, 100, 120, 100, 100, app->color0);
+    //painter_draw_rect(painter, 210, 120, 100, 100, app->color1);
 
 }
