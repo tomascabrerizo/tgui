@@ -242,6 +242,7 @@ TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name) {
     TGuiWindow *window = &state.window_registry[state.window_registry_used++];
     tgui_docker_window_node_add_window(parent, window);
     window->name =  name;
+    parent->active_window = window;
     return window;
 }
 
@@ -267,7 +268,7 @@ TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *
 }
 
 b32 tgui_window_update_widget(TGuiWindow *window) {
-    return tgui_docker_window_is_visible(window->parent);
+    return tgui_docker_window_is_visible(window->parent, window);
 }
 
 /* ---------------------- */
@@ -454,7 +455,6 @@ TGuiTextInput *_tgui_text_input(TGuiWindow *window, s32 x, s32 y, Painter *paint
 
         text_input->initilize = true;
     }
-
     
     text_input->cursor_inactive_acumulator += state.dt;
     if(text_input->cursor_inactive_acumulator >= text_input->cursor_inactive_target) {

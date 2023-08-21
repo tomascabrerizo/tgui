@@ -36,8 +36,10 @@ typedef struct TGuiDockerNode {
     TGuiSplitDirection dir; /* Only for root nodes */
     struct TGuiDockerNode *childs; /* Only for root nodes   */
     
-    struct TGuiWindow *windows;     /* Only for window nodes */
-    u32 windows_count;     /* Only for window nodes */
+    /* Only for window nodes */
+    struct TGuiWindow *active_window;
+    struct TGuiWindow *windows;     
+    u32 windows_count;
 
 } TGuiDockerNode;
 
@@ -47,7 +49,11 @@ typedef struct TGuiDocker {
 
     TGuiDockerNode *active_node;
     b32 grabbing_window;
+    b32 grabbing_window_start;
     Rectangle preview_window;
+
+    b32 saved_mouse_x;
+    b32 saved_mouse_y;
 
 } TGuiDocker;
 
@@ -67,12 +73,16 @@ void tgui_docker_node_recalculate_dim(TGuiDockerNode *node);
 
 void tgui_docker_window_node_add_window(TGuiDockerNode *window_node, struct TGuiWindow *window);
 
+void tgui_docker_window_node_remove_window(struct TGuiWindow *window);
+
+b32 tgui_docker_window_has_tabs(TGuiDockerNode *window_node);
+
 
 void tgui_docker_root_node_draw(Painter *painter);
 
 Rectangle tgui_docker_get_client_rect(TGuiDockerNode *window);
 
-b32 tgui_docker_window_is_visible(TGuiDockerNode *window);
+b32 tgui_docker_window_is_visible(TGuiDockerNode *window_node, struct TGuiWindow *window);
 
 
 TGuiDockerNode *node_alloc(void);

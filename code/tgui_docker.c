@@ -4,6 +4,7 @@
 #include "memory.h"
 #include "painter.h"
 #include "tgui.h"
+#include <stdio.h>
 
 extern TGui state;
 extern TGuiInput input;
@@ -136,11 +137,6 @@ static void tgui_node_print(TGuiDockerNode *node) {
 }
 #endif
 
-static void root_node_move(TGuiDockerNode *node) {
-    ASSERT(node->type == TGUI_DOCKER_NODE_ROOT);
-    printf("Moving root node\n");
-}
-
 static inline void calculate_mouse_rel_x_y(TGuiDockerNode *split, TGuiDockerNode *parent, f32 *x, f32 *y) {
     
     f32 epsilon = 0.02;
@@ -160,6 +156,52 @@ static inline void calculate_mouse_rel_x_y(TGuiDockerNode *split, TGuiDockerNode
 
 }
 
+static Rectangle calculate_menu_bar_rect(TGuiDockerNode *window) {
+    ASSERT(window->type == TGUI_DOCKER_NODE_WINDOW);
+
+    Rectangle menu_bar_rect = window->dim;
+    menu_bar_rect.min_x += 1;
+    menu_bar_rect.max_x -= 1;
+    menu_bar_rect.min_y += 1;
+    menu_bar_rect.max_y = menu_bar_rect.min_y + MENU_BAR_HEIGHT - 1;
+
+    return menu_bar_rect;
+}
+
+static inline u32 get_widow_index(TGuiWindow *window) {
+    TGuiDockerNode *window_node = window->parent;
+    u32 window_index = 0;
+    TGuiWindow *other = window_node->windows->next;
+    while(window != other) { 
+        ++window_index;
+        other = other->next;
+    }
+    return window_index;
+}
+
+static Rectangle calculate_window_tab_rect(TGuiWindow *window) {
+    TGuiDockerNode *window_node = window->parent;
+    
+    Rectangle result = calculate_menu_bar_rect(window_node);
+    u32 window_index = get_widow_index(window);
+    
+    s32 width = rect_width(result) / window_node->windows_count;
+    result.min_x += window_index * width;
+    result.max_x = result.min_x + width - 1;
+
+    return result;
+}
+
+static b32 mouse_in_menu_bar(TGuiDockerNode *window) {
+    ASSERT(window->type == TGUI_DOCKER_NODE_WINDOW);
+
+    s32 x = input.mouse_x;
+    s32 y = input.mouse_y;
+    Rectangle dim = calculate_menu_bar_rect(window);
+
+    return (dim.min_x <= x && x <= dim.max_x && dim.min_y <= y && y <= dim.max_y);
+}
+
 static void split_node_move(TGuiDockerNode *node) {
     ASSERT(node->type == TGUI_DOCKER_NODE_SPLIT);
     ASSERT(node->parent != NULL && node->parent->type == TGUI_DOCKER_NODE_ROOT);
@@ -177,6 +219,10 @@ static void split_node_move(TGuiDockerNode *node) {
     
     tgui_docker_node_recalculate_dim(node->prev);
     tgui_docker_node_recalculate_dim(node->next);
+
+    if(!input.mouse_button_is_down) {
+        docker.active_node = NULL;
+    }
 
 }
 
@@ -226,6 +272,13 @@ static TGuiDockerNode *split_node_get_first_window(TGuiDockerNode *split) {
 static void calculate_preview_split(TGuiDockerNode *mouse_over_node) {
         
         TGuiDockerNode *node = mouse_over_node;
+
+        if(mouse_over_node->type == TGUI_DOCKER_NODE_WINDOW && mouse_in_menu_bar(mouse_over_node)) {
+            Rectangle menu_bar_rect = calculate_menu_bar_rect(mouse_over_node);
+            docker.preview_window = menu_bar_rect;
+            return; 
+        }
+
         TGuiSplitDirection dir = calculate_drop_split_dir(node);
         
         if(node->type == TGUI_DOCKER_NODE_SPLIT) {
@@ -246,18 +299,6 @@ static void calculate_preview_split(TGuiDockerNode *mouse_over_node) {
 
 }
 
-static Rectangle calculate_menu_bar_rect(TGuiDockerNode *window) {
-    ASSERT(window->type == TGUI_DOCKER_NODE_WINDOW);
-
-    Rectangle menu_bar_rect = window->dim;
-    menu_bar_rect.min_x += 1;
-    menu_bar_rect.max_x -= 1;
-    menu_bar_rect.min_y += 1;
-    menu_bar_rect.max_y = menu_bar_rect.min_y + MENU_BAR_HEIGHT - 1;
-
-    return menu_bar_rect;
-}
-
 Rectangle tgui_docker_get_client_rect(TGuiDockerNode *window) {
     ASSERT(window->type == TGUI_DOCKER_NODE_WINDOW);
     Rectangle client_rect = window->dim;
@@ -268,101 +309,148 @@ Rectangle tgui_docker_get_client_rect(TGuiDockerNode *window) {
     return client_rect;
 }
 
-static b32 mouse_in_menu_bar(TGuiDockerNode *window) {
-    ASSERT(window->type == TGUI_DOCKER_NODE_WINDOW);
+void tgui_docker_window_node_add_window(TGuiDockerNode *window_node, struct TGuiWindow *window) {
+    clink_list_insert_back(window_node->windows, window)
+    window_node->windows_count += 1;
 
-    s32 x = input.mouse_x;
-    s32 y = input.mouse_y;
-    Rectangle dim = calculate_menu_bar_rect(window);
+    window->parent = window_node;
+}
 
-    return (dim.min_x <= x && x <= dim.max_x && dim.min_y <= y && y <= dim.max_y);
+void tgui_docker_window_node_remove_window(struct TGuiWindow *window) {
+    TGuiDockerNode *window_node = window->parent;
+    ASSERT(window_node);
+    window_node->windows_count -= 1;
+    clink_list_remove(window);
+    window->parent = NULL;
+}
+
+b32 tgui_docker_window_has_tabs(TGuiDockerNode *window_node) {
+    return window_node->windows_count > 1;
+}
+
+TGuiWindow *get_window_from_mouse_over_tab(TGuiDockerNode *window_node) {
+    Rectangle menu_bar_rect = calculate_menu_bar_rect(window_node);
+    u32 width = rect_width(menu_bar_rect) / window_node->windows_count;
+
+    u32 index = CLAMP(((input.mouse_x - menu_bar_rect.min_x) / width), 0, window_node->windows_count - 1);
+    
+    u32 current_index = 0;
+    TGuiWindow *window = window_node->windows->next;
+    while(!clink_list_end(window, window_node->windows) && (current_index < index)) {
+        window = window->next;
+        current_index += 1;
+    }
+    
+    return window;
+}
+
+
+static void window_grabbing_preview(void) {
+    TGuiDockerNode *mouse_over_node = get_node_in_position(docker.root, input.mouse_x, input.mouse_y);
+    if(mouse_over_node) {
+        calculate_preview_split(mouse_over_node);
+    }
 }
 
 static void window_grabbing_start(TGuiDockerNode *window) {
     
-    if(docker.grabbing_window) {
-        TGuiDockerNode *mouse_over_node = get_node_in_position(docker.root, input.mouse_x, input.mouse_y);
-        if(mouse_over_node) {
-            calculate_preview_split(mouse_over_node);
-        }
-        return;
-    }
-    
-    /* TODO: This is a complete hack, program should only start the window grabbing if the click start from the menu bar */
-    if(!(input.mouse_button_is_down && !input.mouse_button_was_down)) return;
-    if(!mouse_in_menu_bar(window)) return;
-    
-    docker.grabbing_window = true;
-
     TGuiDockerNode *parent = window->parent;
-    if(!parent) return;
-    
-    TGuiDockerNode *split = NULL;
 
-    if(clink_list_first(window, parent->childs) && clink_list_last(window, parent->childs)) {
-        ASSERT(!"Root nodes cannot have only one child");
-    } else if(clink_list_first(window, parent->childs)) {
-        split = window->next;
-    } else if(clink_list_last(window, parent->childs)) {
-        split = window->prev;
-    } else {
-        split = window->next;
-    }
+    docker.grabbing_window = true;
+    docker.grabbing_window_start = false;
 
-    ASSERT(split != NULL && split->type == TGUI_DOCKER_NODE_SPLIT);
-    clink_list_remove(window);
-    clink_list_remove(split);
-    node_free(split);
-    
-    docker.active_node = window;
-
-    /* NOTE: If the parent is left with just one child, we need to replace the parent node with the only child */
-    TGuiDockerNode *child = parent->childs->next;
-    if(clink_list_first(child, parent->childs) && clink_list_last(child, parent->childs)) {
+    if(tgui_docker_window_has_tabs(window)) {
         
-        if(parent == docker.root) {
-            tgui_docker_set_root_node(child);
-            node_free(parent);
-            parent = child;
-        } else {
-            child->parent = parent->parent;
+        TGuiWindow *w = get_window_from_mouse_over_tab(window);
+        window->active_window = w->prev;
+        tgui_docker_window_node_remove_window(w);
+        
+        TGuiDockerNode *new_window_node = window_node_alloc(0);
+        tgui_docker_window_node_add_window(new_window_node, w);
+        docker.active_node = new_window_node;
 
-            clink_list_remove(child);
-            clink_list_insert_front(parent, child);
-            clink_list_remove(parent);
-            node_free(parent);
-            parent = child->parent;
+    } else {
+
+        if(!parent) return;
+
+        TGuiDockerNode *split = NULL;
+
+        if(clink_list_first(window, parent->childs) && clink_list_last(window, parent->childs)) {
+            ASSERT(!"Root nodes cannot have only one child");
+        } else if(clink_list_first(window, parent->childs)) {
+            split = window->next;
+        } else if(clink_list_last(window, parent->childs)) {
+            split = window->prev;
+        } else {
+            split = window->next;
         }
+
+        ASSERT(split != NULL && split->type == TGUI_DOCKER_NODE_SPLIT);
+        clink_list_remove(window);
+        clink_list_remove(split);
+        node_free(split);
+        
+        docker.active_node = window;
+
+        /* NOTE: If the parent is left with just one child, we need to replace the parent node with the only child */
+        TGuiDockerNode *child = parent->childs->next;
+        if(clink_list_first(child, parent->childs) && clink_list_last(child, parent->childs)) {
+            
+            if(parent == docker.root) {
+                tgui_docker_set_root_node(child);
+                node_free(parent);
+                parent = child;
+            } else {
+                child->parent = parent->parent;
+
+                clink_list_remove(child);
+                clink_list_insert_front(parent, child);
+                clink_list_remove(parent);
+                node_free(parent);
+                parent = child->parent;
+            }
+        }
+
+        tgui_docker_node_recalculate_dim(parent);
     }
-     
-    tgui_docker_node_recalculate_dim(parent);
 
 }
 
 static void window_grabbing_end(TGuiDockerNode *node) {
 
+    if(!docker.grabbing_window) return;
+
     TGuiDockerNode *mouse_over_node = get_node_in_position(docker.root, input.mouse_x, input.mouse_y);
     if(mouse_over_node) {
-        
-        TGuiSplitDirection dir = calculate_drop_split_dir(mouse_over_node);
+        if(mouse_over_node->type == TGUI_DOCKER_NODE_WINDOW && mouse_in_menu_bar(mouse_over_node)) {
+            
+            TGuiWindow *window = node->windows->next;
+            while(!clink_list_end(window, node->windows)) {
+                TGuiWindow *to_move = window;
+                window = window->next;
+                tgui_docker_window_node_add_window(mouse_over_node, to_move);
+                mouse_over_node->active_window = to_move;
+            }
+             
+            node_free(node);
 
-        if(mouse_over_node->type == TGUI_DOCKER_NODE_SPLIT) {
-            mouse_over_node = split_node_get_first_window(mouse_over_node);
-            dir = TGUI_SPLIT_DIR_HORIZONTAL;
+        } else {
+            TGuiSplitDirection dir = calculate_drop_split_dir(mouse_over_node);
+
+            if(mouse_over_node->type == TGUI_DOCKER_NODE_SPLIT) {
+                mouse_over_node = split_node_get_first_window(mouse_over_node);
+                dir = TGUI_SPLIT_DIR_HORIZONTAL;
+            }
+            
+            tgui_docker_node_split(mouse_over_node, dir, node);
+            tgui_docker_node_recalculate_dim(node->parent);
+
         }
-        tgui_docker_node_split(mouse_over_node, dir, node);
     }
-
-    tgui_docker_node_recalculate_dim(node->parent);
 
     docker.active_node = NULL;
     docker.grabbing_window = false;
     docker.preview_window = (Rectangle){0};
-}
-
-static void window_node_move(TGuiDockerNode *node) {
-    ASSERT(node->type == TGUI_DOCKER_NODE_WINDOW);
-    window_grabbing_start(node);
 }
 
 static void set_cursor_state(TGuiDockerNode *mouse_over) {
@@ -403,7 +491,6 @@ static void set_cursor_state(TGuiDockerNode *mouse_over) {
     }
 
 }
-
 
 static void split_recalculate_dim(TGuiDockerNode *split) {
     ASSERT(split->type == TGUI_DOCKER_NODE_SPLIT);
@@ -451,13 +538,13 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
         painter_draw_rectangle(painter, menu_bar_rect, menu_bar_color);
         
 
-        if(node->windows_count  == 1) {
+        Rectangle saved_clip = painter->clip;
+        painter->clip = menu_bar_rect;
+        
+        if(!tgui_docker_window_has_tabs(node)) {
             
             TGuiWindow *window = node->windows->next;
 
-            Rectangle saved_clip = painter->clip;
-
-            painter->clip = menu_bar_rect;
             char *label = window->name;
             Rectangle label_rect = tgui_get_text_dim(0, 0, label);
             
@@ -465,11 +552,31 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
             s32 label_y = menu_bar_rect.min_y + rect_height(menu_bar_rect) / 2 - rect_height(label_rect) / 2;
             tgui_font_draw_text(painter, label_x, label_y, label, strlen(label), 0xffffff);
 
-            painter->clip = saved_clip;
-        
         } else {
-            ASSERT(!"Draw window name in tabs is not implemented yet!");
+            TGuiWindow *window = node->windows->next;
+            while(!clink_list_end(window, node->windows)) {
+                painter->clip = menu_bar_rect;
+
+                Rectangle tab_rect = calculate_window_tab_rect(window);
+                painter_draw_rectangle_outline(painter, tab_rect, 0x444444);
+                
+                painter->clip = tab_rect;
+                
+                char * label = window->name;
+                Rectangle label_rect = tgui_get_text_dim(0, 0, label);
+                s32 label_x = tab_rect.min_x + rect_width(tab_rect) / 2 - rect_width(label_rect) / 2;
+                s32 label_y = tab_rect.min_y + rect_height(tab_rect) / 2 - rect_height(label_rect) / 2;
+                tgui_font_draw_text(painter, label_x, label_y, label, strlen(label), 0xffffff);
+                
+                if(window == node->active_window) {
+                    painter_draw_rectangle_outline(painter, calculate_window_tab_rect(node->active_window), 0x999999);
+                }
+
+                window = window->next;
+            }
         }
+        
+        painter->clip = saved_clip;
 
     } break;
 
@@ -523,6 +630,36 @@ void docker_node_print(TGuiDockerNode *node) {
     }
 }
 
+static void docker_update_active_node(void) {
+
+    if(docker.active_node) return;
+
+    TGuiDockerNode *mouse_over_node = get_node_in_position(docker.root, input.mouse_x, input.mouse_y);
+    if(!mouse_over_node) return;
+
+    set_cursor_state(mouse_over_node);
+
+    if(mouse_over_node->type == TGUI_DOCKER_NODE_SPLIT) {
+        if(input.mouse_button_is_down && !input.mouse_button_was_down) {
+            docker.active_node = mouse_over_node;
+        }
+    }
+
+    if(mouse_over_node->type == TGUI_DOCKER_NODE_WINDOW) {
+        if(mouse_in_menu_bar(mouse_over_node) && input.mouse_button_is_down && !input.mouse_button_was_down) {
+
+            docker.active_node = mouse_over_node;
+            
+            if(!tgui_docker_window_has_tabs(mouse_over_node)) {
+                docker.grabbing_window_start = true;
+            } else {
+                docker.saved_mouse_x = input.mouse_x;
+                docker.saved_mouse_y = input.mouse_y;
+            }
+        }
+    }
+}
+
 void tgui_docker_update(void) {
     
     if(!docker.root) return;
@@ -531,34 +668,47 @@ void tgui_docker_update(void) {
         tgui_docker_node_recalculate_dim(docker.root);
         input.window_resize = false;
     }
-     
-    TGuiDockerNode *mouse_over_node = get_node_in_position(docker.root, input.mouse_x, input.mouse_y);
-    if(!mouse_over_node) return;
 
-    set_cursor_state(mouse_over_node);
 
-    if(mouse_over_node && (mouse_over_node->type == TGUI_DOCKER_NODE_SPLIT || mouse_over_node->type == TGUI_DOCKER_NODE_WINDOW)) {
-        if(!docker.active_node && input.mouse_button_is_down && !input.mouse_button_was_down) {
-            docker.active_node = mouse_over_node;
-        }
-    }
+    docker_update_active_node();
+
+    if(docker.active_node && docker.active_node->type == TGUI_DOCKER_NODE_SPLIT) {
+        split_node_move(docker.active_node); 
     
-    if(!input.mouse_button_is_down) {
-        if(docker.grabbing_window) {
-            window_grabbing_end(docker.active_node);
-        }
-        docker.active_node = NULL;
-    }
+    } 
 
-    if(docker.active_node != NULL) {
-    
-    switch (docker.active_node->type) {
-    case TGUI_DOCKER_NODE_ROOT:   { root_node_move(docker.active_node);   } break;
-    case TGUI_DOCKER_NODE_SPLIT:  { split_node_move(docker.active_node);  } break;
-    case TGUI_DOCKER_NODE_WINDOW: { window_node_move(docker.active_node); } break;
-    }
+    if(docker.active_node && docker.active_node->type == TGUI_DOCKER_NODE_WINDOW) {
+
+        TGuiWindow *w = get_window_from_mouse_over_tab(docker.active_node);
+        docker.active_node->active_window = w;
+
+        if(!docker.grabbing_window_start && !docker.grabbing_window) {
+            if(!input.mouse_button_is_down) {
+                docker.active_node = NULL;
+            } else {
+                s32 dx = ((s32)input.mouse_x - (s32)docker.saved_mouse_x);
+                s32 dy = ((s32)input.mouse_y - (s32)docker.saved_mouse_y);
+                u32 distance_sqr = dx*dx + dy*dy;
+                
+                if(distance_sqr >= 64*64) {
+                    docker.grabbing_window_start = true;
+                }
+
+            }
+        }
+
+        if(docker.grabbing_window_start) {
+            window_grabbing_start(docker.active_node);
+        }
         
-    }
+        if(docker.grabbing_window) {
+            window_grabbing_preview();
+            
+            if(!input.mouse_button_is_down) {
+                window_grabbing_end(docker.active_node);
+            }
+        }
+    } 
 }
 
 void tgui_docker_set_root_node(TGuiDockerNode *node) {
@@ -579,17 +729,15 @@ void tgui_docker_root_set_child(TGuiDockerNode *root, TGuiDockerNode *node) {
 
 }
 
-void tgui_docker_window_node_add_window(TGuiDockerNode *window_node, struct TGuiWindow *window) {
-    clink_list_insert_back(window_node->windows, window)
-    window_node->windows_count += 1;
-
-    window->parent = window_node;
-}
-
-b32 tgui_docker_window_is_visible(TGuiDockerNode *window) {
-    if(docker.grabbing_window && docker.active_node == window) {
+b32 tgui_docker_window_is_visible(TGuiDockerNode *window_node, TGuiWindow *window) {
+    if(docker.grabbing_window && docker.active_node == window_node) {
         return false;
     }
+    
+    if(window_node->active_window != window) {
+        return false;
+    }
+
     return true;
 }
 
