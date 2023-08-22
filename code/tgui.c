@@ -281,13 +281,9 @@ void tgui_end(Painter *painter) {
     tgui_docker_root_node_draw(painter);
 
     for(u32 i = 0; i < state.window_registry_used; ++i) {
-        
         TGuiWindow *window = &state.window_registry[i];
-        
         tgui_window_process_widgets(window, painter);
-    
         tgui_window_free_widgets(window);
-    
     }
 
 }
@@ -762,144 +758,6 @@ void _tgui_text_input_internal(TGuiWidget *widget, Painter *painter) {
     
     painter->clip = saved_painter_clip;
 
-}
-
-void _tgui_drop_down_menu_begin(struct TGuiWindow *window, s32 x, s32 y, Painter *painter, char *tgui_id) {
-
-    u64 id = tgui_get_widget_id(tgui_id);
-
-    Rectangle rect = calculate_widget_rect(window, x, y, 140, 30);
-    tgui_calculate_hot_widget(window, rect, id);
-
-    TGuiDropMenu *drop_menu = tgui_widget_get_state(id, TGuiDropMenu);
-    drop_menu->running_index = 0;
-    drop_menu->parent_rect = rect;
-    state.active_data = (void *)drop_menu;
-
-    if(!tgui_window_update_widget(window)) {
-        drop_menu->active = false;
-        return;
-    }
-    
-    if(!drop_menu->initlialize) {
-        drop_menu->selected_item = -1;
-
-        drop_menu->initlialize = true;
-    }
-
-    if(state.active == id) {
-
-    } else if(state.hot == id) {
-        if(!input.mouse_button_was_down && input.mouse_button_is_down) {
-            state.active = id;
-            drop_menu->active = true;
-        }   
-    }
-
-    b32 mouse_is_over = rect_point_overlaps(rect, input.mouse_x, input.mouse_y);
-    if(state.active == id && !mouse_is_over && input.mouse_button_was_down && !input.mouse_button_is_down) {
-        if(!rect_point_overlaps(drop_menu->rect, input.mouse_x, input.mouse_y)) {
-            state.active = 0;
-            drop_menu->active = false;
-        }
-    }
-    
-    if(state.active == id && !drop_menu->active) {
-        state.active = 0;
-    }
-
-    drop_menu->saved_clip = painter->clip;
-    painter->clip = window->dim; 
-
-    u32 color = 0x333333;
-    u32 decoration_color = 0x999999;
-    
-    if(state.hot == id) {
-        color = 0x444444;
-    }
-    
-    if(state.active == id) {
-        color = 0x444444;
-    }
-    
-    painter_draw_rectangle(painter, rect, color);
-    painter_draw_rectangle_outline(painter, rect, decoration_color);
-
-    if(drop_menu->selected_item == -1) {
-        char *label = "Drop down menu";
-        Rectangle label_rect = tgui_get_text_dim(0, 0, label);
-        s32 label_x = rect.min_x + (rect_width(rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
-        s32 label_y = (rect.min_y + (rect_height(rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2);
-        tgui_font_draw_text(painter, label_x, label_y, label,  strlen(label), 0x999999);
-    }
-}
-
-b32 _tgui_drop_down_menu_item(TGuiWindow *window, char *label, Painter *painter) {
-
-    ASSERT(state.active_data != NULL);
-    TGuiDropMenu *drop_menu = (TGuiDropMenu *)state.active_data;
-
-    if(!tgui_window_update_widget(window)) {
-        drop_menu->active = false;
-        return false;
-    }
-
-    if(drop_menu->active) {
-        Rectangle rect = drop_menu->parent_rect;
-        rect.min_y += rect_height(drop_menu->parent_rect) * (drop_menu->running_index + 1);
-        rect.max_y += rect_height(drop_menu->parent_rect) * (drop_menu->running_index + 1);
-        
-        Rectangle visible_rect = rect_intersection(rect, painter->clip);
-
-        u32 color = 0x999999;
-        if(rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y)) {
-            color = 0x888888;
-
-            if(input.mouse_button_was_down && !input.mouse_button_is_down) {
-                drop_menu->selected_item = drop_menu->running_index;
-                drop_menu->active = false;
-            }   
-        }
-
-        painter_draw_rectangle(painter, rect, color);
-        painter_draw_hline(painter, rect.max_y, rect.min_x, rect.max_x, 0x444444);
-        //painter_draw_rectangle_outline(painter, rect, 0x444444);
-
-        Rectangle label_rect = tgui_get_text_dim(0, 0, label);
-        s32 label_x = drop_menu->parent_rect.min_x + (rect_width(drop_menu->parent_rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
-        s32 label_y = rect_height(drop_menu->parent_rect) * (drop_menu->running_index + 1) + (drop_menu->parent_rect.min_y + (rect_height(drop_menu->parent_rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2);
-        tgui_font_draw_text(painter, label_x, label_y, label,  strlen(label), 0x444444);
-
-    }
-    
-    b32 item_is_selected = drop_menu->running_index == drop_menu->selected_item;
-    if(item_is_selected) {
-        Rectangle label_rect = tgui_get_text_dim(0, 0, label);
-        s32 label_x = drop_menu->parent_rect.min_x + (rect_width(drop_menu->parent_rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
-        s32 label_y = (drop_menu->parent_rect.min_y + (rect_height(drop_menu->parent_rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2);
-        tgui_font_draw_text(painter, label_x, label_y, label,  strlen(label), 0x999999);
-    }
-
-    ++drop_menu->running_index;
-    return item_is_selected;
-}
-
-void _tgui_drop_down_menu_end(TGuiWindow *window, Painter *painter) {
-
-    ASSERT(state.active_data != NULL);
-    TGuiDropMenu *drop_menu = (TGuiDropMenu *)state.active_data;
-
-    if(!tgui_window_update_widget(window)) {
-        drop_menu->active = false;
-        return;
-    }
-    
-    painter->clip = drop_menu->saved_clip; 
-
-    drop_menu->rect = drop_menu->parent_rect;
-    drop_menu->rect.max_y += rect_height(drop_menu->parent_rect) * (drop_menu->running_index);
-
-    state.active_data = NULL;
 }
 
 static u32 u32_color_mix(u32 color0, f32 t, u32 color1) {

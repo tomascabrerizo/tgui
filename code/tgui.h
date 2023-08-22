@@ -187,25 +187,6 @@ TGuiTextInput *_tgui_text_input(struct TGuiWindow *window, s32 x, s32 y, char *t
 
 void _tgui_text_input_internal(TGuiWidget *widget, Painter *painter);
 
-typedef struct TGuiDropMenu {
-    Rectangle rect;
-    Rectangle parent_rect;
-
-    b32 active;
-    s32 selected_item;
-    s32 running_index;
-
-    Rectangle saved_clip;
-
-    b32 initlialize;
-} TGuiDropMenu;
-
-void _tgui_drop_down_menu_begin(struct TGuiWindow *window, s32 x, s32 y, Painter *painter, char *tgui_id);
-
-b32 _tgui_drop_down_menu_item(struct TGuiWindow *window, char *label, Painter *painter);
-
-void _tgui_drop_down_menu_end(struct TGuiWindow *window, Painter *painter);
-
 typedef struct TGuiColorPicker {
     
     TGuiBitmap radiant;
