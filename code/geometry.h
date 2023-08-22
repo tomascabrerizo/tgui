@@ -18,6 +18,14 @@ Rectangle rect_intersection(Rectangle a, Rectangle b);
 
 Rectangle rect_union(Rectangle a, Rectangle b);
 
+b32 rect_inside(Rectangle a, Rectangle b);
+
+b32 rect_equals(Rectangle a, Rectangle b);
+
+b32 rect_invalid(Rectangle a);
+
 b32 rect_point_overlaps(Rectangle a, s32 x, s32 y);
+
+Rectangle rect_set_invalid(void);
 
 #endif /* _GEOMETRY_H_ */

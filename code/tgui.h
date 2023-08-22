@@ -63,6 +63,8 @@ typedef struct TGuiBitmap {
 /*       TGui Window      */
 /* ---------------------- */
 
+#define TGUI_SCROLL_BAR_SIZE 20
+
 typedef struct TGuiWindow {
     
     Rectangle dim;
@@ -73,11 +75,14 @@ typedef struct TGuiWindow {
     struct TGuiWindow *next;
     struct TGuiWindow *prev;
 
+    b32 is_scrolling_window;
+    Rectangle scrolling_dim;
+
 } TGuiWindow;
 
-TGuiWindow *tgui_create_root_window(char *name);
+TGuiWindow *tgui_create_root_window(char *name, b32 scroll);
 
-TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name);
+TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name, b32 scroll);
 
 #define TGUI_MAX_WINDOW_REGISTRY 256
 
@@ -102,7 +107,9 @@ void tgui_initialize(void);
 
 void tgui_terminate(void);
 
-void tgui_update(f32 dt);
+void tgui_begin(f32 dt, Painter *painter);
+
+void tgui_end(Painter *painter);
 
 TGuiInput *tgui_get_input(void);
 
