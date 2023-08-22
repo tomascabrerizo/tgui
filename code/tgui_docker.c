@@ -639,7 +639,9 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
 
 void tgui_docker_root_node_draw(Painter *painter) {
     node_draw(painter, docker.root);
+}
 
+void tgui_docker_draw_preview(Painter *painter) {
     if(docker.grabbing_window) {
         u32 border_color = 0xaaaaff;
         painter_draw_rectangle_outline(painter, docker.preview_window, border_color);

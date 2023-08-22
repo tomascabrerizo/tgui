@@ -55,7 +55,7 @@ void app_update(App *app, f32 dt, Painter *painter) {
     tgui_text_input(app->window2, 10, 10);
     tgui_text_input(app->window2, 180, 10);
     
-    tgui_color_picker(app->window2, 180, 60, 256, 256, &app->color0);
+    tgui_color_picker(app->window2, 10, 60, 256, 256, &app->color0);
     tgui_color_picker(app->window1, 10, 10, 300, 100, &app->color1);
 
     tgui_end(painter);

@@ -85,6 +85,8 @@ b32 tgui_docker_window_has_tabs(TGuiDockerNode *window_node);
 
 void tgui_docker_root_node_draw(Painter *painter);
 
+void tgui_docker_draw_preview(Painter *painter);
+
 Rectangle tgui_docker_get_client_rect(TGuiDockerNode *window);
 
 b32 tgui_docker_window_is_visible(TGuiDockerNode *window_node, struct TGuiWindow *window);

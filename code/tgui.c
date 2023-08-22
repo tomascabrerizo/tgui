@@ -58,6 +58,19 @@ TGuiFont font;
 extern TGuiDocker docker;
 
 
+TGuiInput *tgui_get_input(void) {
+    return &input;
+}
+
+TGuiCursor tgui_get_cursor_state(void) {
+    return state.cursor;
+}
+
+u64 tgui_hash(void *bytes, u64 size) {
+    return murmur_hash64A(bytes, size, 123);
+}
+
+
 /* ---------------------- */
 /*       TGui Bitmap      */
 /* ---------------------- */
@@ -184,7 +197,7 @@ void tgui_font_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u
 }
 
 /* ---------------------- */
-/*       TGui Fuction     */
+/*       TGui Widgets     */
 /* ---------------------- */
 
 TGuiWidget *tgui_widget_alloc(void) {
@@ -205,6 +218,24 @@ void tgui_widget_free(TGuiWidget *widget)  {
     state.first_free_widget = widget;
 }
 
+void tgui_window_process_widgets(TGuiWindow *window, Painter *painter) {
+    TGuiWidget *widget = window->widgets->next;
+    while(!clink_list_end(widget, window->widgets)) {
+        widget->internal(widget, painter);
+        widget = widget->next;
+    }
+}
+
+void tgui_window_free_widgets(TGuiWindow *window) {
+    TGuiWidget *widget = window->widgets->next;
+    while(!clink_list_end(widget, window->widgets)) {
+        TGuiWidget *to_free = widget;
+        widget = widget->next;
+        clink_list_remove(to_free);
+        tgui_widget_free(to_free);
+    }
+}
+
 void *_tgui_widget_get_state(u64 id, u64 size) {
     void *result = NULL;
 
@@ -222,126 +253,6 @@ void *_tgui_widget_get_state(u64 id, u64 size) {
 b32 tgui_window_update_widget(TGuiWindow *window) {
     return tgui_docker_window_is_visible(window->parent, window);
 }
-
-void tgui_initialize(void) {
-    
-    memset(&state, 0, sizeof(TGui));
-
-    arena_initialize(&state.arena, 0, ARENA_TYPE_VIRTUAL);
-    virtual_map_initialize(&state.registry);
-    
-    tgui_font_initilize(&state.arena);
-    tgui_docker_initialize();
-}
-
-void tgui_terminate(void) {
-    
-    tgui_docker_terminate();
-    tgui_font_terminate();
-
-    virtual_map_terminate(&state.registry);
-    arena_terminate(&state.arena);
-    memset(&state, 0, sizeof(TGui));
-}
-
-void tgui_begin(f32 dt) {
-    state.dt = dt;
-    tgui_docker_update();
-
-    for(u32 i = 0; i < state.window_registry_used; ++i) {
-
-        TGuiWindow *window = &state.window_registry[i];
-        Rectangle window_dim = tgui_docker_get_client_rect(window->parent);
-        window->dim = window_dim;
-    }
-}
-
-void tgui_window_process_widgets(TGuiWindow *window, Painter *painter) {
-    TGuiWidget *widget = window->widgets->next;
-    while(!clink_list_end(widget, window->widgets)) {
-        
-        widget->internal(widget, painter);
-
-        widget = widget->next;
-    }
-}
-
-void tgui_window_free_widgets(TGuiWindow *window) {
-    TGuiWidget *widget = window->widgets->next;
-    while(!clink_list_end(widget, window->widgets)) {
-        TGuiWidget *to_free = widget;
-        widget = widget->next;
-        clink_list_remove(to_free);
-        tgui_widget_free(to_free);
-    }
-}
-
-void tgui_end(Painter *painter) {
-
-    tgui_docker_root_node_draw(painter);
-
-    for(u32 i = 0; i < state.window_registry_used; ++i) {
-        TGuiWindow *window = &state.window_registry[i];
-        tgui_window_process_widgets(window, painter);
-        tgui_window_free_widgets(window);
-    }
-
-}
-
-TGuiInput *tgui_get_input(void) {
-    return &input;
-}
-
-
-TGuiCursor tgui_get_cursor_state(void) {
-    return state.cursor;
-}
-
-u64 tgui_hash(void *bytes, u64 size) {
-    return murmur_hash64A(bytes, size, 123);
-}
-
-/* ---------------------- */
-/*       TGui Window      */
-/* ---------------------- */
-
-TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name) {
-    ASSERT(state.window_registry_used < TGUI_MAX_WINDOW_REGISTRY);
-    TGuiWindow *window = &state.window_registry[state.window_registry_used++];
-    tgui_docker_window_node_add_window(parent, window);
-    window->name =  name;
-    parent->active_window = window;
-    
-    window->widgets = tgui_widget_alloc();
-    clink_list_init(window->widgets);
-
-    return window;
-}
-
-TGuiWindow *tgui_create_root_window(char *name) {
-    TGuiDockerNode *window_node = window_node_alloc(0);
-    tgui_docker_set_root_node(window_node);
-    TGuiWindow *window = tgui_window_alloc(window_node, name);
-    ASSERT(window);
-    return window;
-}
-
-TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name) {
-    
-    TGuiDockerNode *window_node = window->parent; 
-    ASSERT(window_node->type == TGUI_DOCKER_NODE_WINDOW);
-
-    TGuiDockerNode *new_window_node = window_node_alloc(window_node->parent);
-    tgui_docker_node_split(window_node, dir, TGUI_POS_FRONT, new_window_node);
-    
-    TGuiWindow *new_window = tgui_window_alloc(new_window_node, name);
-    ASSERT(new_window);
-    return new_window;
-}
-
-/* ---------------------- */
-/*       TGui Widgets     */
-/* ---------------------- */
 
 static Rectangle calculate_widget_rect(TGuiWindow *window, s32 x, s32 y, s32 w, s32 h) {
     Rectangle window_rect = window->dim;
@@ -1013,3 +924,91 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
     }
 }
 
+/* ---------------------- */
+/*       TGui Window      */
+/* ---------------------- */
+
+TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name) {
+    ASSERT(state.window_registry_used < TGUI_MAX_WINDOW_REGISTRY);
+    TGuiWindow *window = &state.window_registry[state.window_registry_used++];
+    tgui_docker_window_node_add_window(parent, window);
+    window->name =  name;
+    parent->active_window = window;
+    
+    window->widgets = tgui_widget_alloc();
+    clink_list_init(window->widgets);
+
+    return window;
+}
+
+TGuiWindow *tgui_create_root_window(char *name) {
+    TGuiDockerNode *window_node = window_node_alloc(0);
+    tgui_docker_set_root_node(window_node);
+    TGuiWindow *window = tgui_window_alloc(window_node, name);
+    ASSERT(window);
+    return window;
+}
+
+TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name) {
+    
+    TGuiDockerNode *window_node = window->parent; 
+    ASSERT(window_node->type == TGUI_DOCKER_NODE_WINDOW);
+
+    TGuiDockerNode *new_window_node = window_node_alloc(window_node->parent);
+    tgui_docker_node_split(window_node, dir, TGUI_POS_FRONT, new_window_node);
+    
+    TGuiWindow *new_window = tgui_window_alloc(new_window_node, name);
+    ASSERT(new_window);
+    return new_window;
+}
+
+/* ---------------------- */
+/*       TGui Fuction     */
+/* ---------------------- */
+
+void tgui_initialize(void) {
+    
+    memset(&state, 0, sizeof(TGui));
+
+    arena_initialize(&state.arena, 0, ARENA_TYPE_VIRTUAL);
+    virtual_map_initialize(&state.registry);
+    
+    tgui_font_initilize(&state.arena);
+    tgui_docker_initialize();
+}
+
+void tgui_terminate(void) {
+    
+    tgui_docker_terminate();
+    tgui_font_terminate();
+
+    virtual_map_terminate(&state.registry);
+    arena_terminate(&state.arena);
+    memset(&state, 0, sizeof(TGui));
+}
+
+void tgui_begin(f32 dt) {
+    state.dt = dt;
+    tgui_docker_update();
+
+    for(u32 i = 0; i < state.window_registry_used; ++i) {
+
+        TGuiWindow *window = &state.window_registry[i];
+        Rectangle window_dim = tgui_docker_get_client_rect(window->parent);
+        window->dim = window_dim;
+    }
+}
+
+void tgui_end(Painter *painter) {
+
+    tgui_docker_root_node_draw(painter);
+
+    for(u32 i = 0; i < state.window_registry_used; ++i) {
+        TGuiWindow *window = &state.window_registry[i];
+        tgui_window_process_widgets(window, painter);
+        tgui_window_free_widgets(window);
+    }
+
+    tgui_docker_draw_preview(painter);
+
+}
