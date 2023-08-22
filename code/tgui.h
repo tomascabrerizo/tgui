@@ -75,14 +75,11 @@ typedef struct TGuiWindow {
     struct TGuiWindow *next;
     struct TGuiWindow *prev;
 
-    b32 is_scrolling_window;
-    Rectangle scrolling_dim;
-
 } TGuiWindow;
 
-TGuiWindow *tgui_create_root_window(char *name, b32 scroll);
+TGuiWindow *tgui_create_root_window(char *name);
 
-TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name, b32 scroll);
+TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name);
 
 #define TGUI_MAX_WINDOW_REGISTRY 256
 

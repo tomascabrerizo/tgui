@@ -222,83 +222,13 @@ void tgui_begin(f32 dt, Painter *painter) {
         TGuiWindow *window = &state.window_registry[i];
         Rectangle window_dim = tgui_docker_get_client_rect(window->parent);
         window->dim = window_dim;
-        
-        if(window->is_scrolling_window && docker.active_node == NULL) {
-            
-            if(rect_invalid(window->scrolling_dim)) {
-                window->scrolling_dim = window->dim;
-            }
-
-            if(!rect_invalid(window->scrolling_dim) && !rect_equals(window->scrolling_dim, window->dim) && rect_inside(window->dim, window->scrolling_dim)) {
-                if(rect_width(window->scrolling_dim) > rect_width(window_dim)) {
-                    window->dim.max_y -= TGUI_SCROLL_BAR_SIZE;    
-                }
-                if(rect_height(window->scrolling_dim) > rect_height(window_dim)) {
-                    window->dim.max_x -= TGUI_SCROLL_BAR_SIZE;    
-                }
-                //if(rect_width(window->scrolling_dim) > rect_width(window->dim)) {
-                //    window->dim.max_y -= TGUI_SCROLL_BAR_SIZE;    
-                //}
-            }
-            
-            window->scrolling_dim = window_dim;
-        }
     }
 
     tgui_docker_root_node_draw(painter);
 }
 
-static void window_calculate_scroll_rect(TGuiWindow *window, Rectangle *h, Rectangle *v) {
-    *h = rect_set_invalid();
-    *v = rect_set_invalid();
-    
-    if(rect_width(window->scrolling_dim) > rect_width(window->dim)) {
-        *h = window->dim;
-        h->min_x = window->dim.max_x;
-        h->max_x = h->min_x + TGUI_SCROLL_BAR_SIZE;
-    }
-
-    if(rect_height(window->scrolling_dim) > rect_height(window->dim)) {
-        *v = window->dim;
-        v->min_y = window->dim.max_y;
-        v->max_y = v->min_y + TGUI_SCROLL_BAR_SIZE;
-    }
-
-    Rectangle window_dim = tgui_docker_get_client_rect(window->parent);
-    
-    if(h->max_x > window_dim.max_x) {
-        *h = rect_set_invalid();
-    }
-    if(v->max_y > window_dim.max_y) {
-        *v = rect_set_invalid();
-    }
-}
-
 void tgui_end(Painter *painter) {
-
-    for(u32 i = 0; i < state.window_registry_used; ++i) {
-        
-        if(docker.active_node != NULL) break;
-
-        TGuiWindow *window = &state.window_registry[i];
-         
-        if(!tgui_window_update_widget(window)) continue;
-        
-        if(window->is_scrolling_window) {
-
-
-            Rectangle h_scroll_rect, v_scroll_rect;
-            window_calculate_scroll_rect(window, &h_scroll_rect, &v_scroll_rect);
-
-            if(!rect_invalid(h_scroll_rect)) {
-                painter_draw_rectangle(painter, h_scroll_rect, 0x00ff00);
-            }
-            
-            if(!rect_invalid(v_scroll_rect)) {
-                painter_draw_rectangle(painter, v_scroll_rect, 0x00ff00);
-            }
-        }
-    }
+    (void)painter;
 }
 
 TGuiInput *tgui_get_input(void) {
@@ -318,26 +248,24 @@ u64 tgui_hash(void *bytes, u64 size) {
 /*       TGui Window      */
 /* ---------------------- */
 
-TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll) {
+TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name) {
     ASSERT(state.window_registry_used < TGUI_MAX_WINDOW_REGISTRY);
     TGuiWindow *window = &state.window_registry[state.window_registry_used++];
     tgui_docker_window_node_add_window(parent, window);
     window->name =  name;
-    window->is_scrolling_window = scroll;
-    window->scrolling_dim = rect_set_invalid();
     parent->active_window = window;
     return window;
 }
 
-TGuiWindow *tgui_create_root_window(char *name, b32 scroll) {
+TGuiWindow *tgui_create_root_window(char *name) {
     TGuiDockerNode *window_node = window_node_alloc(0);
     tgui_docker_set_root_node(window_node);
-    TGuiWindow *window = tgui_window_alloc(window_node, name, scroll);
+    TGuiWindow *window = tgui_window_alloc(window_node, name);
     ASSERT(window);
     return window;
 }
 
-TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name, b32 scroll) {
+TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name) {
     
     TGuiDockerNode *window_node = window->parent; 
     ASSERT(window_node->type == TGUI_DOCKER_NODE_WINDOW);
@@ -345,7 +273,7 @@ TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *
     TGuiDockerNode *new_window_node = window_node_alloc(window_node->parent);
     tgui_docker_node_split(window_node, dir, TGUI_POS_FRONT, new_window_node);
     
-    TGuiWindow *new_window = tgui_window_alloc(new_window_node, name, scroll);
+    TGuiWindow *new_window = tgui_window_alloc(new_window_node, name);
     ASSERT(new_window);
     return new_window;
 }
@@ -362,10 +290,6 @@ static Rectangle calculate_widget_rect(TGuiWindow *window, s32 x, s32 y, s32 w, 
         window_rect.min_x + x + w - 1,
         window_rect.min_y + y + h - 1
     };
-
-    if(window->is_scrolling_window) {
-        window->scrolling_dim = rect_union(window->scrolling_dim, rect);
-    }
 
     return rect;
 }
