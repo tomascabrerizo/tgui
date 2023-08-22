@@ -187,6 +187,38 @@ void tgui_font_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u
 /*       TGui Fuction     */
 /* ---------------------- */
 
+TGuiWidget *tgui_widget_alloc(void) {
+    TGuiWidget *widget = NULL;
+    if(state.first_free_widget) {
+        widget = state.first_free_widget;
+        state.first_free_widget = state.first_free_widget->next;
+    } else {
+        widget = arena_push_struct(&state.arena, TGuiWidget, 8);
+    }
+    memset(widget, 0, sizeof(TGuiWidget));
+    ASSERT(widget);
+    return widget;
+}
+
+void tgui_widget_free(TGuiWidget *widget)  {
+    widget->next = state.first_free_widget;
+    state.first_free_widget = widget;
+}
+
+void *_tgui_widget_get_state(u64 id, u64 size) {
+    void *result = NULL;
+
+    result = virtual_map_find(&state.registry, id);
+    if(result == NULL) {
+        result = arena_alloc(&state.arena, size, 8);
+        memset(result, 0, size);
+        virtual_map_insert(&state.registry, id, (void *)result);
+    }
+
+    ASSERT(result != NULL);
+    return result;
+}
+
 b32 tgui_window_update_widget(TGuiWindow *window) {
     return tgui_docker_window_is_visible(window->parent, window);
 }
@@ -212,8 +244,7 @@ void tgui_terminate(void) {
     memset(&state, 0, sizeof(TGui));
 }
 
-
-void tgui_begin(f32 dt, Painter *painter) {
+void tgui_begin(f32 dt) {
     state.dt = dt;
     tgui_docker_update();
 
@@ -223,12 +254,42 @@ void tgui_begin(f32 dt, Painter *painter) {
         Rectangle window_dim = tgui_docker_get_client_rect(window->parent);
         window->dim = window_dim;
     }
+}
 
-    tgui_docker_root_node_draw(painter);
+void tgui_window_process_widgets(TGuiWindow *window, Painter *painter) {
+    TGuiWidget *widget = window->widgets->next;
+    while(!clink_list_end(widget, window->widgets)) {
+        
+        widget->internal(widget, painter);
+
+        widget = widget->next;
+    }
+}
+
+void tgui_window_free_widgets(TGuiWindow *window) {
+    TGuiWidget *widget = window->widgets->next;
+    while(!clink_list_end(widget, window->widgets)) {
+        TGuiWidget *to_free = widget;
+        widget = widget->next;
+        clink_list_remove(to_free);
+        tgui_widget_free(to_free);
+    }
 }
 
 void tgui_end(Painter *painter) {
-    (void)painter;
+
+    tgui_docker_root_node_draw(painter);
+
+    for(u32 i = 0; i < state.window_registry_used; ++i) {
+        
+        TGuiWindow *window = &state.window_registry[i];
+        
+        tgui_window_process_widgets(window, painter);
+    
+        tgui_window_free_widgets(window);
+    
+    }
+
 }
 
 TGuiInput *tgui_get_input(void) {
@@ -254,6 +315,10 @@ TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name) {
     tgui_docker_window_node_add_window(parent, window);
     window->name =  name;
     parent->active_window = window;
+    
+    window->widgets = tgui_widget_alloc();
+    clink_list_init(window->widgets);
+
     return window;
 }
 
@@ -299,20 +364,6 @@ u64 tgui_get_widget_id(char *tgui_id) {
     return id;
 }
 
-void *_tgui_widget_get_state(u64 id, u64 size) {
-    void *result = NULL;
-
-    result = virtual_map_find(&state.registry, id);
-    if(result == NULL) {
-        result = arena_alloc(&state.arena, size, 8);
-        memset(result, 0, size);
-        virtual_map_insert(&state.registry, id, (void *)result);
-    }
-
-    ASSERT(result != NULL);
-    return result;
-}
-
 void tgui_calculate_hot_widget(TGuiWindow *window, Rectangle rect, u64 id) {
 
     Rectangle visible_rect = rect_intersection(rect, window->dim);
@@ -331,14 +382,49 @@ void tgui_calculate_hot_widget(TGuiWindow *window, Rectangle rect, u64 id) {
     }
 }
 
-b32 _tgui_button(struct TGuiWindow *window, char *label, s32 x, s32 y, Painter *painter, char *tgui_id) {
+void tgui_widget_alloc_into_window(u64 id, TGuiWidgetInternalFunc internal, TGuiWindow *window, u32 x, u32 y, u32 w, u32 h) {
+    
+    TGuiWidget *widget = tgui_widget_alloc();
+    
+    widget->id = id;
+    widget->parent = window;
+    widget->x = x;
+    widget->y = y;
+    widget->w = w;
+    widget->h = h;
+    widget->next = 0;
+    widget->prev = 0;
 
+    widget->internal = internal;
+
+    clink_list_insert_back(window->widgets, widget);
+}
+
+b32 _tgui_button(struct TGuiWindow *window, char *label, s32 x, s32 y, char *tgui_id) {
     if(!tgui_window_update_widget(window)) {
         return false;
     }
 
     u64 id = tgui_get_widget_id(tgui_id);
-    Rectangle rect = calculate_widget_rect(window, x, y, 120, 30); 
+
+    TGuiButton *button_state = tgui_widget_get_state(id, TGuiButton);
+    button_state->label = label;
+    
+    tgui_widget_alloc_into_window(id, _tgui_button_internal, window, x, y, 120, 30);
+
+    return button_state->result;
+}
+
+void _tgui_button_internal(TGuiWidget *widget, Painter *painter) {
+
+    TGuiWindow *window = widget->parent;
+    u64 id = widget->id;
+    u32 x = widget->x;
+    u32 y = widget->y;
+    u32 w = widget->w;
+    u32 h = widget->h;
+    
+    Rectangle rect = calculate_widget_rect(window, x, y, w, h); 
     tgui_calculate_hot_widget(window, rect, id);
 
     b32 result = false;
@@ -353,7 +439,6 @@ b32 _tgui_button(struct TGuiWindow *window, char *label, s32 x, s32 y, Painter *
             state.active = id;
         }    
     }
-
 
     /* TODO: Desing a command interface to render the complete UI independently */
     
@@ -375,6 +460,9 @@ b32 _tgui_button(struct TGuiWindow *window, char *label, s32 x, s32 y, Painter *
     
     painter_draw_rectangle(painter, rect, button_color);
     
+    TGuiButton *button_state = tgui_widget_get_state(id, TGuiButton);
+    
+    char *label = button_state->label;
     Rectangle label_rect = tgui_get_text_dim(0, 0, label);
     
     s32 label_x = rect.min_x + (rect_width(rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
@@ -383,8 +471,8 @@ b32 _tgui_button(struct TGuiWindow *window, char *label, s32 x, s32 y, Painter *
     painter_draw_rectangle_outline(painter, rect, decoration_color);
 
     painter->clip = saved_painter_clip;
-
-    return result;
+    
+    button_state->result = result;
 }
 
 static Rectangle calculate_selection_rect(TGuiTextInput *text_input, s32 x, s32 y, u32 start, u32 end) {
@@ -433,20 +521,36 @@ static void delete_selection(TGuiTextInput *text_input) {
     }
 }
 
-TGuiTextInput *_tgui_text_input(TGuiWindow *window, s32 x, s32 y, Painter *painter, char *tgui_id) {
-    
-    TGuiKeyboard *keyboard = &input.keyboard;
+TGuiTextInput *_tgui_text_input(TGuiWindow *window, s32 x, s32 y, char *tgui_id) {
 
     u64 id = tgui_get_widget_id(tgui_id);
+
+    TGuiTextInput *text_input = tgui_widget_get_state(id, TGuiTextInput);
 
     if(!tgui_window_update_widget(window)) {
         if(state.active == id) {
             state.active = 0;
         }
-        return 0;
+        return text_input;
     }
     
-    Rectangle rect = calculate_widget_rect(window, x, y, 140, 30);
+    tgui_widget_alloc_into_window(id, _tgui_text_input_internal, window, x, y, 140, 30);
+
+    return text_input; 
+}
+
+void _tgui_text_input_internal(TGuiWidget *widget, Painter *painter) {
+
+    TGuiWindow *window = widget->parent;
+    u64 id = widget->id;
+    u32 x = widget->x;
+    u32 y = widget->y;
+    u32 w = widget->w;
+    u32 h = widget->h;
+    
+    TGuiKeyboard *keyboard = &input.keyboard;
+
+    Rectangle rect = calculate_widget_rect(window, x, y, w, h);
     tgui_calculate_hot_widget(window, rect, id);
     
     TGuiTextInput *text_input = tgui_widget_get_state(id, TGuiTextInput);
@@ -658,7 +762,6 @@ TGuiTextInput *_tgui_text_input(TGuiWindow *window, s32 x, s32 y, Painter *paint
     
     painter->clip = saved_painter_clip;
 
-    return text_input;
 }
 
 void _tgui_drop_down_menu_begin(struct TGuiWindow *window, s32 x, s32 y, Painter *painter, char *tgui_id) {
@@ -931,22 +1034,39 @@ static u32 colorpicker_get_color_hue(TGuiColorPicker *colorpicker) {
     return colorpicker->mini_radiant.pixels[(u32)(colorpicker->hue * (colorpicker->mini_radiant.width - 0))];
 }
 
-void _tgui_color_picker(struct TGuiWindow *window, s32 x, s32 y, s32 w, s32 h, u32 *color, Painter *painter, char *tgui_id) {
-    
+void _tgui_color_picker(struct TGuiWindow *window, s32 x, s32 y, s32 w, s32 h, u32 *color, char *tgui_id) {
+
     if(!tgui_window_update_widget(window)) {
         return;
     }
-    
     u64 id = tgui_get_widget_id(tgui_id);
+    
+    TGuiColorPicker *colorpicker = tgui_widget_get_state(id, TGuiColorPicker);
+    colorpicker->color_ptr = color;
+    
+    tgui_widget_alloc_into_window(id, _tgui_color_picker_internal, window, x, y, w, h);
+
+}
+
+void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
+    
+    TGuiWindow *window = widget->parent;
+    u64 id = widget->id;
+    u32 x = widget->x;
+    u32 y = widget->y;
+    u32 w = widget->w;
+    u32 h = widget->h;
     
     Rectangle rect = calculate_widget_rect(window, x, y, w, h);
     tgui_calculate_hot_widget(window, rect, id);
 
     TGuiColorPicker *colorpicker = tgui_widget_get_state(id, TGuiColorPicker);
 
-    f32 hue, saturation, value;
-    tgui_u32_color_to_hsv_color(*color, &hue, &saturation, &value);
     /* TODO: Actually use hue saturation and value from the color */
+    if(colorpicker->color_ptr) {
+        f32 hue, saturation, value;
+        tgui_u32_color_to_hsv_color(*colorpicker->color_ptr, &hue, &saturation, &value);
+    }
 
     f32 radiant_h = h * 0.75f; 
     f32 mini_radiant_h = h * 0.2f;
@@ -1030,6 +1150,8 @@ void _tgui_color_picker(struct TGuiWindow *window, s32 x, s32 y, s32 w, s32 h, u
 
     painter->clip = saved_clip;
     
-    *color = colorpicker->radiant.pixels[color_y*colorpicker->radiant.width + color_x];
+    if(colorpicker->color_ptr) {
+        *colorpicker->color_ptr = colorpicker->radiant.pixels[color_y*colorpicker->radiant.width + color_x];
+    }
 }
 

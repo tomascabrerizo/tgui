@@ -33,28 +33,32 @@ void app_terminate(App *app) {
 
 void app_update(App *app, f32 dt, Painter *painter) {
     
-    tgui_begin(dt, painter);
+    tgui_begin(dt);
 
-    if(tgui_button(app->window0, "button", 10, 10, painter)) {
+    if(tgui_button(app->window0, "button", 10, 10)) {
         printf("click! 0\n");
     }
 
-    if(tgui_button(app->window0, "button", 10, 60, painter)) {
+    if(tgui_button(app->window0, "button", 10, 60)) {
         printf("click! 1\n");
     }
-    if(tgui_button(app->window3, "button", 10, 10, painter)) {
+    if(tgui_button(app->window3, "button", 10, 10)) {
         printf("click! 2\n");
     }
-    if(tgui_button(app->window3, "button", 160, 10, painter)) {
+    if(tgui_button(app->window3, "button", 160, 10)) {
         printf("click! 3\n");
     }
-    if(tgui_button(app->window3, "button", 310, 10, painter)) {
+    if(tgui_button(app->window3, "button", 310, 10)) {
         printf("click! 4\n");
     }
     
-    tgui_text_input(app->window2, 10, 10, painter);
-    tgui_text_input(app->window2, 180, 10, painter);
+    tgui_text_input(app->window2, 10, 10);
+    tgui_text_input(app->window2, 180, 10);
+    
+    tgui_color_picker(app->window2, 180, 60, 256, 256, &app->color0);
+    tgui_color_picker(app->window1, 10, 10, 300, 100, &app->color1);
 
+#if 0
     tgui_drop_down_menu_begin(app->window2, 10, 60, painter);
     if(tgui_drop_down_menu_item(app->window2, "item 1", painter)) {
     }
@@ -75,10 +79,7 @@ void app_update(App *app, f32 dt, Painter *painter) {
     if(tgui_drop_down_menu_item(app->window2, "item 9", painter)) {
     }
     tgui_drop_down_menu_end(app->window2, painter);
-
-    
-    tgui_color_picker(app->window2, 180, 60, 256, 256, &app->color0, painter);
-    tgui_color_picker(app->window1, 10, 10, 300, 100, &app->color1, painter);
+#endif
 
     tgui_end(painter);
 
