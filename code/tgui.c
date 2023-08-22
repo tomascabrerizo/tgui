@@ -260,7 +260,7 @@ TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *
     ASSERT(window_node->type == TGUI_DOCKER_NODE_WINDOW);
 
     TGuiDockerNode *new_window_node = window_node_alloc(window_node->parent);
-    tgui_docker_node_split(window_node, dir, new_window_node);
+    tgui_docker_node_split(window_node, dir, TGUI_POS_FRONT, new_window_node);
     
     TGuiWindow *new_window = tgui_window_alloc(new_window_node, name);
     ASSERT(new_window);

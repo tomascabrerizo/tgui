@@ -23,6 +23,11 @@ typedef enum TGuiSplitDirection {
     TGUI_SPLIT_DIR_HORIZONTAL,
 } TGuiSplitDirection;
 
+typedef enum TGuiPosition {
+    TGUI_POS_FRONT,
+    TGUI_POS_BACK,
+} TGuiPosition;
+
 typedef struct TGuiDockerNode {
     Rectangle dim;
     
@@ -67,7 +72,7 @@ void tgui_docker_set_root_node(TGuiDockerNode *node);
 
 void tgui_docker_root_set_child(TGuiDockerNode *root, TGuiDockerNode *node);
 
-void tgui_docker_node_split(TGuiDockerNode *node, TGuiSplitDirection dir, TGuiDockerNode *node1);
+void tgui_docker_node_split(TGuiDockerNode *node, TGuiSplitDirection dir, TGuiPosition pos, TGuiDockerNode *node1);
 
 void tgui_docker_node_recalculate_dim(TGuiDockerNode *node);
 

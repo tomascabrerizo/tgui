@@ -21,12 +21,13 @@ void app_initialize(App *app) {
     tgui_initialize();
 
     app->window0 = tgui_create_root_window("Window 0");
+
+#if 1
     app->window1 = tgui_split_window(app->window0, TGUI_SPLIT_DIR_HORIZONTAL, "Window 1");
     app->window2 = tgui_split_window(app->window0, TGUI_SPLIT_DIR_VERTICAL,   "Window 2");
     app->window3 = tgui_split_window(app->window1, TGUI_SPLIT_DIR_HORIZONTAL, "Window 3");
+#endif
 
-    app->color0 = 0x0022ff;
-    app->color1 = 0xff0000;
 
 }
 
@@ -47,7 +48,7 @@ void app_update(App *app, f32 dt, Painter *painter) {
     if(tgui_button(app->window0, "button", 10, 60, painter)) {
         printf("click! 1\n");
     }
-
+#if 1
     if(tgui_button(app->window3, "button", 10, 10, painter)) {
         printf("click! 2\n");
     }
@@ -86,7 +87,7 @@ void app_update(App *app, f32 dt, Painter *painter) {
     tgui_color_picker(app->window2, 180, 60, 256, 256, &app->color0, painter);
     
     tgui_color_picker(app->window1, 10, 10, 300, 100, &app->color1, painter);
-
+#endif
     //painter_draw_rect(painter, 100, 120, 100, 100, app->color0);
     //painter_draw_rect(painter, 210, 120, 100, 100, app->color1);
 

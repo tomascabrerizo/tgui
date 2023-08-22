@@ -226,44 +226,23 @@ static void split_node_move(TGuiDockerNode *node) {
 
 }
 
-static void calculate_drop_split_dir_and_pos(TGuiDockerNode *mouse_over_node, TGuiSplitDirection *dir, TGuiPosition *pos) {
-    Rectangle dim = mouse_over_node->dim;
+static TGuiSplitDirection calculate_drop_split_dir(TGuiDockerNode *mouse_over_node) {
 
-    u32 l_distance = input.mouse_x - dim.min_x;
-    u32 r_distance = dim.max_x - input.mouse_x;
-    
-    u32 t_distance = input.mouse_y - dim.min_y;
-    u32 b_distance = dim.max_y - input.mouse_y;
-    
-    u32 min_h_disntace = 0;
-    TGuiPosition h_pos = TGUI_POS_FRONT;
+        TGuiSplitDirection dir = TGUI_SPLIT_DIR_NONE;
+         
+        Rectangle dim = mouse_over_node->dim;
 
-    if(l_distance < r_distance) {
-        min_h_disntace = l_distance;
-        h_pos = TGUI_POS_BACK;
-    } else {
-        min_h_disntace = r_distance;
-        h_pos = TGUI_POS_FRONT;
-    }
-
-    u32 min_v_disntace = 0;
-    TGuiPosition v_pos = TGUI_POS_FRONT;
-
-    if(t_distance < b_distance) {
-        min_v_disntace = t_distance;
-        v_pos = TGUI_POS_BACK;
-    } else {
-        min_v_disntace = b_distance;
-        v_pos = TGUI_POS_FRONT;
-    }
-
-    if(min_h_disntace < min_v_disntace) {
-        *dir = TGUI_SPLIT_DIR_VERTICAL;
-        *pos = h_pos;
-    } else {
-        *dir = TGUI_SPLIT_DIR_HORIZONTAL;
-        *pos = v_pos;
-    }
+        u32 r_distance = dim.max_x - input.mouse_x;
+        u32 b_distance = dim.max_y - input.mouse_y;
+        
+        if(r_distance < b_distance) {
+            dir = TGUI_SPLIT_DIR_VERTICAL;
+        } else {
+            dir = TGUI_SPLIT_DIR_HORIZONTAL;
+        }
+        
+        ASSERT(dir == TGUI_SPLIT_DIR_VERTICAL || dir == TGUI_SPLIT_DIR_HORIZONTAL);
+        return dir;
 }
 
 static TGuiDockerNode *root_node_get_first_window(TGuiDockerNode *root) {
@@ -300,9 +279,7 @@ static void calculate_preview_split(TGuiDockerNode *mouse_over_node) {
             return; 
         }
 
-        TGuiSplitDirection dir;
-        TGuiPosition pos;
-        calculate_drop_split_dir_and_pos(mouse_over_node, &dir, &pos);
+        TGuiSplitDirection dir = calculate_drop_split_dir(node);
         
         if(node->type == TGUI_DOCKER_NODE_SPLIT) {
             node = split_node_get_first_window(mouse_over_node);
@@ -315,20 +292,9 @@ static void calculate_preview_split(TGuiDockerNode *mouse_over_node) {
         ASSERT(dir != TGUI_SPLIT_DIR_NONE);
         
         if(dir == TGUI_SPLIT_DIR_VERTICAL) {
-            
-            if(pos == TGUI_POS_BACK) {
-                docker.preview_window.max_x = (node->dim.max_x + node->dim.min_x) / 2; 
-            } else {
-                docker.preview_window.min_x = (node->dim.max_x + node->dim.min_x) / 2; 
-            }
-        
+            docker.preview_window.min_x = (node->dim.max_x + node->dim.min_x) / 2; 
         } else if(dir == TGUI_SPLIT_DIR_HORIZONTAL) {
-            if(pos == TGUI_POS_BACK) {
-                docker.preview_window.max_y = (node->dim.max_y + node->dim.min_y) / 2; 
-            } else {
-                docker.preview_window.min_y = (node->dim.max_y + node->dim.min_y) / 2; 
-            } 
-        
+            docker.preview_window.min_y = (node->dim.max_y + node->dim.min_y) / 2; 
         }
 
 }
@@ -475,16 +441,14 @@ static void window_grabbing_end(TGuiDockerNode *node) {
             node_free(node);
 
         } else {
-            TGuiSplitDirection dir;
-            TGuiPosition pos;
-            calculate_drop_split_dir_and_pos(mouse_over_node, &dir, &pos);
+            TGuiSplitDirection dir = calculate_drop_split_dir(mouse_over_node);
 
             if(mouse_over_node->type == TGUI_DOCKER_NODE_SPLIT) {
                 mouse_over_node = split_node_get_first_window(mouse_over_node);
                 dir = TGUI_SPLIT_DIR_HORIZONTAL;
             }
             
-            tgui_docker_node_split(mouse_over_node, dir, pos, node);
+            tgui_docker_node_split(mouse_over_node, dir, node);
             tgui_docker_node_recalculate_dim(node->parent);
 
         }
@@ -694,12 +658,6 @@ static void docker_update_active_node(void) {
             
             if(!tgui_docker_window_has_tabs(mouse_over_node)) {
                 docker.grabbing_window_start = true;
-                
-                if(mouse_over_node == docker.root) {
-                    docker.grabbing_window_start = false;
-                    docker.active_node = NULL;
-                }
-            
             } else {
                 docker.saved_mouse_x = input.mouse_x;
                 docker.saved_mouse_y = input.mouse_y;
@@ -789,7 +747,7 @@ b32 tgui_docker_window_is_visible(TGuiDockerNode *window_node, TGuiWindow *windo
     return true;
 }
 
-void tgui_docker_node_split(TGuiDockerNode *node, TGuiSplitDirection dir, TGuiPosition pos, TGuiDockerNode *node1) {
+void tgui_docker_node_split(TGuiDockerNode *node, TGuiSplitDirection dir, TGuiDockerNode *node1) {
     ASSERT(node->type == TGUI_DOCKER_NODE_WINDOW || node->type == TGUI_DOCKER_NODE_ROOT);
     
     TGuiDockerNode *parent = node->parent;
@@ -849,14 +807,8 @@ void tgui_docker_node_split(TGuiDockerNode *node, TGuiSplitDirection dir, TGuiPo
     ASSERT(split_position >= 0.0f && split_position <= 1.0f);
 
     TGuiDockerNode *split = split_node_alloc(node->parent, split_position);
-    if(pos == TGUI_POS_FRONT) {
-        clink_list_insert_front(node, split);
-        clink_list_insert_front(split, node1);
-    } else {
-        clink_list_insert_back(node, split);
-        clink_list_insert_back(split, node1);
-    }
-    
+    clink_list_insert_front(node, split);
+    clink_list_insert_front(split, node1);
 
 }
 
