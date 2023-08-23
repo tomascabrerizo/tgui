@@ -3,6 +3,7 @@
 #include "painter.h"
 #include "tgui.h"
 #include "tgui_docker.h"
+#include "tgui_serializer.h"
 #include <stdio.h>
 
 typedef struct App {
@@ -24,10 +25,15 @@ void app_initialize(App *app) {
     app->window1 = tgui_split_window(app->window0, TGUI_SPLIT_DIR_HORIZONTAL, "Window 1", true);
     app->window2 = tgui_split_window(app->window0, TGUI_SPLIT_DIR_VERTICAL,   "Window 2", true);
     app->window3 = tgui_split_window(app->window1, TGUI_SPLIT_DIR_HORIZONTAL, "Window 3", false);
+
+    tgui_serializer_write_docker_tree();
 }
 
 void app_terminate(App *app) {
     UNUSED(app);
+
+    tgui_serializer_write_docker_tree();
+
     tgui_terminate();
 }
 

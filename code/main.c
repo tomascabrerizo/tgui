@@ -5,6 +5,7 @@
 #include "painter.h"
 #include "tgui.h"
 #include "tgui_docker.h"
+#include "tgui_serializer.h"
 
 #include "os.c"
 #include "geometry.c"
@@ -12,6 +13,7 @@
 #include "painter.c"
 #include "tgui.c"
 #include "tgui_docker.c"
+#include "tgui_serializer.c"
 
 #include "app.c"
 

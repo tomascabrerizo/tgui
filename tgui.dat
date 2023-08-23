@@ -1,0 +1,47 @@
+root_node: {
+  dir 2
+  root_node: {
+    dir 1
+    window_node: {
+      active_window: Window 0
+      window_count: 1
+      window: {
+        name: Window 0
+        is_scrolling 0
+      }
+    }
+    split_node: {
+      split_position: 0.500000
+    }
+    window_node: {
+      active_window: Window 2
+      window_count: 1
+      window: {
+        name: Window 2
+        is_scrolling 1
+      }
+    }
+  }
+  split_node: {
+    split_position: 0.500000
+  }
+  window_node: {
+    active_window: Window 1
+    window_count: 1
+    window: {
+      name: Window 1
+      is_scrolling 1
+    }
+  }
+  split_node: {
+    split_position: 0.750000
+  }
+  window_node: {
+    active_window: Window 3
+    window_count: 1
+    window: {
+      name: Window 3
+      is_scrolling 0
+    }
+  }
+}
