@@ -894,9 +894,11 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
         colorpicker->value      =  CLAMP((input.mouse_y - radiant_rect.min_y) / (f32)colorpicker->radiant.height, 0, 1);
     }
 
+    u32 cursor_w = 6;
     Rectangle hue_cursor = mini_radiant_rect;
-    hue_cursor.min_x += (colorpicker->hue * colorpicker->mini_radiant.width) - 3; 
-    hue_cursor.max_x = hue_cursor.min_x + 6;  
+
+    hue_cursor.min_x += (colorpicker->hue * (colorpicker->mini_radiant.width - cursor_w)); 
+    hue_cursor.max_x = hue_cursor.min_x + cursor_w - 1;  
 
     u32 radiant_color = colorpicker_get_color_hue(colorpicker);
     if(colorpicker->saved_radiant_color != radiant_color) {
