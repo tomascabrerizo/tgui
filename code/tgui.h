@@ -71,16 +71,19 @@ typedef struct TGuiWindow {
     char *name;
     
     struct TGuiWidget *widgets;
+    
+    b32 is_scrolling;
+    Rectangle h_scroll_bar;
+    Rectangle v_scroll_bar;
 
     struct TGuiDockerNode *parent;
-
     struct TGuiWindow *next;
     struct TGuiWindow *prev;
 } TGuiWindow;
 
-TGuiWindow *tgui_create_root_window(char *name);
+TGuiWindow *tgui_create_root_window(char *name, b32 scroll);
 
-TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name);
+TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name, b32 scroll);
 
 typedef void (*TGuiWidgetInternalFunc) (struct TGuiWidget *widget, Painter *painter);
  

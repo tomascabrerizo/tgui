@@ -254,7 +254,14 @@ b32 tgui_window_update_widget(TGuiWindow *window) {
     return tgui_docker_window_is_visible(window->parent, window);
 }
 
-static Rectangle calculate_widget_rect(TGuiWindow *window, s32 x, s32 y, s32 w, s32 h) {
+static Rectangle calculate_widget_rect(TGuiWidget *widget) {
+
+    TGuiWindow *window = widget->parent;
+    u32 x = widget->x;
+    u32 y = widget->y;
+    u32 w = widget->w;
+    u32 h = widget->h;
+    
     Rectangle window_rect = window->dim;
     Rectangle rect = {
         window_rect.min_x + x,
@@ -326,12 +333,8 @@ void _tgui_button_internal(TGuiWidget *widget, Painter *painter) {
 
     TGuiWindow *window = widget->parent;
     u64 id = widget->id;
-    u32 x = widget->x;
-    u32 y = widget->y;
-    u32 w = widget->w;
-    u32 h = widget->h;
     
-    Rectangle rect = calculate_widget_rect(window, x, y, w, h); 
+    Rectangle rect = calculate_widget_rect(widget); 
     tgui_calculate_hot_widget(window, rect, id);
 
     b32 result = false;
@@ -450,14 +453,10 @@ void _tgui_text_input_internal(TGuiWidget *widget, Painter *painter) {
 
     TGuiWindow *window = widget->parent;
     u64 id = widget->id;
-    u32 x = widget->x;
-    u32 y = widget->y;
-    u32 w = widget->w;
-    u32 h = widget->h;
     
     TGuiKeyboard *keyboard = &input.keyboard;
 
-    Rectangle rect = calculate_widget_rect(window, x, y, w, h);
+    Rectangle rect = calculate_widget_rect(widget);
     tgui_calculate_hot_widget(window, rect, id);
     
     TGuiTextInput *text_input = tgui_widget_get_state(id, TGuiTextInput);
@@ -821,12 +820,10 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
     
     TGuiWindow *window = widget->parent;
     u64 id = widget->id;
-    u32 x = widget->x;
-    u32 y = widget->y;
     u32 w = widget->w;
     u32 h = widget->h;
     
-    Rectangle rect = calculate_widget_rect(window, x, y, w, h);
+    Rectangle rect = calculate_widget_rect(widget);
     tgui_calculate_hot_widget(window, rect, id);
 
     TGuiColorPicker *colorpicker = tgui_widget_get_state(id, TGuiColorPicker);
@@ -928,7 +925,7 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
 /*       TGui Window      */
 /* ---------------------- */
 
-TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name) {
+TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll) {
     ASSERT(state.window_registry_used < TGUI_MAX_WINDOW_REGISTRY);
     TGuiWindow *window = &state.window_registry[state.window_registry_used++];
     tgui_docker_window_node_add_window(parent, window);
@@ -938,18 +935,22 @@ TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name) {
     window->widgets = tgui_widget_alloc();
     clink_list_init(window->widgets);
 
+    window->is_scrolling = scroll;
+    window->h_scroll_bar = rect_set_invalid();
+    window->v_scroll_bar = rect_set_invalid();
+
     return window;
 }
 
-TGuiWindow *tgui_create_root_window(char *name) {
+TGuiWindow *tgui_create_root_window(char *name, b32 scroll) {
     TGuiDockerNode *window_node = window_node_alloc(0);
     tgui_docker_set_root_node(window_node);
-    TGuiWindow *window = tgui_window_alloc(window_node, name);
+    TGuiWindow *window = tgui_window_alloc(window_node, name, scroll);
     ASSERT(window);
     return window;
 }
 
-TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name) {
+TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name, b32 scroll) {
     
     TGuiDockerNode *window_node = window->parent; 
     ASSERT(window_node->type == TGUI_DOCKER_NODE_WINDOW);
@@ -957,7 +958,7 @@ TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *
     TGuiDockerNode *new_window_node = window_node_alloc(window_node->parent);
     tgui_docker_node_split(window_node, dir, TGUI_POS_FRONT, new_window_node);
     
-    TGuiWindow *new_window = tgui_window_alloc(new_window_node, name);
+    TGuiWindow *new_window = tgui_window_alloc(new_window_node, name, scroll);
     ASSERT(new_window);
     return new_window;
 }
@@ -996,16 +997,89 @@ void tgui_begin(f32 dt) {
         TGuiWindow *window = &state.window_registry[i];
         Rectangle window_dim = tgui_docker_get_client_rect(window->parent);
         window->dim = window_dim;
+        window->h_scroll_bar = rect_set_invalid();
+        window->v_scroll_bar = rect_set_invalid();
+    }
+}
+
+static inline Rectangle calculate_total_widget_rect(TGuiWindow *window) {
+    Rectangle result = window->dim;
+    TGuiWidget *widget = window->widgets->next;
+    while(!clink_list_end(widget, window->widgets)) {
+        result = rect_union(result, calculate_widget_rect(widget));
+        widget = widget->next;
+    }
+    return result;
+}
+
+void tgui_scroll_window_recalculate_dim(TGuiWindow *window) {
+    if(!window->is_scrolling) return;
+    
+    b32 h_bar_added = false;
+    b32 v_bar_added = false;
+    Rectangle widget_rect;
+
+    widget_rect = calculate_total_widget_rect(window);
+    
+    if(rect_width(widget_rect) > rect_width(window->dim)) {
+        window->dim.max_y -= TGUI_SCROLL_BAR_SIZE;
+        h_bar_added = true;
+    }
+
+    widget_rect = calculate_total_widget_rect(window);
+
+    if(rect_height(widget_rect) > rect_height(window->dim)) {
+        window->dim.max_x -= TGUI_SCROLL_BAR_SIZE;
+        v_bar_added = true;
+
+        if(!h_bar_added) {
+            widget_rect = calculate_total_widget_rect(window);
+            
+            if(rect_width(widget_rect) > rect_width(window->dim)) {
+                window->dim.max_y -= TGUI_SCROLL_BAR_SIZE;
+                h_bar_added = true;
+            }
+        }
+    }
+
+    if(h_bar_added) {
+        window->h_scroll_bar = window->dim;
+        window->h_scroll_bar.min_y = window->dim.max_y + 1;
+        window->h_scroll_bar.max_y = window->h_scroll_bar.min_y + TGUI_SCROLL_BAR_SIZE - 1;
+    }
+
+    if(v_bar_added) {
+        window->v_scroll_bar = window->dim;
+        window->v_scroll_bar.min_x = window->dim.max_x + 1;
+        window->v_scroll_bar.max_x = window->v_scroll_bar.min_x + TGUI_SCROLL_BAR_SIZE - 1;
+    }
+
+
+}
+
+void tgui_process_scroll_window(TGuiWindow *window, Painter *painter) {
+    if(!window->is_scrolling) return;
+
+    if(!rect_invalid(window->v_scroll_bar)) {
+        painter_draw_rectangle(painter, window->v_scroll_bar, 0x00ff00);
+    }
+
+    if(!rect_invalid(window->h_scroll_bar)) {
+        painter_draw_rectangle(painter, window->h_scroll_bar, 0x00ff00);
     }
 }
 
 void tgui_end(Painter *painter) {
-
+    
     tgui_docker_root_node_draw(painter);
 
     for(u32 i = 0; i < state.window_registry_used; ++i) {
         TGuiWindow *window = &state.window_registry[i];
+
+        tgui_scroll_window_recalculate_dim(window);
         tgui_window_process_widgets(window, painter);
+        tgui_process_scroll_window(window, painter);
+
         tgui_window_free_widgets(window);
     }
 
