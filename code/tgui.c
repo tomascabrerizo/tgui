@@ -1104,11 +1104,11 @@ void tgui_process_scroll_window(TGuiWindow *window, Painter *painter) {
         handle.min_y += window->v_scroll_offset * (rect_height(window->v_scroll_bar) - handle_h);
         handle.max_y = handle.min_y + handle_h - 1;
 
-        painter_draw_rectangle(painter, window->v_scroll_bar, 0x555555);
-        painter_draw_vline(painter, window->v_scroll_bar.min_x, window->v_scroll_bar.min_y, window->v_scroll_bar.max_y, 0x333333);
+        painter_draw_rectangle(painter, window->v_scroll_bar, 0x333333);
+        painter_draw_vline(painter, window->v_scroll_bar.min_x, window->v_scroll_bar.min_y, window->v_scroll_bar.max_y, 0x444444);
         
-        painter_draw_rectangle(painter, handle, 0x333333);
-        painter_draw_rectangle_outline(painter, handle, 0x444444);
+        painter_draw_rectangle(painter, handle, 0x555555);
+        painter_draw_rectangle_outline(painter, handle, 0x888888);
     }
 
     if(h_scroll_valid) {
@@ -1133,11 +1133,11 @@ void tgui_process_scroll_window(TGuiWindow *window, Painter *painter) {
         handle.min_x += window->h_scroll_offset * (rect_width(window->h_scroll_bar) - handle_w);
         handle.max_x = handle.min_x + handle_w - 1;
 
-        painter_draw_rectangle(painter, window->h_scroll_bar, 0x555555);
-        painter_draw_hline(painter, window->h_scroll_bar.min_y, window->h_scroll_bar.min_x, window->h_scroll_bar.max_x, 0x333333);
+        painter_draw_rectangle(painter, window->h_scroll_bar, 0x333333);
+        painter_draw_hline(painter, window->h_scroll_bar.min_y, window->h_scroll_bar.min_x, window->h_scroll_bar.max_x, 0x444444);
         
-        painter_draw_rectangle(painter, handle, 0x333333);
-        painter_draw_rectangle_outline(painter, handle, 0x444444);
+        painter_draw_rectangle(painter, handle, 0x555555);
+        painter_draw_rectangle_outline(painter, handle, 0x888888);
     }
 
     if(v_scroll_valid && h_scroll_valid) {
