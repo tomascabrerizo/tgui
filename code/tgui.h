@@ -75,6 +75,11 @@ typedef struct TGuiWindow {
     b32 is_scrolling;
     Rectangle h_scroll_bar;
     Rectangle v_scroll_bar;
+    f32 v_scroll_offset;
+    f32 h_scroll_offset;
+    b32 v_scroll_active;
+    b32 h_scroll_active;
+    Rectangle scroll_saved_rect;
 
     struct TGuiDockerNode *parent;
     struct TGuiWindow *next;
@@ -90,7 +95,7 @@ typedef void (*TGuiWidgetInternalFunc) (struct TGuiWidget *widget, Painter *pain
 
 typedef struct TGuiWidget {
     u64 id;
-    u32 x, y, w, h;    
+    s32 x, y, w, h;    
 
     struct TGuiWindow *parent;
     struct TGuiWidget *prev;

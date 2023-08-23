@@ -220,9 +220,19 @@ void tgui_widget_free(TGuiWidget *widget)  {
 
 void tgui_window_process_widgets(TGuiWindow *window, Painter *painter) {
     TGuiWidget *widget = window->widgets->next;
+    Rectangle saved_clip = painter->clip;
     while(!clink_list_end(widget, window->widgets)) {
+        
+        if(window->is_scrolling) {
+            widget->x -= window->h_scroll_offset * (rect_width(window->scroll_saved_rect) - rect_width(window->dim));
+            widget->y -= window->v_scroll_offset * (rect_height(window->scroll_saved_rect) - rect_height(window->dim));
+        }
+
+        painter->clip = rect_intersection(window->dim, painter->clip);
         widget->internal(widget, painter);
+        painter->clip = saved_clip;
         widget = widget->next;
+    
     }
 }
 
@@ -928,6 +938,8 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
 TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll) {
     ASSERT(state.window_registry_used < TGUI_MAX_WINDOW_REGISTRY);
     TGuiWindow *window = &state.window_registry[state.window_registry_used++];
+    memset(window, 0, sizeof(TGuiWindow));
+
     tgui_docker_window_node_add_window(parent, window);
     window->name =  name;
     parent->active_window = window;
@@ -936,6 +948,7 @@ TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll) {
     clink_list_init(window->widgets);
 
     window->is_scrolling = scroll;
+
     window->h_scroll_bar = rect_set_invalid();
     window->v_scroll_bar = rect_set_invalid();
 
@@ -997,8 +1010,10 @@ void tgui_begin(f32 dt) {
         TGuiWindow *window = &state.window_registry[i];
         Rectangle window_dim = tgui_docker_get_client_rect(window->parent);
         window->dim = window_dim;
+        
         window->h_scroll_bar = rect_set_invalid();
         window->v_scroll_bar = rect_set_invalid();
+    
     }
 }
 
@@ -1020,6 +1035,7 @@ void tgui_scroll_window_recalculate_dim(TGuiWindow *window) {
     Rectangle widget_rect;
 
     widget_rect = calculate_total_widget_rect(window);
+    window->scroll_saved_rect = widget_rect;
     
     if(rect_width(widget_rect) > rect_width(window->dim)) {
         window->dim.max_y -= TGUI_SCROLL_BAR_SIZE;
@@ -1046,26 +1062,88 @@ void tgui_scroll_window_recalculate_dim(TGuiWindow *window) {
         window->h_scroll_bar = window->dim;
         window->h_scroll_bar.min_y = window->dim.max_y + 1;
         window->h_scroll_bar.max_y = window->h_scroll_bar.min_y + TGUI_SCROLL_BAR_SIZE - 1;
+    } else {
+        window->h_scroll_offset = 0;
     }
 
     if(v_bar_added) {
         window->v_scroll_bar = window->dim;
         window->v_scroll_bar.min_x = window->dim.max_x + 1;
         window->v_scroll_bar.max_x = window->v_scroll_bar.min_x + TGUI_SCROLL_BAR_SIZE - 1;
+    } else {
+        window->v_scroll_offset = 0;
     }
-
 
 }
 
 void tgui_process_scroll_window(TGuiWindow *window, Painter *painter) {
     if(!window->is_scrolling) return;
 
-    if(!rect_invalid(window->v_scroll_bar)) {
-        painter_draw_rectangle(painter, window->v_scroll_bar, 0x00ff00);
+    b32 v_scroll_valid = !rect_invalid(window->v_scroll_bar);
+    b32 h_scroll_valid = !rect_invalid(window->h_scroll_bar);
+
+    if(v_scroll_valid) {
+        
+        b32 mouse_over_bar = rect_point_overlaps(window->v_scroll_bar, input.mouse_x, input.mouse_y);
+        if(mouse_over_bar && input.mouse_button_is_down && !input.mouse_button_was_down) {
+            window->v_scroll_active = true;
+        }
+
+        if(window->v_scroll_active && !input.mouse_button_is_down) {
+            window->v_scroll_active = false;
+        }
+        
+        if(window->v_scroll_active) {
+            f32 mouse_offset = (f32)(input.mouse_y - window->v_scroll_bar.min_y)/(f32)rect_height(window->v_scroll_bar);
+            window->v_scroll_offset = CLAMP(mouse_offset, 0, 1);
+        }
+        
+        u32 handle_h = (u32)(((f32)rect_height(window->dim) / (f32)rect_height(window->scroll_saved_rect)) * rect_height(window->v_scroll_bar)); 
+
+        Rectangle handle = window->v_scroll_bar; 
+        handle.min_y += window->v_scroll_offset * (rect_height(window->v_scroll_bar) - handle_h);
+        handle.max_y = handle.min_y + handle_h - 1;
+
+        painter_draw_rectangle(painter, window->v_scroll_bar, 0x555555);
+        painter_draw_vline(painter, window->v_scroll_bar.min_x, window->v_scroll_bar.min_y, window->v_scroll_bar.max_y, 0x333333);
+        
+        painter_draw_rectangle(painter, handle, 0x333333);
+        painter_draw_rectangle_outline(painter, handle, 0x444444);
     }
 
-    if(!rect_invalid(window->h_scroll_bar)) {
-        painter_draw_rectangle(painter, window->h_scroll_bar, 0x00ff00);
+    if(h_scroll_valid) {
+
+        b32 mouse_over_bar = rect_point_overlaps(window->h_scroll_bar, input.mouse_x, input.mouse_y);
+        if(mouse_over_bar && input.mouse_button_is_down && !input.mouse_button_was_down) {
+            window->h_scroll_active = true;
+        }
+
+        if(window->h_scroll_active && !input.mouse_button_is_down) {
+            window->h_scroll_active = false;
+        }
+        
+        if(window->h_scroll_active) {
+            f32 mouse_offset = (f32)(input.mouse_x - window->h_scroll_bar.min_x)/(f32)rect_width(window->h_scroll_bar);
+            window->h_scroll_offset = CLAMP(mouse_offset, 0, 1);
+        }
+        
+        u32 handle_w = (u32)(((f32)rect_width(window->dim) / (f32)rect_width(window->scroll_saved_rect)) * rect_width(window->h_scroll_bar)); 
+
+        Rectangle handle = window->h_scroll_bar; 
+        handle.min_x += window->h_scroll_offset * (rect_width(window->h_scroll_bar) - handle_w);
+        handle.max_x = handle.min_x + handle_w - 1;
+
+        painter_draw_rectangle(painter, window->h_scroll_bar, 0x555555);
+        painter_draw_hline(painter, window->h_scroll_bar.min_y, window->h_scroll_bar.min_x, window->h_scroll_bar.max_x, 0x333333);
+        
+        painter_draw_rectangle(painter, handle, 0x333333);
+        painter_draw_rectangle_outline(painter, handle, 0x444444);
+    }
+
+    if(v_scroll_valid && h_scroll_valid) {
+        Rectangle window_rect = tgui_docker_get_client_rect(window->parent);
+        Rectangle inner_rect = (Rectangle){window->dim.max_x+1, window->dim.max_y+1, window_rect.max_x, window_rect.max_y};
+        painter_draw_rectangle(painter, inner_rect, 0x333333);
     }
 }
 
