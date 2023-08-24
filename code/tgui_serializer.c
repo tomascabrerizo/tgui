@@ -41,7 +41,7 @@ void tgui_serializer_write_node(TGuiDockerNode *node, u32 depth) {
     
         case TGUI_DOCKER_NODE_WINDOW: {
             write_to_file(depth, "window_node: {\n");
-            write_to_file(depth+1, "active_window: %d\n", node->active_window->id);
+            write_to_file(depth+1, "active_window: %d\n", node->active_window);
             write_to_file(depth+1, "window_count: %d\n", node->windows_count);
             TGuiWindow *window = node->windows->next;
             while (!clink_list_end(window, node->windows)) {
@@ -149,10 +149,8 @@ TGuiWindow *tgui_serializer_read_window(TGuiTokenizer *tokenizer, TGuiToken *tok
 
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_CLOSE_BRACE, error, "split_node must end with '}'");
     
-    UNUSED(id);
     TGuiWindow *window = tgui_window_alloc(parent, name, scroll);
     window->id = id;
-    /* This Function insert the window into the parent */
 
     return window;
 }
@@ -167,7 +165,7 @@ TGuiDockerNode *tgui_serializer_read_node_window(TGuiTokenizer *tokenizer, TGuiT
 
     tgui_serializer_expect_identifier(tokenizer, token, "active_window", error, "First member of window_node must be 'active_window'");
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_NUMBER, error, "active_window value must be a number");
-    node->active_window = &state.window_registry[token->value]; /* Conver active window in u32 id */
+    node->active_window = token->value;
     
     tgui_serializer_expect_identifier(tokenizer, token, "window_count", error, "Seconds member of window_node must be 'window_count'");
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_NUMBER, error, "window_count value must be a number");
@@ -175,7 +173,7 @@ TGuiDockerNode *tgui_serializer_read_node_window(TGuiTokenizer *tokenizer, TGuiT
     
     tgui_serializer_next_token(tokenizer, token, error);
 
-    while(token->type == TGUI_TOKEN_WINDOW) {  
+    while(token->type == TGUI_TOKEN_WINDOW && *error == false) {  
         tgui_serializer_read_window(tokenizer, token, error, node);
         tgui_serializer_next_token(tokenizer, token, error);
     }
@@ -242,7 +240,7 @@ TGuiDockerNode *tgui_serializer_read_node_root(TGuiTokenizer *tokenizer, TGuiTok
     
     tgui_serializer_next_token(tokenizer, token, error);
 
-    while(token->type == TGUI_TOKEN_NODE_WINDOW || token->type == TGUI_DOCKER_NODE_ROOT) {
+    while((token->type == TGUI_TOKEN_NODE_WINDOW || token->type == TGUI_DOCKER_NODE_ROOT) && *error == false) {
         
         if(token->type == TGUI_TOKEN_NODE_WINDOW) {
             tgui_serializer_read_node_window(tokenizer, token, error, node);
@@ -279,7 +277,7 @@ TGuiDockerNode *tgui_serializer_read_node(TGuiTokenizer *tokenizer, b32 *error, 
     TGuiDockerNode *node = NULL;
 
     TGuiToken token;
-    while(tgui_tokenizer_next_token(tokenizer, &token, error)) {
+    while(tgui_tokenizer_next_token(tokenizer, &token, error) && *error == false) {
         if(token.type == TGUI_TOKEN_NODE_ROOT) {
             node = tgui_serializer_read_node_root(tokenizer, &token, error, parent);
         } else if(token.type == TGUI_TOKEN_NODE_WINDOW) {

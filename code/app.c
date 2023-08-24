@@ -8,10 +8,10 @@
 #include <stdio.h>
 
 typedef struct App {
-    TGuiWindow *window0;
-    TGuiWindow *window1;
-    TGuiWindow *window2;
-    TGuiWindow *window3;
+    TGuiWindowHandle window0;
+    TGuiWindowHandle window1;
+    TGuiWindowHandle window2;
+    TGuiWindowHandle window3;
 
     u32 color0;
     u32 color1;
@@ -22,7 +22,6 @@ void app_initialize(App *app) {
     UNUSED(app);
     tgui_initialize();
 
-#if 0
     app->window0 = tgui_create_root_window("Window 0", false);
     app->window1 = tgui_split_window(app->window0, TGUI_SPLIT_DIR_HORIZONTAL, "Window 1", true);
     app->window2 = tgui_split_window(app->window0, TGUI_SPLIT_DIR_VERTICAL,   "Window 2", true);
@@ -45,7 +44,6 @@ void app_initialize(App *app) {
         }
         os_file_free(file);
     }
-#endif
 
 }
 

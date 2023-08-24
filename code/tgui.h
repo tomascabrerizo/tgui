@@ -85,16 +85,20 @@ typedef struct TGuiWindow {
     struct TGuiDockerNode *parent;
     struct TGuiWindow *next;
     struct TGuiWindow *prev;
+
 } TGuiWindow;
+
+typedef u32 TGuiWindowHandle;
 
 TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll);
 
-TGuiWindow *tgui_create_root_window(char *name, b32 scroll);
+TGuiWindow *tgui_window_get_from_handle(TGuiWindowHandle window);
 
-TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name, b32 scroll);
+TGuiWindowHandle tgui_create_root_window(char *name, b32 scroll);
+
+TGuiWindowHandle tgui_split_window(TGuiWindowHandle window, TGuiSplitDirection dir, char *name, b32 scroll);
 
 typedef void (*TGuiWidgetInternalFunc) (struct TGuiWidget *widget, Painter *painter);
- 
 
 typedef struct TGuiWidget {
     u64 id;
@@ -108,6 +112,16 @@ typedef struct TGuiWidget {
     
 } TGuiWidget;
 
+typedef struct TGuiAllocatedWindow {
+    TGuiWindow window;
+    struct TGuiAllocatedWindow *next;
+    struct TGuiAllocatedWindow *prev;
+} TGuiAllocatedWindow;
+
+TGuiAllocatedWindow *tgui_allocated_window_node_alloc(void);
+
+void tgui_allocated_window_node_free(TGuiAllocatedWindow *allocated_window);
+
 #define TGUI_MAX_WINDOW_REGISTRY 256
 
 typedef struct TGui {
@@ -116,8 +130,11 @@ typedef struct TGui {
     
     Arena arena;
     VirtualMap registry;
-    TGuiWindow window_registry[TGUI_MAX_WINDOW_REGISTRY];
-    u32 window_registry_used;
+    
+    u32 window_id_generator;
+
+    TGuiAllocatedWindow *allocated_windows;
+    TGuiAllocatedWindow *free_windows;
 
     u64 hot;
     u64 active;
@@ -167,7 +184,7 @@ typedef struct TGuiButton {
     b32 result;
 } TGuiButton;
 
-b32 _tgui_button(struct TGuiWindow *window, char *label, s32 x, s32 y, char *tgui_id);
+b32 _tgui_button(TGuiWindowHandle window, char *label, s32 x, s32 y, char *tgui_id);
 
 void _tgui_button_internal(TGuiWidget *widget, Painter *painter);
 
@@ -194,7 +211,7 @@ typedef struct TGuiTextInput {
 
 } TGuiTextInput;
 
-TGuiTextInput *_tgui_text_input(struct TGuiWindow *window, s32 x, s32 y, char *tgui_id);
+TGuiTextInput *_tgui_text_input(TGuiWindowHandle window, s32 x, s32 y, char *tgui_id);
 
 void _tgui_text_input_internal(TGuiWidget *widget, Painter *painter);
 
@@ -220,7 +237,7 @@ typedef struct TGuiColorPicker {
 
 void tgui_u32_color_to_hsv_color(u32 color, f32 *h, f32 *s, f32 *v);
 
-void _tgui_color_picker(struct TGuiWindow *window, s32 x, s32 y, s32 w, s32 h, u32 *color, char *tgui_id);
+void _tgui_color_picker(TGuiWindowHandle window, s32 x, s32 y, s32 w, s32 h, u32 *color, char *tgui_id);
 
 void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter);
 

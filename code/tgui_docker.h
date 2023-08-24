@@ -42,7 +42,7 @@ typedef struct TGuiDockerNode {
     struct TGuiDockerNode *childs; /* Only for root nodes   */
     
     /* Only for window nodes */
-    struct TGuiWindow *active_window;
+    u32 active_window;
     struct TGuiWindow *windows;     
     u32 windows_count;
 

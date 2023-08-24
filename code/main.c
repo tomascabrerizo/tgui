@@ -67,20 +67,6 @@ int main(void) {
     App app;
     app_initialize(&app);
     
-    /* Serializer_test */
-    {
-        OsFile *file = os_file_read_entire("./tgui.dat");
-        
-        TGuiDockerNode *node = tgui_serializer_read_docker_tree(file);
-        ASSERT(node);
-        tgui_serializer_write_docker_tree(node, "./tgui_test.dat");
-        printf("program close perfectly\n");
-
-        os_file_free(file);
-        return 0;
-
-    }
-    
     while(!os_window_should_close(window)) {
 
         os_window_poll_events(window);

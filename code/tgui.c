@@ -200,6 +200,24 @@ void tgui_font_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u
 /*       TGui Widgets     */
 /* ---------------------- */
 
+TGuiAllocatedWindow *tgui_allocated_window_node_alloc(void) {
+    TGuiAllocatedWindow *resutl = NULL;
+    if(state.free_windows) {
+        resutl = state.free_windows;
+        state.free_windows = state.free_windows->next;
+    } else {
+        resutl = arena_push_struct(&state.arena, TGuiAllocatedWindow, 8);
+    }
+    memset(resutl, 0, sizeof(TGuiAllocatedWindow));
+
+    return resutl;
+}
+
+void tgui_allocated_window_node_free(TGuiAllocatedWindow *allocated_window) {
+    allocated_window->next = state.free_windows;
+    state.free_windows = allocated_window;
+}
+
 TGuiWidget *tgui_widget_alloc(void) {
     TGuiWidget *widget = NULL;
     if(state.first_free_widget) {
@@ -324,7 +342,10 @@ void tgui_widget_alloc_into_window(u64 id, TGuiWidgetInternalFunc internal, TGui
     clink_list_insert_back(window->widgets, widget);
 }
 
-b32 _tgui_button(struct TGuiWindow *window, char *label, s32 x, s32 y, char *tgui_id) {
+b32 _tgui_button(TGuiWindowHandle handle, char *label, s32 x, s32 y, char *tgui_id) {
+
+    TGuiWindow *window = tgui_window_get_from_handle(handle);
+
     if(!tgui_window_update_widget(window)) {
         return false;
     }
@@ -441,7 +462,9 @@ static void delete_selection(TGuiTextInput *text_input) {
     }
 }
 
-TGuiTextInput *_tgui_text_input(TGuiWindow *window, s32 x, s32 y, char *tgui_id) {
+TGuiTextInput *_tgui_text_input(TGuiWindowHandle handle, s32 x, s32 y, char *tgui_id) {
+    
+    TGuiWindow *window = tgui_window_get_from_handle(handle);
 
     u64 id = tgui_get_widget_id(tgui_id);
 
@@ -812,7 +835,9 @@ static u32 colorpicker_get_color_hue(TGuiColorPicker *colorpicker) {
     return colorpicker->mini_radiant.pixels[(u32)(colorpicker->hue * (colorpicker->mini_radiant.width - 0))];
 }
 
-void _tgui_color_picker(struct TGuiWindow *window, s32 x, s32 y, s32 w, s32 h, u32 *color, char *tgui_id) {
+void _tgui_color_picker(TGuiWindowHandle handle, s32 x, s32 y, s32 w, s32 h, u32 *color, char *tgui_id) {
+
+    TGuiWindow *window = tgui_window_get_from_handle(handle);
 
     if(!tgui_window_update_widget(window)) {
         return;
@@ -938,14 +963,18 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
 /* ---------------------- */
 
 TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll) {
-    ASSERT(state.window_registry_used < TGUI_MAX_WINDOW_REGISTRY);
-    u32 window_index = state.window_registry_used++;
-    TGuiWindow *window = &state.window_registry[window_index];
+
+    TGuiAllocatedWindow *allocated_window_node = tgui_allocated_window_node_alloc();
+    clink_list_insert_back(state.allocated_windows, allocated_window_node);
+
+    TGuiWindow *window = &allocated_window_node->window;
+    ASSERT(window);
+
     memset(window, 0, sizeof(TGuiWindow));
-    window->id = window_index;
+    window->id = state.window_id_generator++;
     tgui_docker_window_node_add_window(parent, window);
     window->name =  name;
-    parent->active_window = window;
+    parent->active_window = window->id;
     
     window->widgets = tgui_widget_alloc();
     clink_list_init(window->widgets);
@@ -954,20 +983,33 @@ TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll) {
 
     window->h_scroll_bar = rect_set_invalid();
     window->v_scroll_bar = rect_set_invalid();
-
+    
     return window;
 }
 
-TGuiWindow *tgui_create_root_window(char *name, b32 scroll) {
+TGuiWindow *tgui_window_get_from_handle(TGuiWindowHandle handle) {
+
+    TGuiAllocatedWindow *allocated_window = state.allocated_windows->next;
+    while(!clink_list_end(allocated_window, state.allocated_windows)) {
+        TGuiWindow *window = &allocated_window->window;
+        if(window->id == handle) return window;
+        allocated_window = allocated_window->next;
+    }
+    ASSERT(!"Invalid code path");
+    return NULL;
+}
+
+TGuiWindowHandle tgui_create_root_window(char *name, b32 scroll) {
     TGuiDockerNode *window_node = window_node_alloc(0);
     tgui_docker_set_root_node(window_node);
     TGuiWindow *window = tgui_window_alloc(window_node, name, scroll);
     ASSERT(window);
-    return window;
+    return window->id;
 }
 
-TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *name, b32 scroll) {
-    
+TGuiWindowHandle tgui_split_window(TGuiWindowHandle handle, TGuiSplitDirection dir, char *name, b32 scroll) {
+    TGuiWindow *window = tgui_window_get_from_handle(handle);
+
     TGuiDockerNode *window_node = window->parent; 
     ASSERT(window_node->type == TGUI_DOCKER_NODE_WINDOW);
 
@@ -976,7 +1018,7 @@ TGuiWindow *tgui_split_window(TGuiWindow *window, TGuiSplitDirection dir, char *
     
     TGuiWindow *new_window = tgui_window_alloc(new_window_node, name, scroll);
     ASSERT(new_window);
-    return new_window;
+    return new_window->id;
 }
 
 /* ---------------------- */
@@ -990,6 +1032,12 @@ void tgui_initialize(void) {
     arena_initialize(&state.arena, 0, ARENA_TYPE_VIRTUAL);
     virtual_map_initialize(&state.registry);
     
+    state.window_id_generator = 0;
+
+    state.free_windows = NULL;
+    state.allocated_windows = tgui_allocated_window_node_alloc();
+    clink_list_init(state.allocated_windows);
+
     tgui_font_initilize(&state.arena);
     tgui_docker_initialize();
 }
@@ -1008,15 +1056,17 @@ void tgui_begin(f32 dt) {
     state.dt = dt;
     tgui_docker_update();
 
-    for(u32 i = 0; i < state.window_registry_used; ++i) {
-
-        TGuiWindow *window = &state.window_registry[i];
+    TGuiAllocatedWindow *allocated_window = state.allocated_windows->next;
+    while(!clink_list_end(allocated_window, state.allocated_windows)) {
+        
+        TGuiWindow *window = &allocated_window->window;
         Rectangle window_dim = tgui_docker_get_client_rect(window->parent);
         window->dim = window_dim;
         
         window->h_scroll_bar = rect_set_invalid();
         window->v_scroll_bar = rect_set_invalid();
-    
+
+        allocated_window = allocated_window->next;
     }
 }
 
@@ -1154,16 +1204,19 @@ void tgui_end(Painter *painter) {
     
     tgui_docker_root_node_draw(painter);
 
-    for(u32 i = 0; i < state.window_registry_used; ++i) {
-        TGuiWindow *window = &state.window_registry[i];
+    TGuiAllocatedWindow *allocated_window = state.allocated_windows->next;
+    while(!clink_list_end(allocated_window, state.allocated_windows)) { 
+
+        TGuiWindow *window = &allocated_window->window;
 
         tgui_scroll_window_recalculate_dim(window);
         tgui_window_process_widgets(window, painter);
         tgui_process_scroll_window(window, painter);
 
         tgui_window_free_widgets(window);
+        
+        allocated_window = allocated_window->next;
     }
 
     tgui_docker_draw_preview(painter);
-
 }

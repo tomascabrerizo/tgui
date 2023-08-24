@@ -386,6 +386,11 @@ static void window_grabbing_preview(void) {
     }
 }
 
+static TGuiWindow *tgui_window_node_get_active_window(TGuiDockerNode *window_node) {
+    ASSERT(window_node->type == TGUI_DOCKER_NODE_WINDOW);
+    return tgui_window_get_from_handle(window_node->active_window);
+}
+
 static void window_grabbing_start(TGuiDockerNode *window) {
     
     TGuiDockerNode *parent = window->parent;
@@ -396,10 +401,11 @@ static void window_grabbing_start(TGuiDockerNode *window) {
     if(tgui_docker_window_has_tabs(window)) {
         
         TGuiWindow *w = get_window_from_mouse_over_tab(window);
-        if(window->active_window == w) {
-            window->active_window = w->prev;
-            if(window->active_window == window->windows) {
-                window->active_window = window->active_window->prev;
+        TGuiWindow *active_window = tgui_window_node_get_active_window(window);
+        if(active_window == w) {
+            active_window = w->prev;
+            if(active_window == window->windows) {
+                active_window = active_window->prev;
             }
         }
 
@@ -469,7 +475,7 @@ static void window_grabbing_end(TGuiDockerNode *node) {
                 TGuiWindow *to_move = window;
                 window = window->next;
                 tgui_docker_window_node_add_window(mouse_over_node, to_move);
-                mouse_over_node->active_window = to_move;
+                mouse_over_node->active_window = to_move->id;
             }
              
             node_free(node);
@@ -607,8 +613,9 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
                 s32 label_y = tab_rect.min_y + rect_height(tab_rect) / 2 - rect_height(label_rect) / 2;
                 tgui_font_draw_text(painter, label_x, label_y, label, strlen(label), 0xffffff);
                 
-                if(window == node->active_window) {
-                    painter_draw_rectangle_outline(painter, calculate_window_tab_rect(node->active_window), 0x999999);
+                if(window->id == node->active_window) {
+                    TGuiWindow *active_window = tgui_window_node_get_active_window(node);
+                    painter_draw_rectangle_outline(painter, calculate_window_tab_rect(active_window), 0x999999);
                 }
 
                 window = window->next;
@@ -727,7 +734,7 @@ void tgui_docker_update(void) {
     if(docker.active_node && docker.active_node->type == TGUI_DOCKER_NODE_WINDOW) {
 
         TGuiWindow *w = get_window_from_mouse_over_tab(docker.active_node);
-        docker.active_node->active_window = w;
+        docker.active_node->active_window = w->id;
 
         if(!docker.grabbing_window_start && !docker.grabbing_window) {
             if(!input.mouse_button_is_down) {
@@ -781,7 +788,7 @@ b32 tgui_docker_window_is_visible(TGuiDockerNode *window_node, TGuiWindow *windo
         return false;
     }
     
-    if(window_node->active_window != window) {
+    if(window_node->active_window != window->id) {
         return false;
     }
 
