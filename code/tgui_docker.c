@@ -91,6 +91,7 @@ void node_and_allocatd_windows_free(TGuiDockerNode *node) {
     } else if(node->type == TGUI_DOCKER_NODE_WINDOW) {
         TGuiWindow *window = node->windows->next;
         while(!clink_list_end(window, node->windows)) {
+            clink_list_remove(window->container);
             tgui_allocated_window_node_free(window->container);
             window = window->next;
         }

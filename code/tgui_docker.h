@@ -10,6 +10,7 @@
 #define MENU_BAR_HEIGHT 20
 
 struct TGuiWindow;
+struct TGuiAllocatedWindow;
 
 typedef enum TGuiDockerNodeType {
     TGUI_DOCKER_NODE_ROOT = 0,
@@ -43,7 +44,7 @@ typedef struct TGuiDockerNode {
     
     /* Only for window nodes */
     u32 active_window;
-    struct TGuiWindow *windows;     
+    struct TGuiWindow *windows;
     u32 windows_count;
 
 } TGuiDockerNode;

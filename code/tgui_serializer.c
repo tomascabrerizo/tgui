@@ -151,7 +151,6 @@ TGuiWindow *tgui_serializer_read_window(TGuiTokenizer *tokenizer, TGuiToken *tok
     
     TGuiWindow *window = tgui_window_alloc(parent, name, scroll);
     window->id = id;
-    parent->active_window = id;
 
     return window;
 }
@@ -166,7 +165,7 @@ TGuiDockerNode *tgui_serializer_read_node_window(TGuiTokenizer *tokenizer, TGuiT
 
     tgui_serializer_expect_identifier(tokenizer, token, "active_window", error, "First member of window_node must be 'active_window'");
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_NUMBER, error, "active_window value must be a number");
-    node->active_window = token->value;
+    u32 active_window = token->value;
     
     tgui_serializer_expect_identifier(tokenizer, token, "window_count", error, "Seconds member of window_node must be 'window_count'");
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_NUMBER, error, "window_count value must be a number");
@@ -182,6 +181,8 @@ TGuiDockerNode *tgui_serializer_read_node_window(TGuiTokenizer *tokenizer, TGuiT
     if(window_count_test != node->windows_count) {
         tgui_serializer_error(error, token, "We area specting more windows");
     }
+    
+    node->active_window = active_window;
 
     if(token->type != TGUI_TOKEN_CLOSE_BRACE) {
         tgui_serializer_error(error, token, "window must end with '}'");

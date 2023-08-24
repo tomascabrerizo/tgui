@@ -212,13 +212,11 @@ TGuiAllocatedWindow *tgui_allocated_window_node_alloc(void) {
     ASSERT(result);
     memset(result, 0, sizeof(TGuiAllocatedWindow));
     result->window.container = result;
-    clink_list_insert_back(state.allocated_windows, result);
 
     return result;
 }
 
 void tgui_allocated_window_node_free(TGuiAllocatedWindow *allocated_window) {
-    clink_list_remove(allocated_window);
     allocated_window->next = state.free_windows;
     state.free_windows = allocated_window;
 }
@@ -970,6 +968,7 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
 TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll) {
 
     TGuiAllocatedWindow *allocated_window_node = tgui_allocated_window_node_alloc();
+    clink_list_insert_back(state.allocated_windows, allocated_window_node);
 
     TGuiWindow *window = &allocated_window_node->window;
     ASSERT(window);
@@ -1038,7 +1037,7 @@ void tgui_initialize(void) {
     state.window_id_generator = 0;
 
     state.free_windows = NULL;
-    state.allocated_windows = arena_push_struct(&state.arena, TGuiAllocatedWindow, 8);
+    state.allocated_windows = tgui_allocated_window_node_alloc();
     clink_list_init(state.allocated_windows);
 
     tgui_font_initilize(&state.arena);
