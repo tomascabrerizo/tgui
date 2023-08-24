@@ -139,7 +139,7 @@ static void tgui_node_print(TGuiDockerNode *node) {
 
 static inline void calculate_mouse_rel_x_y(TGuiDockerNode *split, TGuiDockerNode *parent, f32 *x, f32 *y) {
     
-    f32 epsilon = 0.02;
+    f32 epsilon = 0.05;
 
     f32 clamp_max = 1.0f;
     f32 clamp_min = 0.0f;

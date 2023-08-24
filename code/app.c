@@ -1,5 +1,6 @@
 #include "common.h"
 #include "memory.h"
+#include "os.h"
 #include "painter.h"
 #include "tgui.h"
 #include "tgui_docker.h"
@@ -26,7 +27,25 @@ void app_initialize(App *app) {
     app->window2 = tgui_split_window(app->window0, TGUI_SPLIT_DIR_VERTICAL,   "Window 2", true);
     app->window3 = tgui_split_window(app->window1, TGUI_SPLIT_DIR_HORIZONTAL, "Window 3", false);
 
-    tgui_serializer_write_docker_tree();
+    OsFile *file = os_file_read_entire("tgui.dat");
+    
+    if(file != NULL) {
+        b32 error;
+        TGuiToken token;
+        TGuiTokenizer tokenizer;
+        tgui_tokenizer_start(&tokenizer, file);
+        while(tgui_tokenizer_next_token(&tokenizer, &token, &error)) {
+            printf("------------------\n");
+            tgui_token_print(&token);
+        }
+
+        if(error) {
+            printf("Error at line: %d, col: %d\n", tokenizer.current_line, tokenizer.current_col);
+        }
+        os_file_free(file);
+    }
+
+
 }
 
 void app_terminate(App *app) {

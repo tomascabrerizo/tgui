@@ -46,18 +46,14 @@ void os_terminate(void) {
        File Manager 
    ------------------------- */
 
-typedef struct OsFile {
-    void *data;
-    u64 size;
-} OsFile;
-
 OsFile *os_file_read_entire(const char *path) {
     OsFile *result = malloc(sizeof(OsFile));
 
     FILE *file = fopen((char *)path, "rb");
     if(!file) {
         printf("Cannot load file: %s\n", path);
-        os_error();
+        free(result);
+        return NULL;
     }
     
     fseek(file, 0, SEEK_END);

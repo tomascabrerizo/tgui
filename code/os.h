@@ -89,6 +89,19 @@ typedef enum OsCursor {
 
 void os_set_cursor(struct OsWindow *window, OsCursor cursor);
 
+/* -------------------------
+       File Manager 
+   ------------------------- */
+
+typedef struct OsFile {
+    void *data;
+    u64 size;
+} OsFile;
+
+OsFile *os_file_read_entire(const char *path);
+
+void os_file_free(OsFile *file);
+
 
 /* -------------------------
         Font Rasterizer 

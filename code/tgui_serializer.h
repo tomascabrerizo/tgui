@@ -2,7 +2,52 @@
 #define _TGUI_SERIALIZER_ 
 
 #include "common.h"
+struct OsFile;
 
 void tgui_serializer_write_docker_tree(void);
+
+typedef enum TGuiTokenType {
+    TGUI_TOKEN_NODE_ROOT,
+    TGUI_TOKEN_NODE_WINDOW,
+    TGUI_TOKEN_NODE_SPLIT,
+
+    TGUI_TOKEN_WINDOW,
+
+    TGUI_TOKEN_NUMBER,
+    TGUI_TOKEN_STRING,
+    TGUI_TOKEN_IDENTIFIER,
+
+    TGUI_TOKEN_OPEN_BRACE,
+    TGUI_TOKEN_CLOSE_BRACE,
+    TGUI_TOKEN_DOUBLE_DOT,
+} TGuiTokenType;
+
+typedef struct TGuiToken {
+    TGuiTokenType type;
+
+    char *start;
+    char *end;
+    
+    u32 line;
+    u32 col;
+
+} TGuiToken;
+
+typedef struct TGuiTokenizer {
+    char *current;
+    char *end;
+
+    u32 current_line;
+    u32 current_col;
+
+} TGuiTokenizer;
+
+#define TGUI_START_LINE_AND_COL 1
+
+void tgui_tokenizer_start(TGuiTokenizer *tokenizer, struct OsFile *file);
+
+b32 tgui_tokenizer_next_token(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error);
+
+void tgui_token_print(TGuiToken *token);
 
 #endif /* _TGUI_SERIALIZER_ */
