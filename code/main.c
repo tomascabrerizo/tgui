@@ -16,6 +16,7 @@
 #include "tgui_serializer.c"
 
 #include "app.c"
+#include <stdio.h>
 
 static struct OsBackbuffer *realloc_backbuffer(struct OsBackbuffer *backbuffer, struct OsWindow *window, s32 w, s32 h) {
     
@@ -62,9 +63,23 @@ int main(void) {
     input->window_resize = true;
     input->resize_w = window_w;
     input->resize_h = window_h;
-    
+
     App app;
     app_initialize(&app);
+    
+    /* Serializer_test */
+    {
+        OsFile *file = os_file_read_entire("./tgui.dat");
+        
+        TGuiDockerNode *node = tgui_serializer_read_docker_tree(file);
+        ASSERT(node);
+        tgui_serializer_write_docker_tree(node, "./tgui_test.dat");
+        printf("program close perfectly\n");
+
+        os_file_free(file);
+        return 0;
+
+    }
     
     while(!os_window_should_close(window)) {
 

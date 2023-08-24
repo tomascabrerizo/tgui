@@ -19,9 +19,10 @@ typedef struct App {
 } App;
 
 void app_initialize(App *app) {
-
+    UNUSED(app);
     tgui_initialize();
 
+#if 0
     app->window0 = tgui_create_root_window("Window 0", false);
     app->window1 = tgui_split_window(app->window0, TGUI_SPLIT_DIR_HORIZONTAL, "Window 1", true);
     app->window2 = tgui_split_window(app->window0, TGUI_SPLIT_DIR_VERTICAL,   "Window 2", true);
@@ -44,14 +45,17 @@ void app_initialize(App *app) {
         }
         os_file_free(file);
     }
-
+#endif
 
 }
+
+
+extern TGuiDocker docker;
 
 void app_terminate(App *app) {
     UNUSED(app);
 
-    tgui_serializer_write_docker_tree();
+    tgui_serializer_write_docker_tree(docker.root, "./tgui.dat");
 
     tgui_terminate();
 }
