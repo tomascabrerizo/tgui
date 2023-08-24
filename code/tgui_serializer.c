@@ -151,6 +151,7 @@ TGuiWindow *tgui_serializer_read_window(TGuiTokenizer *tokenizer, TGuiToken *tok
     
     TGuiWindow *window = tgui_window_alloc(parent, name, scroll);
     window->id = id;
+    parent->active_window = id;
 
     return window;
 }

@@ -5,6 +5,7 @@
 #include "painter.h"
 #include "os.h"
 #include "tgui_docker.h"
+#include "tgui_serializer.h"
 #include <stdio.h>
 
 /* -------------------------- */
@@ -201,19 +202,23 @@ void tgui_font_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u
 /* ---------------------- */
 
 TGuiAllocatedWindow *tgui_allocated_window_node_alloc(void) {
-    TGuiAllocatedWindow *resutl = NULL;
+    TGuiAllocatedWindow *result = NULL;
     if(state.free_windows) {
-        resutl = state.free_windows;
+        result = state.free_windows;
         state.free_windows = state.free_windows->next;
     } else {
-        resutl = arena_push_struct(&state.arena, TGuiAllocatedWindow, 8);
+        result = arena_push_struct(&state.arena, TGuiAllocatedWindow, 8);
     }
-    memset(resutl, 0, sizeof(TGuiAllocatedWindow));
+    ASSERT(result);
+    memset(result, 0, sizeof(TGuiAllocatedWindow));
+    result->window.container = result;
+    clink_list_insert_back(state.allocated_windows, result);
 
-    return resutl;
+    return result;
 }
 
 void tgui_allocated_window_node_free(TGuiAllocatedWindow *allocated_window) {
+    clink_list_remove(allocated_window);
     allocated_window->next = state.free_windows;
     state.free_windows = allocated_window;
 }
@@ -965,12 +970,10 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
 TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll) {
 
     TGuiAllocatedWindow *allocated_window_node = tgui_allocated_window_node_alloc();
-    clink_list_insert_back(state.allocated_windows, allocated_window_node);
 
     TGuiWindow *window = &allocated_window_node->window;
     ASSERT(window);
 
-    memset(window, 0, sizeof(TGuiWindow));
     window->id = state.window_id_generator++;
     tgui_docker_window_node_add_window(parent, window);
     window->name =  name;
@@ -1035,7 +1038,7 @@ void tgui_initialize(void) {
     state.window_id_generator = 0;
 
     state.free_windows = NULL;
-    state.allocated_windows = tgui_allocated_window_node_alloc();
+    state.allocated_windows = arena_push_struct(&state.arena, TGuiAllocatedWindow, 8);
     clink_list_init(state.allocated_windows);
 
     tgui_font_initilize(&state.arena);
@@ -1043,6 +1046,8 @@ void tgui_initialize(void) {
 }
 
 void tgui_terminate(void) {
+
+    tgui_serializer_write_docker_tree(docker.root, "./tgui.dat");
     
     tgui_docker_terminate();
     tgui_font_terminate();
@@ -1050,6 +1055,26 @@ void tgui_terminate(void) {
     virtual_map_terminate(&state.registry);
     arena_terminate(&state.arena);
     memset(&state, 0, sizeof(TGui));
+}
+
+static b32 tgui_node_tree_valid(TGuiDockerNode *node) {
+    UNUSED(node);
+    return true;
+}
+
+void tgui_try_to_load_data_file(void) {
+    OsFile *file = os_file_read_entire("./tgui.dat");
+    if(file) {
+        TGuiDockerNode *saved_root = tgui_serializer_read_docker_tree(file);
+
+        if(tgui_node_tree_valid(saved_root)) {
+            node_and_allocatd_windows_free(docker.root);
+            docker.root = saved_root;
+        } else {
+            node_and_allocatd_windows_free(saved_root);
+        }
+        os_file_free(file);
+    }
 }
 
 void tgui_begin(f32 dt) {

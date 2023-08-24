@@ -73,12 +73,40 @@ TGuiDockerNode *split_node_alloc(TGuiDockerNode *parent, f32 position) {
     return node;
 }
 
+
+void node_and_allocatd_windows_free(TGuiDockerNode *node) {
+
+    if(node->type == TGUI_DOCKER_NODE_ROOT) {
+        TGuiDockerNode *dummy = node->childs;
+
+        TGuiDockerNode *child = node->childs->next;
+        while(!clink_list_end(child, node->childs)) {
+            TGuiDockerNode *to_free = child;
+            child = child->next;
+            node_and_allocatd_windows_free(to_free);
+        }
+        
+        dummy->next = docker.first_free_node;
+        docker.first_free_node = dummy;
+    } else if(node->type == TGUI_DOCKER_NODE_WINDOW) {
+        TGuiWindow *window = node->windows->next;
+        while(!clink_list_end(window, node->windows)) {
+            tgui_allocated_window_node_free(window->container);
+            window = window->next;
+        }
+
+    }
+
+    node->next = docker.first_free_node;
+    docker.first_free_node = node;
+}
+
 void node_free(TGuiDockerNode *node) {
     
     if(node->type == TGUI_DOCKER_NODE_ROOT) {
         TGuiDockerNode *dummy = node->childs;
 
-        TGuiDockerNode *child = node->childs;
+        TGuiDockerNode *child = node->childs->next;
         while(!clink_list_end(child, node->childs)) {
             TGuiDockerNode *to_free = child;
             child = child->next;
@@ -87,7 +115,6 @@ void node_free(TGuiDockerNode *node) {
         
         dummy->next = docker.first_free_node;
         docker.first_free_node = dummy;
-
     }
 
     node->next = docker.first_free_node;
@@ -403,9 +430,10 @@ static void window_grabbing_start(TGuiDockerNode *window) {
         TGuiWindow *w = get_window_from_mouse_over_tab(window);
         TGuiWindow *active_window = tgui_window_node_get_active_window(window);
         if(active_window == w) {
-            active_window = w->prev;
-            if(active_window == window->windows) {
-                active_window = active_window->prev;
+            if(w->prev == window->windows) {
+                window->active_window = window->windows->prev->id;
+            } else {
+                window->active_window = w->prev->id;
             }
         }
 
@@ -442,6 +470,8 @@ static void window_grabbing_start(TGuiDockerNode *window) {
         TGuiDockerNode *child = parent->childs->next;
         if(clink_list_first(child, parent->childs) && clink_list_last(child, parent->childs)) {
             
+            clink_list_remove(child);
+            
             if(parent == docker.root) {
                 tgui_docker_set_root_node(child);
                 node_free(parent);
@@ -449,7 +479,6 @@ static void window_grabbing_start(TGuiDockerNode *window) {
             } else {
                 child->parent = parent->parent;
 
-                clink_list_remove(child);
                 clink_list_insert_front(parent, child);
                 clink_list_remove(parent);
                 node_free(parent);
@@ -681,7 +710,7 @@ void docker_node_print(TGuiDockerNode *node) {
 static void docker_update_active_node(void) {
 
     if(docker.active_node) return;
-
+    
     TGuiDockerNode *mouse_over_node = get_node_in_position(docker.root, input.mouse_x, input.mouse_y);
     if(!mouse_over_node) return;
 

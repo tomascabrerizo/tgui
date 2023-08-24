@@ -65,6 +65,8 @@ typedef struct TGuiBitmap {
 
 #define TGUI_SCROLL_BAR_SIZE 20
 
+struct TGuiAllocatedWindow;
+
 typedef struct TGuiWindow {
     
     u32 id;
@@ -85,6 +87,8 @@ typedef struct TGuiWindow {
     struct TGuiDockerNode *parent;
     struct TGuiWindow *next;
     struct TGuiWindow *prev;
+
+    struct TGuiAllocatedWindow *container;
 
 } TGuiWindow;
 
@@ -154,6 +158,8 @@ void tgui_terminate(void);
 void tgui_begin(f32 dt);
 
 void tgui_end(Painter *painter);
+
+void tgui_try_to_load_data_file(void);
 
 TGuiInput *tgui_get_input(void);
 
