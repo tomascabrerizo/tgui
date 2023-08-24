@@ -67,6 +67,7 @@ typedef struct TGuiBitmap {
 
 typedef struct TGuiWindow {
     
+    u32 id;
     Rectangle dim;
     char *name;
     
@@ -85,6 +86,8 @@ typedef struct TGuiWindow {
     struct TGuiWindow *next;
     struct TGuiWindow *prev;
 } TGuiWindow;
+
+TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll);
 
 TGuiWindow *tgui_create_root_window(char *name, b32 scroll);
 

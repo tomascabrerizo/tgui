@@ -939,9 +939,10 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
 
 TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll) {
     ASSERT(state.window_registry_used < TGUI_MAX_WINDOW_REGISTRY);
-    TGuiWindow *window = &state.window_registry[state.window_registry_used++];
+    u32 window_index = state.window_registry_used++;
+    TGuiWindow *window = &state.window_registry[window_index];
     memset(window, 0, sizeof(TGuiWindow));
-
+    window->id = window_index;
     tgui_docker_window_node_add_window(parent, window);
     window->name =  name;
     parent->active_window = window;
