@@ -53,9 +53,9 @@ TGuiDockerNode *window_node_alloc(TGuiDockerNode *parent) {
     node->type = TGUI_DOCKER_NODE_WINDOW;
     node->parent = parent;
 
-    TGuiWindow *dummy = arena_push_struct(&state.arena, TGuiWindow, 8);
-    clink_list_init(dummy);
-    node->windows = dummy;
+    node->dummy_allocated_window = tgui_allocated_window_node_alloc();
+    node->windows = &node->dummy_allocated_window->window;
+    clink_list_init(node->windows);
     node->windows_count = 0;
 
     return node;
@@ -73,35 +73,6 @@ TGuiDockerNode *split_node_alloc(TGuiDockerNode *parent, f32 position) {
     return node;
 }
 
-
-void node_and_allocatd_windows_free(TGuiDockerNode *node) {
-
-    if(node->type == TGUI_DOCKER_NODE_ROOT) {
-        TGuiDockerNode *dummy = node->childs;
-
-        TGuiDockerNode *child = node->childs->next;
-        while(!clink_list_end(child, node->childs)) {
-            TGuiDockerNode *to_free = child;
-            child = child->next;
-            node_and_allocatd_windows_free(to_free);
-        }
-        
-        dummy->next = docker.first_free_node;
-        docker.first_free_node = dummy;
-    } else if(node->type == TGUI_DOCKER_NODE_WINDOW) {
-        TGuiWindow *window = node->windows->next;
-        while(!clink_list_end(window, node->windows)) {
-            clink_list_remove(window->container);
-            tgui_allocated_window_node_free(window->container);
-            window = window->next;
-        }
-
-    }
-
-    node->next = docker.first_free_node;
-    docker.first_free_node = node;
-}
-
 void node_free(TGuiDockerNode *node) {
     
     if(node->type == TGUI_DOCKER_NODE_ROOT) {
@@ -116,6 +87,8 @@ void node_free(TGuiDockerNode *node) {
         
         dummy->next = docker.first_free_node;
         docker.first_free_node = dummy;
+    } else if(node->type == TGUI_DOCKER_NODE_WINDOW) {
+        tgui_allocated_window_node_free(node->dummy_allocated_window);
     }
 
     node->next = docker.first_free_node;
@@ -371,8 +344,33 @@ Rectangle tgui_docker_get_client_rect(TGuiDockerNode *window) {
     return client_rect;
 }
 
-void tgui_docker_window_node_add_window(TGuiDockerNode *window_node, struct TGuiWindow *window) {
+static TGuiWindow *get_window_from_tab(TGuiDockerNode *window_node, u32 pos_x) {
+    Rectangle menu_bar_rect = calculate_menu_bar_rect(window_node);
+    u32 width = rect_width(menu_bar_rect) / window_node->windows_count;
+
+    u32 index = CLAMP(((pos_x - menu_bar_rect.min_x) / width), 0, window_node->windows_count - 1);
+    
+    u32 current_index = 0;
+    TGuiWindow *window = window_node->windows->next;
+    while(!clink_list_end(window, window_node->windows) && (current_index < index)) {
+        window = window->next;
+        current_index += 1;
+    }
+    
+    return window;
+}
+
+void tgui_docker_window_node_add_window(TGuiDockerNode *window_node, struct TGuiWindow *window) { 
     clink_list_insert_back(window_node->windows, window)
+    window_node->windows_count += 1;
+
+    window->parent = window_node;
+}
+
+
+void tgui_docker_window_node_add_window_at_mouse_pos(TGuiDockerNode *window_node, struct TGuiWindow *window) { 
+    TGuiWindow *window_at_mouse = get_window_from_tab(window_node, input.mouse_x);
+    clink_list_insert_back(window_at_mouse, window)
     window_node->windows_count += 1;
 
     window->parent = window_node;
@@ -389,23 +387,6 @@ void tgui_docker_window_node_remove_window(struct TGuiWindow *window) {
 b32 tgui_docker_window_has_tabs(TGuiDockerNode *window_node) {
     return window_node->windows_count > 1;
 }
-
-TGuiWindow *get_window_from_mouse_over_tab(TGuiDockerNode *window_node) {
-    Rectangle menu_bar_rect = calculate_menu_bar_rect(window_node);
-    u32 width = rect_width(menu_bar_rect) / window_node->windows_count;
-
-    u32 index = CLAMP(((input.mouse_x - menu_bar_rect.min_x) / width), 0, window_node->windows_count - 1);
-    
-    u32 current_index = 0;
-    TGuiWindow *window = window_node->windows->next;
-    while(!clink_list_end(window, window_node->windows) && (current_index < index)) {
-        window = window->next;
-        current_index += 1;
-    }
-    
-    return window;
-}
-
 
 static void window_grabbing_preview(void) {
     TGuiDockerNode *mouse_over_node = get_node_in_position(docker.root, input.mouse_x, input.mouse_y);
@@ -428,11 +409,11 @@ static void window_grabbing_start(TGuiDockerNode *window) {
 
     if(tgui_docker_window_has_tabs(window)) {
         
-        TGuiWindow *w = get_window_from_mouse_over_tab(window);
+        TGuiWindow *w = get_window_from_tab(window, docker.saved_mouse_x);
         TGuiWindow *active_window = tgui_window_node_get_active_window(window);
         if(active_window == w) {
             if(w->prev == window->windows) {
-                window->active_window = window->windows->prev->id;
+                window->active_window = w->prev->prev->id;
             } else {
                 window->active_window = w->prev->id;
             }
@@ -504,7 +485,7 @@ static void window_grabbing_end(TGuiDockerNode *node) {
             while(!clink_list_end(window, node->windows)) {
                 TGuiWindow *to_move = window;
                 window = window->next;
-                tgui_docker_window_node_add_window(mouse_over_node, to_move);
+                tgui_docker_window_node_add_window_at_mouse_pos(mouse_over_node, to_move);
                 mouse_over_node->active_window = to_move->id;
             }
              
@@ -753,7 +734,6 @@ void tgui_docker_update(void) {
         input.window_resize = false;
     }
 
-
     docker_update_active_node();
 
     if(docker.active_node && docker.active_node->type == TGUI_DOCKER_NODE_SPLIT) {
@@ -763,7 +743,7 @@ void tgui_docker_update(void) {
 
     if(docker.active_node && docker.active_node->type == TGUI_DOCKER_NODE_WINDOW) {
 
-        TGuiWindow *w = get_window_from_mouse_over_tab(docker.active_node);
+        TGuiWindow *w = get_window_from_tab(docker.active_node, input.mouse_x);
         docker.active_node->active_window = w->id;
 
         if(!docker.grabbing_window_start && !docker.grabbing_window) {
@@ -774,7 +754,7 @@ void tgui_docker_update(void) {
                 s32 dy = ((s32)input.mouse_y - (s32)docker.saved_mouse_y);
                 u32 distance_sqr = dx*dx + dy*dy;
                 
-                if(distance_sqr >= 64*64) {
+                if(distance_sqr >= 32*32) {
                     docker.grabbing_window_start = true;
                 }
 

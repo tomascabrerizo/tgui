@@ -88,13 +88,11 @@ typedef struct TGuiWindow {
     struct TGuiWindow *next;
     struct TGuiWindow *prev;
 
-    struct TGuiAllocatedWindow *container;
-
 } TGuiWindow;
 
 typedef u32 TGuiWindowHandle;
 
-TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll);
+TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll, struct TGuiAllocatedWindow *list);
 
 TGuiWindow *tgui_window_get_from_handle(TGuiWindowHandle window);
 
@@ -160,6 +158,8 @@ void tgui_begin(f32 dt);
 void tgui_end(Painter *painter);
 
 void tgui_try_to_load_data_file(void);
+
+void tgui_free_allocated_windows_list(struct TGuiAllocatedWindow *list);
 
 TGuiInput *tgui_get_input(void);
 

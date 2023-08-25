@@ -10,7 +10,7 @@ struct TGuiDockerNode;
 
 void tgui_serializer_write_docker_tree(TGuiDockerNode *node, char *filename);
 
-struct TGuiDockerNode *tgui_serializer_read_docker_tree(OsFile *file);
+void tgui_serializer_read_docker_tree(OsFile *file, struct TGuiDockerNode **node, TGuiAllocatedWindow *list);
 
 typedef enum TGuiTokenType {
     TGUI_TOKEN_NODE_ROOT,

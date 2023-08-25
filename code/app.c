@@ -12,6 +12,7 @@ typedef struct App {
     TGuiWindowHandle window1;
     TGuiWindowHandle window2;
     TGuiWindowHandle window3;
+    TGuiWindowHandle window4;
 
     u32 color0;
     u32 color1;
@@ -26,6 +27,7 @@ void app_initialize(App *app) {
     app->window1 = tgui_split_window(app->window0, TGUI_SPLIT_DIR_HORIZONTAL, "Window 1", true);
     app->window2 = tgui_split_window(app->window0, TGUI_SPLIT_DIR_VERTICAL,   "Window 2", true);
     app->window3 = tgui_split_window(app->window1, TGUI_SPLIT_DIR_HORIZONTAL, "Window 3", false);
+    app->window4 = tgui_split_window(app->window3, TGUI_SPLIT_DIR_VERTICAL,   "Window 4", true);
 
     tgui_try_to_load_data_file();
 }

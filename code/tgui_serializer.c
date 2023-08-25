@@ -129,7 +129,7 @@ char *tgui_token_to_c_string(TGuiToken *token) {
     return c_str;
 }
 
-TGuiWindow *tgui_serializer_read_window(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error, TGuiDockerNode *parent) {
+TGuiWindow *tgui_serializer_read_window(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error, TGuiDockerNode *parent, TGuiAllocatedWindow *list) {
     if(*error) return NULL;
 
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_DOUBLE_DOT, error, "Identifier must be follow by ':'");
@@ -149,13 +149,13 @@ TGuiWindow *tgui_serializer_read_window(TGuiTokenizer *tokenizer, TGuiToken *tok
 
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_CLOSE_BRACE, error, "split_node must end with '}'");
     
-    TGuiWindow *window = tgui_window_alloc(parent, name, scroll);
+    TGuiWindow *window = tgui_window_alloc(parent, name, scroll, list);
     window->id = id;
 
     return window;
 }
 
-TGuiDockerNode *tgui_serializer_read_node_window(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error, TGuiDockerNode *parent) {
+TGuiDockerNode *tgui_serializer_read_node_window(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error, TGuiDockerNode *parent, TGuiAllocatedWindow *list) {
     if(*error) return NULL;
     
     TGuiDockerNode *node = window_node_alloc(parent);
@@ -174,7 +174,7 @@ TGuiDockerNode *tgui_serializer_read_node_window(TGuiTokenizer *tokenizer, TGuiT
     tgui_serializer_next_token(tokenizer, token, error);
 
     while(token->type == TGUI_TOKEN_WINDOW && *error == false) {  
-        tgui_serializer_read_window(tokenizer, token, error, node);
+        tgui_serializer_read_window(tokenizer, token, error, node, list);
         tgui_serializer_next_token(tokenizer, token, error);
     }
 
@@ -228,7 +228,7 @@ TGuiDockerNode *tgui_serializer_read_node_split(TGuiTokenizer *tokenizer, TGuiTo
     return node;
 }
 
-TGuiDockerNode *tgui_serializer_read_node_root(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error, TGuiDockerNode *parent) {
+TGuiDockerNode *tgui_serializer_read_node_root(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error, TGuiDockerNode *parent, TGuiAllocatedWindow *list) {
     if(*error) return NULL;
 
     TGuiDockerNode *node = root_node_alloc(parent);
@@ -245,9 +245,9 @@ TGuiDockerNode *tgui_serializer_read_node_root(TGuiTokenizer *tokenizer, TGuiTok
     while((token->type == TGUI_TOKEN_NODE_WINDOW || token->type == TGUI_DOCKER_NODE_ROOT) && *error == false) {
         
         if(token->type == TGUI_TOKEN_NODE_WINDOW) {
-            tgui_serializer_read_node_window(tokenizer, token, error, node);
+            tgui_serializer_read_node_window(tokenizer, token, error, node, list);
         } else if(token->type == TGUI_TOKEN_NODE_ROOT) {
-            tgui_serializer_read_node_root(tokenizer, token, error, node);
+            tgui_serializer_read_node_root(tokenizer, token, error, node, list);
         }
         
         tgui_serializer_next_token(tokenizer, token, error);
@@ -275,15 +275,15 @@ TGuiDockerNode *tgui_serializer_read_node_root(TGuiTokenizer *tokenizer, TGuiTok
     return node;
 }
 
-TGuiDockerNode *tgui_serializer_read_node(TGuiTokenizer *tokenizer, b32 *error, TGuiDockerNode *parent) {
+TGuiDockerNode *tgui_serializer_read_node(TGuiTokenizer *tokenizer, b32 *error, TGuiDockerNode *parent, TGuiAllocatedWindow *list) {
     TGuiDockerNode *node = NULL;
 
     TGuiToken token;
     while(tgui_tokenizer_next_token(tokenizer, &token, error) && *error == false) {
         if(token.type == TGUI_TOKEN_NODE_ROOT) {
-            node = tgui_serializer_read_node_root(tokenizer, &token, error, parent);
+            node = tgui_serializer_read_node_root(tokenizer, &token, error, parent, list);
         } else if(token.type == TGUI_TOKEN_NODE_WINDOW) {
-            node = tgui_serializer_read_node_window(tokenizer, &token, error, parent);
+            node = tgui_serializer_read_node_window(tokenizer, &token, error, parent, list);
         } else {
             *error = true;
             return NULL;
@@ -294,19 +294,23 @@ TGuiDockerNode *tgui_serializer_read_node(TGuiTokenizer *tokenizer, b32 *error, 
 
 }
 
-struct TGuiDockerNode *tgui_serializer_read_docker_tree(OsFile *file) {
+void tgui_serializer_read_docker_tree(OsFile *file, struct TGuiDockerNode **node, TGuiAllocatedWindow *list) {
     b32 serializer_error = false;
     
+    ASSERT(list);
+    clink_list_init(list);
+
     TGuiToken token;
     TGuiTokenizer tokenizer;
     tgui_tokenizer_start(&tokenizer, file);
     tgui_serializer_peek_next(&tokenizer, &token);
     
     if(token.type == TGUI_TOKEN_NODE_ROOT || token.type == TGUI_TOKEN_NODE_WINDOW) {
-        return tgui_serializer_read_node(&tokenizer, &serializer_error, NULL);
+        *node = tgui_serializer_read_node(&tokenizer, &serializer_error, NULL, list);
+    } else {
+        *node = NULL;
     } 
 
-    return NULL;
 }
 
 b32 tgui_is_digit(char character) {

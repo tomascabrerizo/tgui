@@ -7,6 +7,7 @@
 #include "tgui_docker.h"
 #include "tgui_serializer.h"
 #include <stdio.h>
+#include <string.h>
 
 /* -------------------------- */
 /*       Hash Function     */
@@ -211,7 +212,6 @@ TGuiAllocatedWindow *tgui_allocated_window_node_alloc(void) {
     }
     ASSERT(result);
     memset(result, 0, sizeof(TGuiAllocatedWindow));
-    result->window.container = result;
 
     return result;
 }
@@ -965,10 +965,10 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
 /*       TGui Window      */
 /* ---------------------- */
 
-TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll) {
+TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll, TGuiAllocatedWindow *list) {
 
     TGuiAllocatedWindow *allocated_window_node = tgui_allocated_window_node_alloc();
-    clink_list_insert_back(state.allocated_windows, allocated_window_node);
+    clink_list_insert_back(list, allocated_window_node);
 
     TGuiWindow *window = &allocated_window_node->window;
     ASSERT(window);
@@ -1004,7 +1004,7 @@ TGuiWindow *tgui_window_get_from_handle(TGuiWindowHandle handle) {
 TGuiWindowHandle tgui_create_root_window(char *name, b32 scroll) {
     TGuiDockerNode *window_node = window_node_alloc(0);
     tgui_docker_set_root_node(window_node);
-    TGuiWindow *window = tgui_window_alloc(window_node, name, scroll);
+    TGuiWindow *window = tgui_window_alloc(window_node, name, scroll, state.allocated_windows);
     ASSERT(window);
     return window->id;
 }
@@ -1018,7 +1018,7 @@ TGuiWindowHandle tgui_split_window(TGuiWindowHandle handle, TGuiSplitDirection d
     TGuiDockerNode *new_window_node = window_node_alloc(window_node->parent);
     tgui_docker_node_split(window_node, dir, TGUI_POS_FRONT, new_window_node);
     
-    TGuiWindow *new_window = tgui_window_alloc(new_window_node, name, scroll);
+    TGuiWindow *new_window = tgui_window_alloc(new_window_node, name, scroll, state.allocated_windows);
     ASSERT(new_window);
     return new_window->id;
 }
@@ -1056,22 +1056,94 @@ void tgui_terminate(void) {
     memset(&state, 0, sizeof(TGui));
 }
 
-static b32 tgui_node_tree_valid(TGuiDockerNode *node) {
-    UNUSED(node);
+static u32 tgui_allocated_window_list_size(TGuiAllocatedWindow *list) {
+    u32 result = 0;
+    TGuiAllocatedWindow *allocated_window = list->next;
+    while(!clink_list_end(allocated_window, list)) {
+        result += 1;
+        allocated_window = allocated_window->next;
+    }
+    return result;
+}
+
+static b32 tgui_allocated_window_equals(TGuiAllocatedWindow *allocated_window0, TGuiAllocatedWindow *allocated_window1) {
+
+    if(allocated_window0->window.id != allocated_window1->window.id) {
+        return false;
+    }
+    
+    if(strcmp(allocated_window0->window.name, allocated_window1->window.name) != 0) {
+        return false;
+    }
+
     return true;
+}
+
+static b32 tgui_node_tree_valid(TGuiDockerNode *node, TGuiAllocatedWindow *allocated_windows) {
+    UNUSED(node);
+    
+    if(tgui_allocated_window_list_size(state.allocated_windows) != tgui_allocated_window_list_size(allocated_windows)) {
+        return false;
+    }
+
+    b32 window_found = false;
+
+    TGuiAllocatedWindow *allocated_window = state.allocated_windows->next;
+    while(!clink_list_end(allocated_window, state.allocated_windows)) {
+        
+        window_found = false;
+
+        TGuiAllocatedWindow *allocated_window_test = allocated_windows->next;
+        while(!clink_list_end(allocated_window_test, allocated_windows)) {
+
+            if(tgui_allocated_window_equals(allocated_window, allocated_window_test)) {
+                window_found =  true;
+                break;
+            }
+
+            allocated_window_test = allocated_window_test->next;
+        }
+        
+        if(window_found == false) {
+            break;
+        }
+
+        allocated_window = allocated_window->next;
+    }
+
+    return window_found;
+}
+
+void tgui_free_allocated_windows_list(TGuiAllocatedWindow *list) {
+    TGuiAllocatedWindow *allocated_window = list->next;
+    while(!clink_list_end(allocated_window, list)) {
+        TGuiAllocatedWindow *to_free = allocated_window;
+        allocated_window = allocated_window->next;
+        tgui_allocated_window_node_free(to_free);
+    }
 }
 
 void tgui_try_to_load_data_file(void) {
     OsFile *file = os_file_read_entire("./tgui.dat");
     if(file) {
-        TGuiDockerNode *saved_root = tgui_serializer_read_docker_tree(file);
+        TGuiAllocatedWindow allocated_windows;
+        TGuiDockerNode *saved_root;
+        tgui_serializer_read_docker_tree(file, &saved_root, &allocated_windows);
 
-        if(tgui_node_tree_valid(saved_root)) {
-            node_and_allocatd_windows_free(docker.root);
+        if(tgui_node_tree_valid(saved_root, &allocated_windows)) {
+            tgui_free_allocated_windows_list(state.allocated_windows);
+            
+            allocated_windows.next->prev = state.allocated_windows;
+            allocated_windows.prev->next = state.allocated_windows;
+            state.allocated_windows->next = allocated_windows.next;
+            state.allocated_windows->prev = allocated_windows.prev;
+            
             docker.root = saved_root;
         } else {
-            node_and_allocatd_windows_free(saved_root);
+            tgui_free_allocated_windows_list(&allocated_windows);
+            printf("tgui.dat file old or corrupted\n");
         }
+
         os_file_free(file);
     }
 }

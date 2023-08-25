@@ -46,6 +46,9 @@ typedef struct TGuiDockerNode {
     u32 active_window;
     struct TGuiWindow *windows;
     u32 windows_count;
+    
+    /* Only a dummy window to use as head of double link list of windows */
+    struct TGuiAllocatedWindow *dummy_allocated_window;
 
 } TGuiDockerNode;
 
@@ -58,8 +61,6 @@ TGuiDockerNode *window_node_alloc(TGuiDockerNode *parent);
 TGuiDockerNode *split_node_alloc(TGuiDockerNode *parent, f32 position);
 
 void node_free(TGuiDockerNode *node);
-
-void node_and_allocatd_windows_free(TGuiDockerNode *node);
 
 typedef struct TGuiDocker {
     TGuiDockerNode *root;
