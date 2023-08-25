@@ -144,8 +144,8 @@ typedef struct TGui {
     f32 dt;
     
     TGuiWidget *first_free_widget;
-
-    void *active_data; /* TODO: Remove active data, this is only use in drop down menu */
+    
+    u64 active_id;
 
 } TGui;
 
@@ -246,6 +246,43 @@ void tgui_u32_color_to_hsv_color(u32 color, f32 *h, f32 *s, f32 *v);
 void _tgui_color_picker(TGuiWindowHandle window, s32 x, s32 y, s32 w, s32 h, u32 *color, char *tgui_id);
 
 void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter);
+
+#define TGUI_TREEVIEW_MAX_STACK_SIZE 256
+
+typedef struct TGuiTreeViewNode {
+        
+    char *label;
+    b32 open;
+    
+    struct TGuiTreeViewNode *next;
+    struct TGuiTreeViewNode *prev;
+
+    struct TGuiTreeViewNode *childs;
+
+} TGuiTreeViewNode;
+
+typedef struct TGuiTreeView {
+    
+    TGuiTreeViewNode *root;
+    
+    TGuiTreeViewNode *first_free_node;
+
+    b32 state_stack[TGUI_TREEVIEW_MAX_STACK_SIZE];
+    u32 state_stack_head; 
+    
+    b32 initiliaze;
+
+} TGuiTreeView;
+
+void _tgui_tree_view_begin(TGuiWindowHandle window, s32 x, s32 y, char *tgui_id);
+
+void _tgui_tree_view_end(void);
+
+b32 _tgui_tree_view_root_node(char *label, b32 open);
+
+void _tgui_tree_view_node(char *label);
+
+void _tgui_tree_view_internal(TGuiWidget *widget, Painter *painter);
 
 /* ---------------------- */
 /*       TGui Font        */

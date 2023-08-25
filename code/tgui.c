@@ -961,6 +961,57 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
     }
 }
 
+void _tgui_tree_view_begin(TGuiWindowHandle handle, s32 x, s32 y, char *tgui_id) {
+    UNUSED(x); UNUSED(y); UNUSED(tgui_id);
+
+    TGuiWindow *window = tgui_window_get_from_handle(handle);
+
+    if(!tgui_window_update_widget(window)) {
+        return;
+    }
+    
+    u32 id = tgui_get_widget_id(tgui_id);
+
+    tgui_widget_alloc_into_window(id, _tgui_tree_view_internal, window, x, y, 0, 0);
+    
+    TGuiTreeView *treeview = tgui_widget_get_state(id, TGuiTreeView);
+
+    if(!treeview->initiliaze) {
+        treeview->first_free_node = 0;
+        
+        treeview->initiliaze = true;
+    }
+
+    state.active_id = id;
+}
+
+void _tgui_tree_view_end(void) {
+    state.active_id = 0;
+}
+
+b32 _tgui_tree_view_root_node(char *label, b32 open) {
+    UNUSED(label); UNUSED(open);
+    
+    TGuiTreeView *treeview = tgui_widget_get_state(state.active_id, TGuiTreeView);
+    UNUSED(treeview);
+    
+    return false;
+}
+
+void _tgui_tree_view_node(char *label) {
+    UNUSED(label);
+
+    TGuiTreeView *treeview = tgui_widget_get_state(state.active_id, TGuiTreeView);
+    UNUSED(treeview);
+}
+
+void _tgui_tree_view_internal(TGuiWidget *widget, Painter *painter) {
+    UNUSED(widget); UNUSED(painter);
+
+    TGuiTreeView *treeview = tgui_widget_get_state(widget->id, TGuiTreeView);
+    UNUSED(treeview);
+}
+
 /* ---------------------- */
 /*       TGui Window      */
 /* ---------------------- */
@@ -1292,7 +1343,7 @@ void tgui_process_scroll_window(TGuiWindow *window, Painter *painter) {
     if(v_scroll_valid && h_scroll_valid) {
         Rectangle window_rect = tgui_docker_get_client_rect(window->parent);
         Rectangle inner_rect = (Rectangle){window->dim.max_x+1, window->dim.max_y+1, window_rect.max_x, window_rect.max_y};
-        painter_draw_rectangle(painter, inner_rect, 0x333333);
+        painter_draw_rectangle(painter, inner_rect, 0x444444);
     }
 }
 
