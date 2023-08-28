@@ -62,6 +62,8 @@ TGuiDockerNode *split_node_alloc(TGuiDockerNode *parent, f32 position);
 
 void node_free(TGuiDockerNode *node);
 
+char *tgui_docker_node_to_str(TGuiDockerNodeType type);
+
 typedef struct TGuiDocker {
     TGuiDockerNode *root;
     TGuiDockerNode *first_free_node;

@@ -19,6 +19,39 @@ typedef struct App {
 
 } App;
 
+
+extern TGuiDocker docker;
+
+void add_docker_nodes(TGuiDockerNode *node) {
+   
+    switch (node->type) {
+    
+    case TGUI_DOCKER_NODE_ROOT:   { 
+        _tgui_tree_view_root_node_begin("root node");
+        TGuiDockerNode *child = node->childs->next;
+        while(!clink_list_end(child, node->childs)) {
+            add_docker_nodes(child);
+            child = child->next;
+        }
+        _tgui_tree_view_root_node_end();
+    } break;
+    case TGUI_DOCKER_NODE_SPLIT:  {
+        _tgui_tree_view_node("split node");
+    } break;
+    case TGUI_DOCKER_NODE_WINDOW: {
+        _tgui_tree_view_root_node_begin("window node");
+        TGuiWindow *window = node->windows->next; 
+        while(!clink_list_end(window, node->windows)) {
+            _tgui_tree_view_node(window->name);
+            window = window->next;
+        }
+
+        _tgui_tree_view_root_node_end();
+    } break;
+    
+    }
+}
+
 void app_initialize(App *app) {
     UNUSED(app);
     tgui_initialize();
@@ -63,6 +96,11 @@ void app_update(App *app, f32 dt, Painter *painter) {
     
     tgui_color_picker(app->window2, 10, 60, 256, 256, &app->color0);
     tgui_color_picker(app->window1, 10, 10, 300, 100, &app->color1);
+    
+
+    _tgui_tree_view_begin(app->window4, TGUI_ID);
+    add_docker_nodes(docker.root);
+    _tgui_tree_view_end();
 
     tgui_end(painter);
 

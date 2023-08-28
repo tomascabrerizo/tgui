@@ -57,3 +57,12 @@ Rectangle rect_set_invalid(void) {
     ASSERT(rect_invalid(result));
     return result;
 }
+
+Rectangle rect_translate(Rectangle rect, s32 x, s32 y) {
+    Rectangle result;
+    result.min_x = x;
+    result.min_y = y;
+    result.max_x = rect_width(rect)-1;
+    result.max_y = rect_height(rect)-1;
+    return result;
+}

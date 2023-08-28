@@ -28,4 +28,6 @@ b32 rect_point_overlaps(Rectangle a, s32 x, s32 y);
 
 Rectangle rect_set_invalid(void);
 
+Rectangle rect_translate(Rectangle rect, s32 x, s32 y);
+
 #endif /* _GEOMETRY_H_ */

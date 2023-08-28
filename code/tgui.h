@@ -146,6 +146,7 @@ typedef struct TGui {
     TGuiWidget *first_free_widget;
     
     u64 active_id;
+    TGuiWindow *active_window;
 
 } TGui;
 
@@ -252,33 +253,49 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter);
 typedef struct TGuiTreeViewNode {
         
     char *label;
-    b32 open;
+    u32 label_depth;
     
+    Rectangle dim;
+    u32 state_index;
+    b32 visible;
+
     struct TGuiTreeViewNode *next;
     struct TGuiTreeViewNode *prev;
 
+    struct TGuiTreeViewNode *parent;
     struct TGuiTreeViewNode *childs;
 
 } TGuiTreeViewNode;
 
+#define TGUI_TREEVIEW_COLOR0 0x777777
+#define TGUI_TREEVIEW_COLOR1 0x888888
+
+#define TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH 16 
+
 typedef struct TGuiTreeView {
     
     TGuiTreeViewNode *root;
+    TGuiTreeViewNode *active_root_node;
+    s32 active_depth;
     
     TGuiTreeViewNode *first_free_node;
+    
+    Rectangle dim;
 
-    b32 state_stack[TGUI_TREEVIEW_MAX_STACK_SIZE];
-    u32 state_stack_head; 
+    b32 root_node_state[TGUI_TREEVIEW_MAX_STACK_SIZE];
+    u32 root_node_state_head; 
     
     b32 initiliaze;
 
 } TGuiTreeView;
 
-void _tgui_tree_view_begin(TGuiWindowHandle window, s32 x, s32 y, char *tgui_id);
+void _tgui_tree_view_begin(TGuiWindowHandle window, char *tgui_id);
 
 void _tgui_tree_view_end(void);
 
-b32 _tgui_tree_view_root_node(char *label, b32 open);
+void _tgui_tree_view_root_node_begin(char *label);
+
+void _tgui_tree_view_root_node_end(void);
 
 void _tgui_tree_view_node(char *label);
 

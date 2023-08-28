@@ -128,6 +128,15 @@ static TGuiDockerNode *get_node_in_position(TGuiDockerNode *node, s32 x, s32 y) 
     return 0;
 }
 
+char *tgui_docker_node_to_str(TGuiDockerNodeType type) {
+    switch (type) {
+    case TGUI_DOCKER_NODE_ROOT:   { return "TGUI_DOCKER_NODE_ROOT"; } break;
+    case TGUI_DOCKER_NODE_SPLIT:  { return "TGUI_DOCKER_NODE_SPLIT"; } break;
+    case TGUI_DOCKER_NODE_WINDOW: { return "TGUI_DOCKER_NODE_WINDOW"; } break;
+    }
+
+}
+
 #if 0
 static void tgui_node_print(TGuiDockerNode *node) {
     switch (node->type) {
