@@ -1158,12 +1158,33 @@ void treeview_node_draw(TGuiTreeView *treeview, TGuiTreeViewNode *node, Painter 
     } else {
         *color = TGUI_TREEVIEW_COLOR0;
     }
+    
+    u32 rect_w = 8;
+    u32 padding = 4;
 
     painter_draw_rectangle(painter, node->dim, *color);
-    s32 label_x = node->dim.min_x+node->label_depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH;
-    tgui_font_draw_text(painter, label_x, node->dim.min_y, node->label, strlen(node->label), 0x333333);
+    s32 label_x = node->dim.min_x+node->label_depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH + padding;
+    tgui_font_draw_text(painter, label_x + rect_w+padding, node->dim.min_y, node->label, strlen(node->label), 0x333333);
+
+    for(u32 i = 0; i < node->label_depth; ++i) {
+        painter_draw_vline(painter, node->dim.min_x + TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH * i + 4, node->dim.min_y, node->dim.max_y, 0x333333);
+    }
+    
+    if(node->childs) {
+
+        if(treeview->root_node_state[node->state_index]) {
+            s32 y = node->dim.min_y + rect_height(node->dim) / 2 - rect_w/2;
+            painter_draw_rect(painter, label_x, y, rect_w, rect_w, 0x333333);
+        } else {
+            s32 y = node->dim.min_y + rect_height(node->dim) / 2 - 4/2;
+            painter_draw_rect(painter, label_x, y, rect_w, 4, 0x333333);
+        }
+    } else {
+        //painter_draw_hline(painter, node->dim.min_y, label_x, label_x+rect_w-1, 0x333333);
+    }
 
     if(node->childs) {
+
 
         TGuiTreeViewNode *child = node->childs->next;
         while(!clink_list_end(child, node->childs)) {
@@ -1175,35 +1196,35 @@ void treeview_node_draw(TGuiTreeView *treeview, TGuiTreeViewNode *node, Painter 
 }
 
 void treeview_translate_node(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
-        if(!node->visible) return;
-        
-        tree_view_translate_node_dim(treeview, node);
+    if(!node->visible) return;
+    
+    tree_view_translate_node_dim(treeview, node);
 
-        if(node->childs) {
-            TGuiTreeViewNode *child = node->childs->next;
-            while(!clink_list_end(child, node->childs)) {
-                treeview_translate_node(treeview, child);
-                child = child->next;
-            }
+    if(node->childs) {
+        TGuiTreeViewNode *child = node->childs->next;
+        while(!clink_list_end(child, node->childs)) {
+            treeview_translate_node(treeview, child);
+            child = child->next;
         }
+    }
 }
 
 void treeview_update_node(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
-        if(!node->visible) return;
+    if(!node->visible) return;
 
-        if(node->childs && rect_point_overlaps(node->dim, input.mouse_x, input.mouse_y)) {
-           if(input.mouse_button_was_down && !input.mouse_button_is_down) {
-                treeview->root_node_state[node->state_index] = !treeview->root_node_state[node->state_index];
-           }
-        }
+    if(node->childs && rect_point_overlaps(node->dim, input.mouse_x, input.mouse_y)) {
+       if(input.mouse_button_was_down && !input.mouse_button_is_down) {
+            treeview->root_node_state[node->state_index] = !treeview->root_node_state[node->state_index];
+       }
+    }
 
-        if(node->childs) {
-            TGuiTreeViewNode *child = node->childs->next;
-            while(!clink_list_end(child, node->childs)) {
-                treeview_update_node(treeview, child);
-                child = child->next;
-            }
+    if(node->childs) {
+        TGuiTreeViewNode *child = node->childs->next;
+        while(!clink_list_end(child, node->childs)) {
+            treeview_update_node(treeview, child);
+            child = child->next;
         }
+    }
 }
 
 void _tgui_tree_view_internal(TGuiWidget *widget, Painter *painter) {
