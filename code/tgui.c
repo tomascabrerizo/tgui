@@ -1174,42 +1174,6 @@ void treeview_node_draw(TGuiTreeView *treeview, TGuiTreeViewNode *node, Painter 
     
 }
 
-void tree_view_node_draw(TGuiTreeView *treeview, TGuiTreeViewNode *node, Painter *painter, u32 *color) {
-
-    if(*color == TGUI_TREEVIEW_COLOR0) {
-        *color = TGUI_TREEVIEW_COLOR1;
-    } else {
-        *color = TGUI_TREEVIEW_COLOR0;
-    }
-    
-    if(node == treeview->root) {
-
-        if(node->childs) {
-
-            TGuiTreeViewNode *child = node->childs->next;
-            while(!clink_list_end(child, node->childs)) {
-                tree_view_node_draw(treeview, child, painter, color);
-                child = child->next;
-            }
-        }
-
-    } else {
-        painter_draw_rectangle(painter, node->dim, *color);
-        s32 label_x = node->dim.min_x+node->label_depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH;
-        tgui_font_draw_text(painter, label_x, node->dim.min_y, node->label, strlen(node->label), 0x333333);
-
-        if(node->childs && treeview->root_node_state[node->state_index] && node->visible) {
-
-            TGuiTreeViewNode *child = node->childs->next;
-            while(!clink_list_end(child, node->childs)) {
-                tree_view_node_draw(treeview, child, painter, color);
-                child = child->next;
-            }
-        }
-
-    }
-}
-
 void treeview_translate_node(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
         if(!node->visible) return;
         
@@ -1251,40 +1215,15 @@ void _tgui_tree_view_internal(TGuiWidget *widget, Painter *painter) {
     treeview->dim = calculate_widget_rect(widget); 
 
     tgui_calculate_hot_widget(window, treeview->dim, id);
-    
-    /* NOTE: Translate node to window */
+
+    u32 color = TGUI_TREEVIEW_COLOR0;
     TGuiTreeViewNode *node = treeview->root->childs->next;
     while(!clink_list_end(node, treeview->root->childs)) {
         treeview_translate_node(treeview, node);
-        node = node->next; 
-    }
-
-    /* NOTE: Draw node */
-    //Rectangle saved_painter_clip = painter->clip;
-    //painter->clip = rect_intersection(treeview->dim, window->dim);
-    //u32 color = TGUI_TREEVIEW_COLOR0;
-    //TGuiTreeViewNode *root = treeview->root;
-    //tree_view_node_draw(treeview, root, painter, &color);
-    //painter->clip = saved_painter_clip;
-
-    u32 color = TGUI_TREEVIEW_COLOR0;
-    node = treeview->root->childs->next;
-    while(!clink_list_end(node, treeview->root->childs)) {
         treeview_node_draw(treeview, node, painter, &color);
-        node = node->next; 
-    }
-
-    /* NOTE: Update node state */
-    node = treeview->root->childs->next;
-    while(!clink_list_end(node, treeview->root->childs)) {
         treeview_update_node(treeview, node);
         node = node->next; 
     }
-    
-
-
-
-
 }
 
 /* ---------------------- */
