@@ -625,8 +625,11 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
             while(!clink_list_end(window, node->windows)) {
                 
                 Rectangle tab_rect = calculate_window_tab_rect(window);
-                painter_draw_rectangle_outline(painter, tab_rect, 0x444444);
+                painter_draw_rectangle_outline(painter, tab_rect, 0x222222);
                 
+                Rectangle saved_clip2 = painter->clip;
+                painter->clip = rect_intersection(painter->clip, tab_rect);
+
                 char * label = window->name;
                 Rectangle label_rect = tgui_get_text_dim(0, 0, label);
                 s32 label_x = tab_rect.min_x + rect_width(tab_rect) / 2 - rect_width(label_rect) / 2;
@@ -637,6 +640,8 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
                     TGuiWindow *active_window = tgui_window_node_get_active_window(node);
                     painter_draw_rectangle_outline(painter, calculate_window_tab_rect(active_window), 0x555555);
                 }
+                
+                painter->clip = saved_clip2;
 
                 window = window->next;
             }

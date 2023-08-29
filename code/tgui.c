@@ -1168,6 +1168,13 @@ void tree_view_translate_node_dim(TGuiTreeView *treeview, TGuiTreeViewNode *node
     node->dim = result;
 }
 
+Rectangle treeview_calculate_node_cruz_rect(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
+    s32 x = node->dim.min_x+node->label_depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH + treeview->padding;
+    s32 y = node->dim.min_y + rect_height(node->dim) / 2 - treeview->rect_w/2;
+    Rectangle result = rect_from_wh(x, y, treeview->rect_w, treeview->rect_w);
+    return result;
+}
+
 void treeview_node_draw(TGuiTreeView *treeview, TGuiTreeViewNode *node, Painter *painter, u32 *color) {
     if(!node->visible) return;
 
@@ -1245,35 +1252,48 @@ void treeview_update_node(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeVi
     
     u64 id = widget->id;
     b32 mouse_in_node = rect_point_overlaps(node->dim, input.mouse_x, input.mouse_y);
-    
+
     if(state.hot == id) {
         if(mouse_in_node && input.mouse_button_is_down && !input.mouse_button_was_down) {
             state.active = id;
         }
     }
-
-    if(state.active == id && mouse_in_node && input.mouse_button_is_down) {
+    
+    Rectangle cruz_rect = treeview_calculate_node_cruz_rect(treeview, node);
+    b32 on_cruz = rect_point_overlaps(cruz_rect, input.mouse_x, input.mouse_y);
+    
+    if(state.active == id) {
         
-        if(treeview->selection_index >= 0) {
-            treeview->selected_node_data[treeview->selection_index] = false;
+        if(on_cruz) {
+            if(!input.mouse_button_is_down) {
+               if(node->childs) {
+                    treeview->root_node_state[node->state_index] = !treeview->root_node_state[node->state_index];
+               }
+               state.active = 0;
+            } 
+        } else {
+            if(mouse_in_node && input.mouse_button_is_down) {
+                
+                if(treeview->selection_index >= 0) {
+                    treeview->selected_node_data[treeview->selection_index] = false;
+                }
+
+                treeview->selection_data = node->user_data;
+                treeview->selection_index = node->selected_state_index;
+
+                treeview->selected_node_data[treeview->selection_index] = true;
+                state.active = 0;
+            }
         }
 
-        treeview->selection_data = node->user_data;
-        treeview->selection_index = node->selected_state_index;
 
-        treeview->selected_node_data[treeview->selection_index] = true;
+        if(state.hot != id && !input.mouse_button_is_down) {
+            state.active = 0;
+        }
+
+
     }
 
-    if(state.active == id && mouse_in_node && !input.mouse_button_is_down) {
-       if(node->childs) {
-            treeview->root_node_state[node->state_index] = !treeview->root_node_state[node->state_index];
-       }
-       state.active = 0;
-    }
-
-    if(state.active == id && state.hot != id && !input.mouse_button_is_down) {
-        state.active = 0;
-    }
 
     if(node->childs) {
         TGuiTreeViewNode *child = node->childs->next;
