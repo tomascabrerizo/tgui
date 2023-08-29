@@ -27,7 +27,7 @@ void add_docker_nodes(TGuiDockerNode *node) {
     switch (node->type) {
     
     case TGUI_DOCKER_NODE_ROOT:   { 
-        _tgui_tree_view_root_node_begin("root node");
+        _tgui_tree_view_root_node_begin("root node", node);
         TGuiDockerNode *child = node->childs->next;
         while(!clink_list_end(child, node->childs)) {
             add_docker_nodes(child);
@@ -36,13 +36,13 @@ void add_docker_nodes(TGuiDockerNode *node) {
         _tgui_tree_view_root_node_end();
     } break;
     case TGUI_DOCKER_NODE_SPLIT:  {
-        _tgui_tree_view_node("split node");
+        _tgui_tree_view_node("split node", node);
     } break;
     case TGUI_DOCKER_NODE_WINDOW: {
-        _tgui_tree_view_root_node_begin("window node");
+        _tgui_tree_view_root_node_begin("window node", node);
         TGuiWindow *window = node->windows->next; 
         while(!clink_list_end(window, node->windows)) {
-            _tgui_tree_view_node(window->name);
+            _tgui_tree_view_node(window->name, window);
             window = window->next;
         }
 
@@ -97,10 +97,12 @@ void app_update(App *app, f32 dt, Painter *painter) {
     tgui_color_picker(app->window2, 10, 60, 256, 256, &app->color0);
     tgui_color_picker(app->window1, 10, 10, 300, 100, &app->color1);
     
+    
+    void *user_data = NULL;
 
     _tgui_tree_view_begin(app->window4, TGUI_ID);
     add_docker_nodes(docker.root);
-    _tgui_tree_view_end();
+    _tgui_tree_view_end(&user_data);
 
     tgui_end(painter);
 

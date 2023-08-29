@@ -961,7 +961,7 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
     }
 }
 
-TGuiTreeViewNode *treeview_alloc_node(TGuiTreeView *treeview) {
+TGuiTreeViewNode *treeview_alloc_node(TGuiTreeView *treeview, void *user_data) {
     TGuiTreeViewNode *node = NULL;
     if(treeview->first_free_node) {
         node = treeview->first_free_node;
@@ -971,6 +971,7 @@ TGuiTreeViewNode *treeview_alloc_node(TGuiTreeView *treeview) {
     }
     ASSERT(node);
     memset(node, 0, sizeof(TGuiTreeViewNode));
+    node->user_data = user_data;
     return node;
 }
 
@@ -989,15 +990,15 @@ void treeview_free_node(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
 
         treeview_free_node(treeview, node->childs);
 
-    } else {
-        node->next = treeview->first_free_node;
-        treeview->first_free_node = node; 
-    }
+    } 
+   
+    node->next = treeview->first_free_node;
+    treeview->first_free_node = node; 
 }
 
-TGuiTreeViewNode *treeview_alloc_root_node(TGuiTreeView *treeview) {
-    TGuiTreeViewNode *node = treeview_alloc_node(treeview);
-    node->childs = treeview_alloc_node(treeview);
+TGuiTreeViewNode *treeview_alloc_root_node(TGuiTreeView *treeview, void *user_data) {
+    TGuiTreeViewNode *node = treeview_alloc_node(treeview, user_data);
+    node->childs = treeview_alloc_node(treeview, NULL);
     clink_list_init(node->childs);
     return node;
 }
@@ -1029,12 +1030,15 @@ void _tgui_tree_view_begin(TGuiWindowHandle handle, char *tgui_id) {
 
         treeview->first_free_node = 0;
         
-        for(u32 i = 0; i < TGUI_TREEVIEW_MAX_STACK_SIZE; ++i) {
+        for(u32 i = 0; i < TGUI_TREEVIEW_MAX_STATE_SIZE; ++i) {
             treeview->root_node_state[i] = true;
         }
         treeview->root_node_state_head = 0;
         treeview->rect_w = 8;
         treeview->padding = 6;
+
+        treeview->selection_index = -1;
+        treeview->selection_data = NULL;
 
         treeview->initiliaze = true;
     }
@@ -1043,15 +1047,16 @@ void _tgui_tree_view_begin(TGuiWindowHandle handle, char *tgui_id) {
         treeview_free_node(treeview, treeview->root);
     }
 
-    treeview->root = treeview_alloc_root_node(treeview);
+    treeview->root = treeview_alloc_root_node(treeview, NULL);
     treeview->root->label = "dummy root node";
 
     treeview->active_root_node = treeview->root;
     treeview->root_node_state_head = 0;
+    treeview->selected_node_data_head = 0;
     treeview->active_depth = 0;
 }
 
-void _tgui_tree_view_end(void) {
+void _tgui_tree_view_end(void **selected_data) {
 
     if(!tgui_window_update_widget(state.active_window)) {
         return;
@@ -1067,15 +1072,25 @@ void _tgui_tree_view_end(void) {
 
     state.active_window = NULL;
     state.active_id = -1;
+
+    if(treeview->selection_index >= 0) {
+        *selected_data = treeview->selection_data;
+    } else {
+        *selected_data = NULL;
+    }
 }
 
 void treeview_node_setup(TGuiTreeView *treeview, TGuiTreeViewNode *node, char *label, s32 depth) {
     UNUSED(treeview);
 
     node->label = label;
+
+    node->selected_state_index = treeview->selected_node_data_head++;
+    ASSERT(treeview->selected_node_data_head <= TGUI_TREEVIEW_MAX_STATE_SIZE);
+
     if(node->childs) {
         node->state_index = treeview->root_node_state_head++;
-        ASSERT(treeview->root_node_state_head <= TGUI_TREEVIEW_MAX_STACK_SIZE);
+        ASSERT(treeview->root_node_state_head <= TGUI_TREEVIEW_MAX_STATE_SIZE);
     }
 
     node->label_depth = depth;
@@ -1095,7 +1110,7 @@ void treeview_node_setup(TGuiTreeView *treeview, TGuiTreeViewNode *node, char *l
     }
 }
 
-void _tgui_tree_view_root_node_begin(char *label) {
+void _tgui_tree_view_root_node_begin(char *label, void *user_data) {
     if(!tgui_window_update_widget(state.active_window)) {
         return;
     }
@@ -1103,7 +1118,7 @@ void _tgui_tree_view_root_node_begin(char *label) {
     
     TGuiTreeView *treeview = tgui_widget_get_state(state.active_id, TGuiTreeView);
    
-    TGuiTreeViewNode *node = treeview_alloc_root_node(treeview);
+    TGuiTreeViewNode *node = treeview_alloc_root_node(treeview, user_data);
     treeview_insert_node(node, treeview->active_root_node);
     treeview_node_setup(treeview, node, label, treeview->active_depth);
     
@@ -1121,7 +1136,7 @@ void _tgui_tree_view_root_node_end(void) {
     treeview->active_depth -= 1;
 }
 
-void _tgui_tree_view_node(char *label) {
+void _tgui_tree_view_node(char *label, void *user_data) {
 
     if(!tgui_window_update_widget(state.active_window)) {
         return;
@@ -1129,7 +1144,7 @@ void _tgui_tree_view_node(char *label) {
     
     TGuiTreeView *treeview = tgui_widget_get_state(state.active_id, TGuiTreeView);
 
-    TGuiTreeViewNode *node = treeview_alloc_node(treeview);
+    TGuiTreeViewNode *node = treeview_alloc_node(treeview, user_data);
     treeview_insert_node(node, treeview->active_root_node);
     treeview_node_setup(treeview, node, label, treeview->active_depth);
 
@@ -1165,7 +1180,17 @@ void treeview_node_draw(TGuiTreeView *treeview, TGuiTreeViewNode *node, Painter 
     u32 rect_w = treeview->rect_w;
     u32 padding = treeview->padding;
 
-    painter_draw_rectangle(painter, node->dim, *color);
+    b32 mouse_in_node = rect_point_overlaps(node->dim, input.mouse_x, input.mouse_y);
+    u32 _color = *color;
+    if(mouse_in_node) {
+        _color = 0x777777;
+    }
+
+    if((u32)treeview->selection_index == node->selected_state_index && treeview->selected_node_data[treeview->selection_index]) {
+        _color = 0xaaaaff;
+    }
+
+    painter_draw_rectangle(painter, node->dim, _color);
     s32 label_x = node->dim.min_x+node->label_depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH + padding;
     tgui_font_draw_text(painter, label_x+rect_w+padding, node->dim.min_y, node->label, strlen(node->label), 0x333333);
 
@@ -1176,7 +1201,7 @@ void treeview_node_draw(TGuiTreeView *treeview, TGuiTreeViewNode *node, Painter 
     
     if(node->childs) {
 
-        if(treeview->root_node_state[node->state_index]) {
+        if(treeview->root_node_state[node->state_index] == false) {
             s32 x = label_x; 
             s32 y = node->dim.min_y + rect_height(node->dim) / 2 - 4/2;
             painter_draw_rect(painter, x, y, rect_w, 4, 0x333333);
@@ -1188,12 +1213,9 @@ void treeview_node_draw(TGuiTreeView *treeview, TGuiTreeViewNode *node, Painter 
             s32 y = node->dim.min_y + rect_height(node->dim) / 2 - 4/2;
             painter_draw_rect(painter, label_x, y, rect_w, 4, 0x333333);
         }
-    } else {
-        //painter_draw_hline(painter, node->dim.min_y, label_x, label_x+rect_w-1, 0x333333);
-    }
-
+    } 
+    
     if(node->childs) {
-
 
         TGuiTreeViewNode *child = node->childs->next;
         while(!clink_list_end(child, node->childs)) {
@@ -1218,19 +1240,45 @@ void treeview_translate_node(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
     }
 }
 
-void treeview_update_node(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
+void treeview_update_node(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeViewNode *node) {
     if(!node->visible) return;
+    
+    u64 id = widget->id;
+    b32 mouse_in_node = rect_point_overlaps(node->dim, input.mouse_x, input.mouse_y);
+    
+    if(state.hot == id) {
+        if(mouse_in_node && input.mouse_button_is_down && !input.mouse_button_was_down) {
+            state.active = id;
+        }
+    }
 
-    if(node->childs && rect_point_overlaps(node->dim, input.mouse_x, input.mouse_y)) {
-       if(input.mouse_button_was_down && !input.mouse_button_is_down) {
+    if(state.active == id && mouse_in_node && input.mouse_button_is_down) {
+        
+        if(treeview->selection_index >= 0) {
+            treeview->selected_node_data[treeview->selection_index] = false;
+        }
+
+        treeview->selection_data = node->user_data;
+        treeview->selection_index = node->selected_state_index;
+
+        treeview->selected_node_data[treeview->selection_index] = true;
+    }
+
+    if(state.active == id && mouse_in_node && !input.mouse_button_is_down) {
+       if(node->childs) {
             treeview->root_node_state[node->state_index] = !treeview->root_node_state[node->state_index];
        }
+       state.active = 0;
+    }
+
+    if(state.active == id && state.hot != id && !input.mouse_button_is_down) {
+        state.active = 0;
     }
 
     if(node->childs) {
         TGuiTreeViewNode *child = node->childs->next;
         while(!clink_list_end(child, node->childs)) {
-            treeview_update_node(treeview, child);
+            treeview_update_node(widget, treeview, child);
             child = child->next;
         }
     }
@@ -1250,8 +1298,8 @@ void _tgui_tree_view_internal(TGuiWidget *widget, Painter *painter) {
     TGuiTreeViewNode *node = treeview->root->childs->next;
     while(!clink_list_end(node, treeview->root->childs)) {
         treeview_translate_node(treeview, node);
+        treeview_update_node(widget, treeview, node);
         treeview_node_draw(treeview, node, painter, &color);
-        treeview_update_node(treeview, node);
         node = node->next; 
     }
 }

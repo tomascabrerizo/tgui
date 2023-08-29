@@ -635,7 +635,7 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
                 
                 if(window->id == node->active_window) {
                     TGuiWindow *active_window = tgui_window_node_get_active_window(node);
-                    painter_draw_rectangle_outline(painter, calculate_window_tab_rect(active_window), 0x999999);
+                    painter_draw_rectangle_outline(painter, calculate_window_tab_rect(active_window), 0x555555);
                 }
 
                 window = window->next;
