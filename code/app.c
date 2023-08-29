@@ -117,7 +117,8 @@ void app_update(App *app, f32 dt, Painter *painter) {
         "option 6",
         "option 7",
         "option 8",
-        "option 9" 
+        "option 9",
+        "dsajdjskadjkjshakjdhkjashdkjhsajdhkjasdhkjsahdkjsha"
     };
     s32 option_index = 0;
     _tgui_dropdown_menu(app->window2, 10, 60, options, APP_ARRAY_LEN(options), &option_index, TGUI_ID);

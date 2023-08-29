@@ -1428,7 +1428,7 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter) {
 
     Rectangle header_rect = rect_from_wh(rect.min_x, rect.min_y, TGUI_DROPDOWN_MENU_DELFAUT_W, TGUI_DROPDOWN_MENU_DELFAUT_H);
     Rectangle saved_painter_clip = painter->clip;
-    painter->clip = rect_intersection(window->dim, painter->clip);
+    painter->clip = rect_intersection(rect, painter->clip);
     
     if(state.active == id) {
         for(u32 i = 0; i < dropdown->options_size; ++i) {
@@ -1449,17 +1449,39 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter) {
             tgui_font_draw_text(painter, label_x, label_y, label, strlen(label), 0x444444);
         }
     }
+    
+    u32 cruz_w = 8;
 
     Rectangle option_rect = header_rect;
     char *label = dropdown->options[dropdown->selected_option];
     Rectangle label_rect = tgui_get_text_dim(0, 0, label);
-    
-    s32 label_x = option_rect.min_x + (rect_width(option_rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
+
+    s32 label_x = option_rect.min_x + (rect_width(option_rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2 - cruz_w;
     s32 label_y = option_rect.min_y + (rect_height(option_rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2;
 
     painter_draw_rectangle(painter, header_rect, 0x444444);
     painter_draw_rectangle_outline(painter, rect, 0x222222);
     tgui_font_draw_text(painter, label_x, label_y, label, strlen(label), 0x999999);
+
+    s32 cruz_x = rect.max_x - (cruz_w + 12);
+    s32 cruz_y = option_rect.min_y + (rect_height(option_rect) - 1) / 2 - (cruz_w - 1) / 2;
+
+    Rectangle cruz_rect = rect_from_wh(cruz_x, cruz_y, cruz_w, cruz_w);
+    if(state.active != id) {
+        Rectangle v_rect = cruz_rect;
+        v_rect.min_x += cruz_w / 4;
+        v_rect.max_x -= cruz_w / 4;
+        painter_draw_rectangle(painter, v_rect, 0x999999);
+        Rectangle h_rect = cruz_rect;
+        h_rect.min_y += cruz_w / 4;
+        h_rect.max_y -= cruz_w / 4;
+        painter_draw_rectangle(painter, h_rect, 0x999999);
+    } else {
+        Rectangle h_rect = cruz_rect;
+        h_rect.min_y += cruz_w / 4;
+        h_rect.max_y -= cruz_w / 4;
+        painter_draw_rectangle(painter, h_rect, 0x999999);
+    }
 
     painter->clip = saved_painter_clip;
 
