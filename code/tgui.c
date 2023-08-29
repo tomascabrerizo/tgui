@@ -1033,6 +1033,8 @@ void _tgui_tree_view_begin(TGuiWindowHandle handle, char *tgui_id) {
             treeview->root_node_state[i] = true;
         }
         treeview->root_node_state_head = 0;
+        treeview->rect_w = 8;
+        treeview->padding = 6;
 
         treeview->initiliaze = true;
     }
@@ -1079,7 +1081,8 @@ void treeview_node_setup(TGuiTreeView *treeview, TGuiTreeViewNode *node, char *l
     node->label_depth = depth;
     
     if((node->parent && node->parent == treeview->root) || (node->parent && treeview->root_node_state[node->parent->state_index] && node->parent->visible)){
-        Rectangle text_label = tgui_get_text_dim(depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH, treeview->dim.max_y+1, label);
+        u32 x = treeview->padding*2 + treeview->rect_w;
+        Rectangle text_label = tgui_get_text_dim(x+depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH, treeview->dim.max_y+1, label);
         treeview->dim = rect_union(treeview->dim, text_label);
 
         node->dim = text_label;
@@ -1159,22 +1162,28 @@ void treeview_node_draw(TGuiTreeView *treeview, TGuiTreeViewNode *node, Painter 
         *color = TGUI_TREEVIEW_COLOR0;
     }
     
-    u32 rect_w = 8;
-    u32 padding = 4;
+    u32 rect_w = treeview->rect_w;
+    u32 padding = treeview->padding;
 
     painter_draw_rectangle(painter, node->dim, *color);
     s32 label_x = node->dim.min_x+node->label_depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH + padding;
-    tgui_font_draw_text(painter, label_x + rect_w+padding, node->dim.min_y, node->label, strlen(node->label), 0x333333);
+    tgui_font_draw_text(painter, label_x+rect_w+padding, node->dim.min_y, node->label, strlen(node->label), 0x333333);
 
     for(u32 i = 0; i < node->label_depth; ++i) {
-        painter_draw_vline(painter, node->dim.min_x + TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH * i + 4, node->dim.min_y, node->dim.max_y, 0x333333);
+        s32 x = node->dim.min_x + rect_w/2 + padding - 1; 
+        painter_draw_vline(painter, x + TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH * i, node->dim.min_y, node->dim.max_y, 0x333333);
     }
     
     if(node->childs) {
 
         if(treeview->root_node_state[node->state_index]) {
-            s32 y = node->dim.min_y + rect_height(node->dim) / 2 - rect_w/2;
-            painter_draw_rect(painter, label_x, y, rect_w, rect_w, 0x333333);
+            s32 x = label_x; 
+            s32 y = node->dim.min_y + rect_height(node->dim) / 2 - 4/2;
+            painter_draw_rect(painter, x, y, rect_w, 4, 0x333333);
+
+            x = label_x + rect_w/2 - 4/2; 
+            y = node->dim.min_y + rect_height(node->dim) / 2 - rect_w/2;
+            painter_draw_rect(painter, x, y, 4, rect_w, 0x333333);
         } else {
             s32 y = node->dim.min_y + rect_height(node->dim) / 2 - 4/2;
             painter_draw_rect(painter, label_x, y, rect_w, 4, 0x333333);

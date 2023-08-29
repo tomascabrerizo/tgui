@@ -9,13 +9,13 @@ root_node: {
       is_scrolling: 0
     }
     window: {
-      id: 1
-      name: "Window 1"
-      is_scrolling: 1
+      id: 0
+      name: "Window 0"
+      is_scrolling: 0
     }
   }
   split_node: {
-    split_position: 288
+    split_position: 303
   }
   root_node: {
     dir: 1
@@ -29,15 +29,15 @@ root_node: {
       }
     }
     split_node: {
-      split_position: 257
+      split_position: 258
     }
     window_node: {
       active_window: 2
       window_count: 2
       window: {
-        id: 0
-        name: "Window 0"
-        is_scrolling: 0
+        id: 1
+        name: "Window 1"
+        is_scrolling: 1
       }
       window: {
         id: 2

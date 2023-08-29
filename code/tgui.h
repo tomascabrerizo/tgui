@@ -284,7 +284,10 @@ typedef struct TGuiTreeView {
 
     b32 root_node_state[TGUI_TREEVIEW_MAX_STACK_SIZE];
     u32 root_node_state_head; 
-    
+   
+    u32 rect_w;
+    u32 padding;
+
     b32 initiliaze;
 
 } TGuiTreeView;
