@@ -935,7 +935,7 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
     }
     
     Rectangle saved_clip = painter->clip;
-    painter->clip = window->dim;
+    painter->clip = rect_intersection(painter->clip, window->dim);
 
     u32 color_x = colorpicker->saturation * (colorpicker->radiant.width -  1);
     u32 color_y = colorpicker->value * (colorpicker->radiant.height - 1);
@@ -1175,7 +1175,7 @@ Rectangle treeview_calculate_node_cruz_rect(TGuiTreeView *treeview, TGuiTreeView
     return result;
 }
 
-void treeview_node_draw(TGuiTreeView *treeview, TGuiTreeViewNode *node, Painter *painter, u32 *color) {
+void treeview_node_draw(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeViewNode *node, Painter *painter, u32 *color) {
     if(!node->visible) return;
 
     if(*color == TGUI_TREEVIEW_COLOR0) {
@@ -1189,15 +1189,18 @@ void treeview_node_draw(TGuiTreeView *treeview, TGuiTreeViewNode *node, Painter 
 
     b32 mouse_in_node = rect_point_overlaps(node->dim, input.mouse_x, input.mouse_y);
     u32 _color = *color;
-    if(mouse_in_node) {
-        _color = 0x777777;
-    }
-
-    if((u32)treeview->selection_index == node->selected_state_index && treeview->selected_node_data[treeview->selection_index]) {
+    if(state.hot == widget->id && mouse_in_node) {
         _color = 0xaaaaff;
     }
 
     painter_draw_rectangle(painter, node->dim, _color);
+
+    if((u32)treeview->selection_index == node->selected_state_index && treeview->selected_node_data[treeview->selection_index]) {
+        _color = 0xaaaaff;
+        painter_draw_rectangle_outline(painter, node->dim, _color);
+    }
+
+
     s32 label_x = node->dim.min_x+node->label_depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH + padding;
     tgui_font_draw_text(painter, label_x+rect_w+padding, node->dim.min_y, node->label, strlen(node->label), 0x333333);
 
@@ -1226,7 +1229,7 @@ void treeview_node_draw(TGuiTreeView *treeview, TGuiTreeViewNode *node, Painter 
 
         TGuiTreeViewNode *child = node->childs->next;
         while(!clink_list_end(child, node->childs)) {
-            treeview_node_draw(treeview, child, painter, color);
+            treeview_node_draw(widget, treeview, child, painter, color);
             child = child->next;
         }
     }
@@ -1264,13 +1267,13 @@ void treeview_update_node(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeVi
     
     if(state.active == id) {
         
-        if(on_cruz) {
+        if(on_cruz && node->childs) {
+            
             if(!input.mouse_button_is_down) {
-               if(node->childs) {
-                    treeview->root_node_state[node->state_index] = !treeview->root_node_state[node->state_index];
-               }
+               treeview->root_node_state[node->state_index] = !treeview->root_node_state[node->state_index];
                state.active = 0;
             } 
+
         } else {
             if(mouse_in_node && input.mouse_button_is_down) {
                 
@@ -1293,7 +1296,6 @@ void treeview_update_node(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeVi
 
 
     }
-
 
     if(node->childs) {
         TGuiTreeViewNode *child = node->childs->next;
@@ -1319,9 +1321,149 @@ void _tgui_tree_view_internal(TGuiWidget *widget, Painter *painter) {
     while(!clink_list_end(node, treeview->root->childs)) {
         treeview_translate_node(treeview, node);
         treeview_update_node(widget, treeview, node);
-        treeview_node_draw(treeview, node, painter, &color);
+        treeview_node_draw(widget, treeview, node, painter, &color);
         node = node->next; 
     }
+}
+
+void _tgui_dropdown_menu(TGuiWindowHandle handle, s32 x, s32 y, char **options, u32 options_size, s32 *selected_option_index, char *tgui_id) {
+
+    TGuiWindow *window = tgui_window_get_from_handle(handle);
+
+    if(!tgui_window_update_widget(window)) {
+        return;
+    }
+
+    u64 id = tgui_get_widget_id(tgui_id);
+    
+    TGuiDropDownMenu *dropdown = tgui_widget_get_state(id, TGuiDropDownMenu);
+    if(!dropdown->initialize) {
+        dropdown->selected_option = 0;
+
+        dropdown->initialize = true;
+    }
+
+    dropdown->options = options;
+    dropdown->options_size = options_size;
+    
+    u32 dropdown_w = TGUI_DROPDOWN_MENU_DELFAUT_W;
+    u32 dropdown_h = TGUI_DROPDOWN_MENU_DELFAUT_H;
+
+    if(state.active == id) {
+        dropdown_h += options_size * dropdown_h;
+    }
+
+    tgui_widget_alloc_into_window(id, _tgui_dropdown_menu_internal, window, x, y, dropdown_w, dropdown_h);
+
+    *selected_option_index = dropdown->selected_option;
+
+}
+
+Rectangle calculate_option_rect(s32 x, s32 y, s32 option_index) {
+    return rect_from_wh(x, y + TGUI_DROPDOWN_MENU_DELFAUT_H*(option_index + 1), TGUI_DROPDOWN_MENU_DELFAUT_W, TGUI_DROPDOWN_MENU_DELFAUT_H);
+}
+
+b32 mouse_in_window_scrollbar(TGuiWindow *window, s32 x, s32 y) {
+    b32 result = false;
+
+    b32 v_scroll_valid = !rect_invalid(window->v_scroll_bar);
+    b32 h_scroll_valid = !rect_invalid(window->h_scroll_bar);
+    
+    if(v_scroll_valid) {
+        result = result || rect_point_overlaps(window->v_scroll_bar, x, y);
+    }
+
+    if(h_scroll_valid) {
+        result = result || rect_point_overlaps(window->h_scroll_bar, x, y);
+    }
+
+    return result;
+}
+
+void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter) {
+    
+    TGuiWindow *window = widget->parent;
+    u64 id = widget->id;
+    
+    Rectangle rect = calculate_widget_rect(widget);
+    TGuiDropDownMenu *dropdown = tgui_widget_get_state(id, TGuiDropDownMenu);
+    
+    tgui_calculate_hot_widget(window, rect, id);
+    
+    b32 mouse_in_node = rect_point_overlaps(rect, input.mouse_x, input.mouse_y);
+
+    if(state.hot == id) {
+        if(mouse_in_node && input.mouse_button_is_down && !input.mouse_button_was_down) {
+            state.active = id;
+        }
+    }
+    
+    if(state.active == id) {
+
+        if(input.mouse_button_is_down && !input.mouse_button_was_down) {
+            if(mouse_in_window_scrollbar(window, input.mouse_x, input.mouse_y)) {
+                dropdown->click_was_in_scrollbar = true;
+            } else {
+                dropdown->click_was_in_scrollbar = false;
+            }
+        }
+
+        if(!mouse_in_node && !dropdown->click_was_in_scrollbar && !input.mouse_button_is_down && input.mouse_button_was_down) {
+            state.active = 0;
+        }
+
+        if(mouse_in_node && !dropdown->click_was_in_scrollbar && !input.mouse_button_is_down && input.mouse_button_was_down) {
+
+            for(u32 i = 0; i < dropdown->options_size; ++i) {
+                Rectangle option_rect = calculate_option_rect(rect.min_x, rect.min_y, i);
+                if(rect_point_overlaps(option_rect, input.mouse_x, input.mouse_y)) {
+                    dropdown->selected_option = i;
+                    state.active = 0;
+                    break;
+                }
+            }
+        }
+    }
+
+
+    Rectangle header_rect = rect_from_wh(rect.min_x, rect.min_y, TGUI_DROPDOWN_MENU_DELFAUT_W, TGUI_DROPDOWN_MENU_DELFAUT_H);
+    Rectangle saved_painter_clip = painter->clip;
+    painter->clip = rect_intersection(window->dim, painter->clip);
+    
+    if(state.active == id) {
+        for(u32 i = 0; i < dropdown->options_size; ++i) {
+            Rectangle option_rect = calculate_option_rect(rect.min_x, rect.min_y, i);
+
+            char *label = dropdown->options[i];
+            Rectangle label_rect = tgui_get_text_dim(0, 0, label);
+            
+            s32 label_x = option_rect.min_x + (rect_width(option_rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
+            s32 label_y = option_rect.min_y + (rect_height(option_rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2;
+
+            u32 color = 0x999999;
+            if(rect_point_overlaps(option_rect, input.mouse_x, input.mouse_y)) {
+                color = 0x777777;
+            }
+            painter_draw_rectangle(painter, option_rect, color);
+            painter_draw_hline(painter, option_rect.max_y, option_rect.min_x, option_rect.max_x, 0x777777);
+            tgui_font_draw_text(painter, label_x, label_y, label, strlen(label), 0x444444);
+        }
+    }
+
+    Rectangle option_rect = header_rect;
+    char *label = dropdown->options[dropdown->selected_option];
+    Rectangle label_rect = tgui_get_text_dim(0, 0, label);
+    
+    s32 label_x = option_rect.min_x + (rect_width(option_rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
+    s32 label_y = option_rect.min_y + (rect_height(option_rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2;
+
+    painter_draw_rectangle(painter, header_rect, 0x444444);
+    painter_draw_rectangle_outline(painter, rect, 0x222222);
+    tgui_font_draw_text(painter, label_x, label_y, label, strlen(label), 0x999999);
+
+    painter->clip = saved_painter_clip;
+
+
 }
 
 /* ---------------------- */

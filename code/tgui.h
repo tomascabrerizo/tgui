@@ -318,6 +318,25 @@ void _tgui_tree_view_node(char *label, void *user_data);
 
 void _tgui_tree_view_internal(TGuiWidget *widget, Painter *painter);
 
+#define TGUI_DROPDOWN_MENU_DELFAUT_W 140
+#define TGUI_DROPDOWN_MENU_DELFAUT_H 26 
+
+typedef struct TGuiDropDownMenu {
+    
+    char **options;
+    u32 options_size;
+    u32 selected_option;
+    
+    b32 click_was_in_scrollbar;
+
+    b32 initialize;
+
+} TGuiDropDownMenu;
+
+void _tgui_dropdown_menu(TGuiWindowHandle window, s32 x, s32 y, char **options, u32 options_size, s32 *selected_option_index, char *tgui_id);
+
+void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter);
+
 /* ---------------------- */
 /*       TGui Font        */
 /* ---------------------- */

@@ -625,7 +625,7 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
             while(!clink_list_end(window, node->windows)) {
                 
                 Rectangle tab_rect = calculate_window_tab_rect(window);
-                painter_draw_rectangle_outline(painter, tab_rect, 0x222222);
+                painter_draw_rectangle_outline(painter, tab_rect, 0x444444);
                 
                 Rectangle saved_clip2 = painter->clip;
                 painter->clip = rect_intersection(painter->clip, tab_rect);
@@ -638,7 +638,7 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
                 
                 if(window->id == node->active_window) {
                     TGuiWindow *active_window = tgui_window_node_get_active_window(node);
-                    painter_draw_rectangle_outline(painter, calculate_window_tab_rect(active_window), 0x555555);
+                    painter_draw_rectangle_outline(painter, calculate_window_tab_rect(active_window), 0x222222);
                 }
                 
                 painter->clip = saved_clip2;

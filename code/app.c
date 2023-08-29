@@ -19,8 +19,9 @@ typedef struct App {
 
 } App;
 
-
 extern TGuiDocker docker;
+
+#define APP_ARRAY_LEN(array) (sizeof((array))/sizeof((array)[0]))
 
 void add_docker_nodes(TGuiDockerNode *node) {
    
@@ -90,19 +91,37 @@ void app_update(App *app, f32 dt, Painter *painter) {
     if(tgui_button(app->window3, "button", 310, 10)) {
         printf("click! 4\n");
     }
-    
+
     tgui_text_input(app->window2, 10, 10);
     tgui_text_input(app->window2, 180, 10);
     
-    tgui_color_picker(app->window2, 10, 60, 256, 256, &app->color0);
     tgui_color_picker(app->window1, 10, 10, 300, 100, &app->color1);
-    
     
     void *user_data = NULL;
 
     _tgui_tree_view_begin(app->window4, TGUI_ID);
-    add_docker_nodes(docker.root);
+        add_docker_nodes(docker.root);
     _tgui_tree_view_end(&user_data);
+
+    if(tgui_button(app->window2, "button", 10, 100)) {
+        printf("click! 5\n");
+    }
+
+    char *options[] = {
+        "option 0",
+        "option 1",
+        "option 2",
+        "option 3",
+        "option 4",
+        "option 5",
+        "option 6",
+        "option 7",
+        "option 8",
+        "option 9" 
+    };
+    s32 option_index = 0;
+    _tgui_dropdown_menu(app->window2, 10, 60, options, APP_ARRAY_LEN(options), &option_index, TGUI_ID);
+
 
     tgui_end(painter);
 
