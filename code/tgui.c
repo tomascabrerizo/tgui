@@ -1816,6 +1816,9 @@ void tgui_scroll_window_recalculate_dim(TGuiWindow *window) {
 
 void tgui_process_scroll_window(TGuiWindow *window, Painter *painter) {
     if(!window->is_scrolling) return;
+    
+    Rectangle saved_painter_clip = painter->clip;
+    painter->clip = rect_intersection(painter->clip, tgui_docker_get_client_rect(window->parent));
 
     b32 v_scroll_valid = !rect_invalid(window->v_scroll_bar);
     b32 h_scroll_valid = !rect_invalid(window->h_scroll_bar);
@@ -1883,6 +1886,8 @@ void tgui_process_scroll_window(TGuiWindow *window, Painter *painter) {
         Rectangle inner_rect = (Rectangle){window->dim.max_x+1, window->dim.max_y+1, window_rect.max_x, window_rect.max_y};
         painter_draw_rectangle(painter, inner_rect, 0x444444);
     }
+
+    painter->clip = saved_painter_clip;
 }
 
 void tgui_end(Painter *painter) {
