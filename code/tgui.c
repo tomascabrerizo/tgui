@@ -1718,6 +1718,10 @@ void tgui_try_to_load_data_file(void) {
 
 void tgui_begin(f32 dt) {
     state.dt = dt;
+
+    input.mouse_x = CLAMP(input.mouse_x, 0, (input.resize_w-1));
+    input.mouse_y = CLAMP(input.mouse_y, 0, (input.resize_h-1));
+
     tgui_docker_update();
 
     TGuiAllocatedWindow *allocated_window = state.allocated_windows->next;
