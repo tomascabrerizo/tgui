@@ -1,7 +1,7 @@
 root_node: {
-  dir: 2
+  dir: 1
   root_node: {
-    dir: 1
+    dir: 2
     window_node: {
       active_window: 4
       window_count: 1
@@ -12,8 +12,23 @@ root_node: {
       }
     }
     split_node: {
-      split_position: 365
+      split_position: 376
     }
+    window_node: {
+      active_window: 0
+      window_count: 1
+      window: {
+        id: 0
+        name: "Window 0"
+        is_scrolling: 0
+      }
+    }
+  }
+  split_node: {
+    split_position: 282
+  }
+  root_node: {
+    dir: 2
     window_node: {
       active_window: 2
       window_count: 1
@@ -23,34 +38,22 @@ root_node: {
         is_scrolling: 1
       }
     }
-  }
-  split_node: {
-    split_position: 408
-  }
-  window_node: {
-    active_window: 3
-    window_count: 2
-    window: {
-      id: 0
-      name: "Window 0"
-      is_scrolling: 0
+    split_node: {
+      split_position: 530
     }
-    window: {
-      id: 3
-      name: "Window 3"
-      is_scrolling: 0
-    }
-  }
-  split_node: {
-    split_position: 756
-  }
-  window_node: {
-    active_window: 1
-    window_count: 1
-    window: {
-      id: 1
-      name: "Window 1"
-      is_scrolling: 1
+    window_node: {
+      active_window: 1
+      window_count: 2
+      window: {
+        id: 1
+        name: "Window 1"
+        is_scrolling: 1
+      }
+      window: {
+        id: 3
+        name: "Window 3"
+        is_scrolling: 0
+      }
     }
   }
 }

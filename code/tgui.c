@@ -1024,7 +1024,6 @@ void _tgui_tree_view_begin(TGuiWindowHandle handle, char *tgui_id) {
     
     TGuiTreeView *treeview = tgui_widget_get_state(state.active_id, TGuiTreeView);
     treeview->dim = (Rectangle){ 0, 0, 0, 0 };
-    treeview->dim.max_x = rect_width(window->dim)-1;
 
     if(!treeview->initiliaze) {
 
@@ -1096,13 +1095,16 @@ void treeview_node_setup(TGuiTreeView *treeview, TGuiTreeViewNode *node, char *l
     node->label_depth = depth;
     
     if((node->parent && node->parent == treeview->root) || (node->parent && treeview->root_node_state[node->parent->state_index] && node->parent->visible)){
-        u32 x = treeview->padding*2 + treeview->rect_w;
-        Rectangle text_label = tgui_get_text_dim(x+depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH, treeview->dim.max_y+1, label);
+        
+        u32 depth_in_pixels = depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH;
+        u32 x = treeview->padding*2 + treeview->rect_w + depth_in_pixels;
+        
+        Rectangle text_label = tgui_get_text_dim(x, treeview->dim.max_y+1, label);
         treeview->dim = rect_union(treeview->dim, text_label);
 
         node->dim = text_label;
-        node->dim.min_x = treeview->dim.min_x;
-        node->dim.max_x = treeview->dim.max_x;
+        node->dim.min_x = depth_in_pixels;
+        node->dim.max_x = text_label.max_x;
         
         node->visible = true;
     } else {
@@ -1154,7 +1156,7 @@ void tree_view_translate_node_dim(TGuiTreeView *treeview, TGuiTreeViewNode *node
 
     s32 x = node->dim.min_x;
     s32 y = node->dim.min_y;
-    s32 w = rect_width(treeview->dim);
+    s32 w = rect_width(node->dim);
     s32 h = rect_height(node->dim);
     
     Rectangle treeview_rect = treeview->dim; 
@@ -1168,9 +1170,23 @@ void tree_view_translate_node_dim(TGuiTreeView *treeview, TGuiTreeViewNode *node
     node->dim = result;
 }
 
+Rectangle treeview_get_fake_dim(TGuiTreeView *treeview, TGuiWindow *window) {
+    Rectangle result = treeview->dim;
+    result.min_x = window->dim.min_x;
+    result.max_x = window->dim.max_x;
+    return result;
+}
+
+Rectangle treeview_node_get_fake_dim(TGuiTreeViewNode *node, TGuiWindow *window) {
+    Rectangle result = node->dim;
+    result.min_x = window->dim.min_x;
+    result.max_x = window->dim.max_x;
+    return result;
+}
+
 Rectangle treeview_calculate_node_cruz_rect(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
-    s32 x = node->dim.min_x+node->label_depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH + treeview->padding;
-    s32 y = node->dim.min_y + rect_height(node->dim) / 2 - treeview->rect_w/2;
+    s32 x = node->dim.min_x + treeview->rect_w/2;
+    s32 y = node->dim.min_y + treeview->rect_w/2;
     Rectangle result = rect_from_wh(x, y, treeview->rect_w, treeview->rect_w);
     return result;
 }
@@ -1183,47 +1199,63 @@ void treeview_node_draw(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeView
     } else {
         *color = TGUI_TREEVIEW_COLOR0;
     }
+
+    TGuiWindow *window = widget->parent;
+
+    Rectangle fake_node_dim = treeview_node_get_fake_dim(node, window);
     
     u32 rect_w = treeview->rect_w;
     u32 padding = treeview->padding;
 
-    b32 mouse_in_node = rect_point_overlaps(node->dim, input.mouse_x, input.mouse_y);
+    b32 mouse_in_node = rect_point_overlaps(fake_node_dim, input.mouse_x, input.mouse_y);
     u32 _color = *color;
     if(state.hot == widget->id && mouse_in_node) {
         _color = 0xaaaaff;
     }
+    
+    Rectangle saved_painter_clip = painter->clip;
+    painter->clip = rect_intersection(fake_node_dim, painter->clip);
 
-    painter_draw_rectangle(painter, node->dim, _color);
+    painter_draw_rectangle(painter, fake_node_dim, _color);
 
     if((u32)treeview->selection_index == node->selected_state_index && treeview->selected_node_data[treeview->selection_index]) {
         _color = 0xaaaaff;
-        painter_draw_rectangle_outline(painter, node->dim, _color);
+        painter_draw_rectangle_outline(painter, fake_node_dim, _color);
     }
 
 
-    s32 label_x = node->dim.min_x+node->label_depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH + padding;
+    s32 label_x = node->dim.min_x + treeview->rect_w/2;
     tgui_font_draw_text(painter, label_x+rect_w+padding, node->dim.min_y, node->label, strlen(node->label), 0x333333);
 
     for(u32 i = 0; i < node->label_depth; ++i) {
-        s32 x = node->dim.min_x + rect_w/2 + padding - 1; 
-        painter_draw_vline(painter, x + TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH * i, node->dim.min_y, node->dim.max_y, 0x333333);
+        u32 depth_in_pixel = TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH * ((node->label_depth-1) - i);
+        painter_draw_vline(painter, node->dim.min_x - treeview->rect_w - depth_in_pixel, node->dim.min_y, node->dim.max_y, 0x333333);
     }
     
     if(node->childs) {
+        
+        Rectangle cruz_rect = treeview_calculate_node_cruz_rect(treeview, node);
 
         if(treeview->root_node_state[node->state_index] == false) {
-            s32 x = label_x; 
-            s32 y = node->dim.min_y + rect_height(node->dim) / 2 - 4/2;
-            painter_draw_rect(painter, x, y, rect_w, 4, 0x333333);
+            Rectangle cruz_rect_v = cruz_rect;
+            cruz_rect_v.min_x += treeview->rect_w/4;
+            cruz_rect_v.max_x -= treeview->rect_w/4;
+            painter_draw_rectangle(painter, cruz_rect_v, 0x333333);
 
-            x = label_x + rect_w/2 - 4/2; 
-            y = node->dim.min_y + rect_height(node->dim) / 2 - rect_w/2;
-            painter_draw_rect(painter, x, y, 4, rect_w, 0x333333);
+            Rectangle cruz_rect_h = cruz_rect;
+            cruz_rect_h.min_y += treeview->rect_w/4;
+            cruz_rect_h.max_y -= treeview->rect_w/4;
+            painter_draw_rectangle(painter, cruz_rect_h, 0x333333);
         } else {
-            s32 y = node->dim.min_y + rect_height(node->dim) / 2 - 4/2;
-            painter_draw_rect(painter, label_x, y, rect_w, 4, 0x333333);
+            Rectangle cruz_rect_h = cruz_rect;
+            cruz_rect_h.min_y += treeview->rect_w/4;
+            cruz_rect_h.max_y -= treeview->rect_w/4;
+            painter_draw_rectangle(painter, cruz_rect_h, 0x333333);
         }
+
     } 
+    
+    painter->clip = saved_painter_clip;
     
     if(node->childs) {
 
@@ -1253,8 +1285,12 @@ void treeview_translate_node(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
 void treeview_update_node(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeViewNode *node) {
     if(!node->visible) return;
     
+    TGuiWindow *window = widget->parent;
+
+    Rectangle fake_node_dim = treeview_node_get_fake_dim(node, window);
+
     u64 id = widget->id;
-    b32 mouse_in_node = rect_point_overlaps(node->dim, input.mouse_x, input.mouse_y);
+    b32 mouse_in_node = rect_point_overlaps(fake_node_dim, input.mouse_x, input.mouse_y);
 
     if(state.hot == id) {
         if(mouse_in_node && input.mouse_button_is_down && !input.mouse_button_was_down) {
@@ -1313,8 +1349,10 @@ void _tgui_tree_view_internal(TGuiWidget *widget, Painter *painter) {
 
     TGuiTreeView *treeview = tgui_widget_get_state(id, TGuiTreeView);
     treeview->dim = calculate_widget_rect(widget); 
+    
+    Rectangle fake_treeview_dim = treeview_get_fake_dim(treeview, window);
 
-    tgui_calculate_hot_widget(window, treeview->dim, id);
+    tgui_calculate_hot_widget(window, fake_treeview_dim, id);
 
     u32 color = TGUI_TREEVIEW_COLOR0;
     TGuiTreeViewNode *node = treeview->root->childs->next;
@@ -1412,7 +1450,7 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter) {
             state.active = 0;
         }
 
-        if(mouse_in_node && !dropdown->click_was_in_scrollbar && !input.mouse_button_is_down && input.mouse_button_was_down) {
+        if(mouse_in_node && !input.mouse_button_is_down && input.mouse_button_was_down) {
 
             for(u32 i = 0; i < dropdown->options_size; ++i) {
                 Rectangle option_rect = calculate_option_rect(rect.min_x, rect.min_y, i);
@@ -1689,9 +1727,6 @@ void tgui_begin(f32 dt) {
         Rectangle window_dim = tgui_docker_get_client_rect(window->parent);
         window->dim = window_dim;
         
-        //window->h_scroll_bar = rect_set_invalid();
-        //window->v_scroll_bar = rect_set_invalid();
-
         allocated_window = allocated_window->next;
     }
 }
