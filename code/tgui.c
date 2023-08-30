@@ -1689,8 +1689,8 @@ void tgui_begin(f32 dt) {
         Rectangle window_dim = tgui_docker_get_client_rect(window->parent);
         window->dim = window_dim;
         
-        window->h_scroll_bar = rect_set_invalid();
-        window->v_scroll_bar = rect_set_invalid();
+        //window->h_scroll_bar = rect_set_invalid();
+        //window->v_scroll_bar = rect_set_invalid();
 
         allocated_window = allocated_window->next;
     }
@@ -1712,6 +1712,8 @@ void tgui_scroll_window_recalculate_dim(TGuiWindow *window) {
     b32 h_bar_added = false;
     b32 v_bar_added = false;
     Rectangle widget_rect;
+    
+    Rectangle last_scroll_rect = window->scroll_saved_rect;
 
     widget_rect = calculate_total_widget_rect(window);
     window->scroll_saved_rect = widget_rect;
@@ -1738,19 +1740,41 @@ void tgui_scroll_window_recalculate_dim(TGuiWindow *window) {
     }
 
     if(h_bar_added) {
+
         window->h_scroll_bar = window->dim;
         window->h_scroll_bar.min_y = window->dim.max_y + 1;
         window->h_scroll_bar.max_y = window->h_scroll_bar.min_y + TGUI_SCROLL_BAR_SIZE - 1;
+       
+        if(!rect_invalid(last_scroll_rect)) {
+            u32 last_scroll_w = rect_width(last_scroll_rect) - rect_width(window->dim);
+            u32 saved_scroll_w = rect_width(window->scroll_saved_rect) - rect_width(window->dim);
+            if(rect_width(last_scroll_rect) != rect_width(window->scroll_saved_rect)) {
+                window->h_scroll_offset = CLAMP((f32)window->h_scroll_offset * (f32)last_scroll_w / (f32)saved_scroll_w, 0, 1);
+            }
+        }
+
     } else {
         window->h_scroll_offset = 0;
+        window->h_scroll_bar = rect_set_invalid();
     }
 
     if(v_bar_added) {
+
         window->v_scroll_bar = window->dim;
         window->v_scroll_bar.min_x = window->dim.max_x + 1;
         window->v_scroll_bar.max_x = window->v_scroll_bar.min_x + TGUI_SCROLL_BAR_SIZE - 1;
+    
+        if(!rect_invalid(last_scroll_rect)) {
+            u32 last_scroll_h = rect_height(last_scroll_rect) - rect_height(window->dim);
+            u32 saved_scroll_h = rect_height(window->scroll_saved_rect) - rect_height(window->dim);
+            if(rect_height(last_scroll_rect) != rect_height(window->scroll_saved_rect)) {
+                window->v_scroll_offset = CLAMP((f32)window->v_scroll_offset * (f32)last_scroll_h / (f32)saved_scroll_h, 0, 1);
+            }
+        }
+
     } else {
         window->v_scroll_offset = 0;
+        window->v_scroll_bar = rect_set_invalid();
     }
 
 }
