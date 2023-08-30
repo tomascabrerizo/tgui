@@ -153,7 +153,7 @@ typedef struct TGui {
 
 } TGui;
 
-void tgui_initialize(void);
+void tgui_initialize(s32 w, s32 h);
 
 void tgui_terminate(void);
 

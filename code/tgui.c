@@ -1592,12 +1592,16 @@ TGuiWindowHandle tgui_split_window(TGuiWindowHandle handle, TGuiSplitDirection d
 /*       TGui Fuction     */
 /* ---------------------- */
 
-void tgui_initialize(void) {
+void tgui_initialize(s32 window_w, s32 window_h) {
     
     memset(&state, 0, sizeof(TGui));
 
     arena_initialize(&state.arena, 0, ARENA_TYPE_VIRTUAL);
     virtual_map_initialize(&state.registry);
+
+    input.window_resize = true;
+    input.resize_w = window_w;
+    input.resize_h = window_h;
     
     state.active_window = NULL;
     state.active_id = -1;

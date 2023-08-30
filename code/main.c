@@ -60,12 +60,8 @@ int main(void) {
 
     TGuiInput *input = tgui_get_input();
     
-    input->window_resize = true;
-    input->resize_w = window_w;
-    input->resize_h = window_h;
-
     App app;
-    app_initialize(&app);
+    app_initialize(&app, window_w, window_h);
     
     while(!os_window_should_close(window)) {
 

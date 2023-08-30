@@ -53,9 +53,9 @@ void add_docker_nodes(TGuiDockerNode *node) {
     }
 }
 
-void app_initialize(App *app) {
+void app_initialize(App *app, s32 w, s32 h) {
     UNUSED(app);
-    tgui_initialize();
+    tgui_initialize(w, h);
 
     app->window0 = tgui_create_root_window("Window 0", false);
     app->window1 = tgui_split_window(app->window0, TGUI_SPLIT_DIR_HORIZONTAL, "Window 1", true);
