@@ -47,6 +47,15 @@ void os_window_get_text_input(struct OsWindow *window, u8 *buffer, u32 *size, u3
 
 void os_window_get_keyboard_input(struct OsWindow *window, struct TGuiKeyboard *keyborad);
 
+/* ---------------------
+        OpenGL 
+   --------------------- */
+
+void os_gl_create_context(struct OsWindow *window);
+
+void os_gl_destroy_context(struct OsWindow *window);
+
+void os_gl_swap_buffers(struct OsWindow *window);
 
 /* ---------------------
         Backbuffer 

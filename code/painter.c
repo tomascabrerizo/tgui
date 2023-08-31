@@ -14,8 +14,9 @@ void painter_draw_pixel(Painter *painter, s32 x, s32 y, u32 color) {
     }
 }
 
-void painter_start(Painter *painter, u32 *pixels, Rectangle dim, Rectangle *clip) {
-    
+void painter_start(Painter *painter, Rectangle dim, Rectangle *clip, u32 *pixels, TGuiVertexArray *vertex_array, TGuiU32Array *index_array) {
+    UNUSED(vertex_array); UNUSED(index_array);
+
     painter->pixels = pixels;
     painter->dim = dim;
 

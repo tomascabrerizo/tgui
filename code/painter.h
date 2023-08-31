@@ -25,7 +25,7 @@ typedef struct Painter {
 
 struct TGuiBitmap;
 
-void painter_start(Painter *painter, u32 *pixels, Rectangle dim, Rectangle *clip);
+void painter_start(Painter *painter, Rectangle dim, Rectangle *clip, u32 *pixels, TGuiVertexArray *vertex_array, TGuiU32Array *index_array);
 
 void painter_clear(Painter *painter, u32 color);
 

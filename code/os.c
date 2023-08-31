@@ -17,6 +17,8 @@
 #include <stdlib.h>
 #include "stb_truetype.h"
 
+#include "os_gl.h"
+
 static u64 g_os_page_size = 0;
 static Display *g_x11_display = 0;
 static int g_x11_screen = 0;
@@ -173,6 +175,10 @@ typedef struct OsWindow {
     s32 text_size;
     
     TGuiKeyboard keyboard;
+
+    Colormap cm;
+    GLXContext ctx;
+    GLXFBConfig best_fbc;
     
 } OsWindow;
 
@@ -196,6 +202,97 @@ void os_set_cursor(OsWindow *window, OsCursor cursor) {
     }
 }
 
+/* NOTE: OpenGl compatible window */
+struct OsWindow *os_window_create(struct Arena *arena, char *title, u32 x, u32 y, u32 w, u32 h) {
+
+    OsWindow *window = arena_push_struct(arena, OsWindow, 8);
+    memset(window, 0, sizeof(OsWindow));
+    
+    window->width = w;
+    window->height = h;
+
+    Display *d = g_x11_display;
+  
+    static int fb_attr[] = {
+        GLX_X_RENDERABLE, True,
+        GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+        GLX_RENDER_TYPE, GLX_RGBA_BIT,
+        GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR,
+        GLX_RED_SIZE, 8,
+        GLX_GREEN_SIZE, 8,
+        GLX_BLUE_SIZE, 8,
+        GLX_ALPHA_SIZE, 8,
+        GLX_DEPTH_SIZE, 24,
+        GLX_STENCIL_SIZE, 8,
+        GLX_DOUBLEBUFFER, True,
+        None
+    };
+  
+    int fbcount;
+    GLXFBConfig* fbc = glXChooseFBConfig(d, DefaultScreen(d), fb_attr, &fbcount);
+    if (!fbc) {
+        printf("Failed to retrieve a X11 framebuffer config\n");
+        return NULL;
+    }
+  
+    /* Pick the FB config/visual with the most samples per pixel */
+    int best_fbc_index = -1, worst_fbc_index = -1, best_num_samp = -1, worst_num_samp = 999;
+  
+    for(int i = 0; i < fbcount; ++i) {
+        XVisualInfo *vi = glXGetVisualFromFBConfig(d, fbc[i]);
+        if(vi) {
+            int samp_buf, samples;
+            glXGetFBConfigAttrib(d, fbc[i], GLX_SAMPLE_BUFFERS, &samp_buf);
+            glXGetFBConfigAttrib(d, fbc[i], GLX_SAMPLES, &samples);
+            
+           if((best_fbc_index < 0 || samp_buf) && samples > best_num_samp)
+               best_fbc_index = i, best_num_samp = samples;
+           if((worst_fbc_index < 0 || !samp_buf) || samples < worst_num_samp)
+               worst_fbc_index = i, worst_num_samp = samples;
+
+        }
+        XFree(vi);
+    }
+
+    window->best_fbc = fbc[best_fbc_index];
+    XFree(fbc);
+    XVisualInfo *vi = glXGetVisualFromFBConfig(d, window->best_fbc);
+  
+    XSetWindowAttributes swa;
+    window->cm = XCreateColormap(d, RootWindow(d, vi->screen), vi->visual, AllocNone);
+
+    long event_mask = StructureNotifyMask|ExposureMask|ButtonPressMask|ButtonReleaseMask|KeyPressMask|KeyReleaseMask|KeymapStateMask;
+    swa.colormap = window->cm;
+    swa.background_pixmap = None ;
+    swa.border_pixel      = 0;
+    swa.event_mask        = event_mask;
+
+    window->os_window = XCreateWindow(d, RootWindow(d, vi->screen), 
+                            x, y, window->width, window->height, 0, vi->depth, InputOutput, vi->visual, 
+                            CWBorderPixel|CWColormap|CWEventMask, &swa);
+
+    XStoreName(d, window->os_window, title);
+    XSelectInput(d, window->os_window, event_mask);
+    XMapWindow(d, window->os_window);
+    
+    /* TODO: investigate why is necesary to do this to catch WM_DELETE_WINDOW message */
+    window->delete_message = XInternAtom(d, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(d, window->os_window, &window->delete_message, 1);
+    
+    XFlush(d);
+
+    cursor_v_double_arrow = XcursorLibraryLoadCursor(d, "sb_v_double_arrow");
+    cursor_h_double_arrow = XcursorLibraryLoadCursor(d, "sb_h_double_arrow");
+    cursor_hand           = XcursorLibraryLoadCursor(d, "hand1");
+    cursor_arrow          = XcursorLibraryLoadCursor(d, "arrow");
+    XDefineCursor (d, window->os_window, cursor_arrow);
+
+    return window;
+
+}
+
+#if 0
+/* NOTE: This function dont create OpenGl compatible window */
 struct OsWindow *os_window_create(struct Arena *arena, char *title, u32 x, u32 y, u32 w, u32 h) {
     OsWindow *window = arena_push_struct(arena, OsWindow, 8);
     memset(window, 0, sizeof(OsWindow));
@@ -223,9 +320,12 @@ struct OsWindow *os_window_create(struct Arena *arena, char *title, u32 x, u32 y
 
     return window;
 }
+#endif
 
 void os_window_destroy(struct OsWindow *window) {
-    XDestroyWindow(g_x11_display, window->os_window);
+    Display *d = g_x11_display;
+    XFreeColormap(d, window->cm);
+    XDestroyWindow(d, window->os_window);
 }
 
 s32 os_window_width(struct OsWindow *window) {
@@ -411,6 +511,67 @@ void os_backbuffer_swap(struct OsWindow *window, struct OsBackbuffer *backbuffer
     Display *d = g_x11_display;
     XPutImage(d, window->os_window, backbuffer->gc, backbuffer->image, 0, 0, 0, 0, backbuffer->width, backbuffer->height);
     XFlush(d);
+}
+
+/* ---------------------
+        OpenGL 
+   --------------------- */
+
+#define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
+#define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
+typedef GLXContext (*glXCreateContextAttribsARBProc)(Display *, GLXFBConfig, GLXContext, Bool, const int *);
+typedef void (*glXSwapIntervalEXTProc)(Display *, GLXDrawable , int);
+
+#define X(return, name, params) TGUI_GL_PROC(name) name;
+GL_FUNCTIONS(X)
+#undef X
+
+void os_gl_create_context(struct OsWindow *window) {
+    Display *d = g_x11_display;
+    
+    glXCreateContextAttribsARBProc glXCreateContextAttribsARB = 0;
+    glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc)glXGetProcAddressARB((const GLubyte *)"glXCreateContextAttribsARB");
+  
+    int ctx_attribs[] = {
+        GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
+        GLX_CONTEXT_MINOR_VERSION_ARB, 3,
+        None
+    };
+  
+    /* TODO: Get context version to be sure we are in 3.3 version */
+    window->ctx = glXCreateContextAttribsARB(d, window->best_fbc, 0, True, ctx_attribs);
+    XSync(d, False);
+    if(!glXIsDirect(d, window->ctx)) {
+        printf("Indirect rendering not supported\n");
+        return;
+    }
+
+    glXMakeCurrent(d, window->os_window, window->ctx); 
+  
+    /* Set vertical Sync */
+    glXSwapIntervalEXTProc glXSwapIntervalEXT = (glXSwapIntervalEXTProc)glXGetProcAddress((GLubyte *)"glXSwapIntervalEXT");
+    if(glXSwapIntervalEXT) {
+        glXSwapIntervalEXT(d, window->os_window, 1);
+        printf("Vertical Sync enable\n");
+    } else {
+        printf("vertical Sync disable\n");
+    }
+
+    /* TODO: load opnegl function: */
+    #define X(return, name, params) name = (TGUI_GL_PROC(name))glXGetProcAddress((GLubyte *)#name);
+    GL_FUNCTIONS(X)
+    #undef X
+
+}
+
+void os_gl_destroy_context(struct OsWindow *window) {
+    Display *d = g_x11_display;
+    glXDestroyContext(d, window->ctx);
+}
+
+void os_gl_swap_buffers(struct OsWindow *window) {
+    Display *d = g_x11_display;
+    glXSwapBuffers(d, window->os_window);
 }
 
 /* -------------------

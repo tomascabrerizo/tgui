@@ -60,7 +60,7 @@ void static_arena_free(Arena *arena);
        VirtualArena
    ------------------- */
 
-#define DEFAULT_VIRTUAL_SPACE_RANGE GB(8)
+#define DEFAULT_VIRTUAL_SPACE_RANGE GB(4)
 
 void virtual_arena_initialize(Arena *arena);
 
@@ -166,7 +166,7 @@ typedef struct TGuiVoidArray {
         name##Type type_array;    \
     } name
 
-#define TGUI_ARRAY_DEFAULT_CAPACITY 4 
+#define TGUI_ARRAY_DEFAULT_CAPACITY 2 
 
 void _tgui_array_initialize(TGuiVoidArray *array, u64 element_size);
 #define tgui_array_initialize(array) \
@@ -188,8 +188,14 @@ void _tgui_array_clear(TGuiVoidArray *array);
 #define tgui_array_get(array, index) \
     ((array)->type_array.buffer[(index)])
 
+#define tgui_array_get_ptr(array, index) \
+    (&((array)->type_array.buffer[(index)]))
+
 #define tgui_array_size(array) \
     ((array)->type_array.size)
+
+#define tgui_array_data(array) \
+    ((array)->type_array.buffer)
 
 
 #endif /* _MEMORY_H_ */

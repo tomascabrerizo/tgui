@@ -321,7 +321,8 @@ void _tgui_array_push(TGuiVoidArray *array, u64 element_size) {
     if((array->size + 1) > array->capacity) {
         arena_alloc(&array->arena, array->size*element_size, 1);
         array->capacity += array->size;
-        printf("array increase capacity, size: %lld, capacity: %lld\n", array->size, array->capacity);
+        //printf("array increase capacity, size: %lld, capacity: %lld\n", array->size, array->capacity);
+        //printf("arena arena used: %lld, size: %lld\n", array->arena.used, array->arena.size);
     }
     
     ASSERT(array->size < array->capacity);
