@@ -21,6 +21,8 @@
 #define ABS(a) ((a) >= 0 ? (a) : (-(a)))
 #define CLAMP(value, min, max) MAX(MIN(value, max), min)
 
+#define OFFSET_OF(type, value) (&(((type *)0)->value))
+
 typedef unsigned long long u64;
 typedef unsigned int       u32;
 typedef unsigned short     u16;

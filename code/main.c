@@ -2,6 +2,7 @@
 #include "geometry.h"
 #include "os.h"
 #include "memory.h"
+#include "os_gl.h"
 #include "painter.h"
 #include "tgui.h"
 #include "tgui_docker.h"
@@ -14,6 +15,7 @@
 #include "tgui_docker.c"
 #include "tgui_serializer.c"
 #include <GL/gl.h>
+#include <GL/glext.h>
 
 #define HARWARE_RENDERING 1
 #if HARWARE_RENDERING
@@ -68,6 +70,31 @@ int main(void) {
 
     tgui_array_initialize(&vertex_array);
     tgui_array_initialize(&index_array);
+
+    #define MAX_QUAD_PER_BATCH 1024
+
+    u32 vao, vbo, ebo;
+    
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, MAX_QUAD_PER_BATCH*(sizeof(TGuiVertex) * 4), 0, GL_DYNAMIC_DRAW); 
+    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(TGuiVertex), OFFSET_OF(TGuiVertex, x)); 
+
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(TGuiVertex), OFFSET_OF(TGuiVertex, u)); 
+
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(TGuiVertex), OFFSET_OF(TGuiVertex, r)); 
+
+    glGenBuffers(1, &ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_QUAD_PER_BATCH*(sizeof(u32) * 6), 0, GL_DYNAMIC_DRAW); 
+
 #else
     struct OsBackbuffer *backbuffer = realloc_backbuffer(0, window, window_w, window_h);
 #endif
@@ -120,11 +147,12 @@ int main(void) {
 
         }
         
-        //printf("vertex array size: %lld, capacity: %lld, arena used: %lld, arena size: %lld\n", tgui_array_size(&vertex_array), vertex_array.type_array.capacity, vertex_array.type_array.arena.used, vertex_array.type_array.arena.size);
-        //printf("index array size: %lld, capacity: %lld, arena used: %lld, arena size: %lld\n", tgui_array_size(&index_array), index_array.type_array.capacity, index_array.type_array.arena.used, index_array.type_array.arena.size);
-
         Painter painter;
 #if HARWARE_RENDERING
+
+        printf("vertex array size: %lld, capacity: %lld, arena used: %lld, arena size: %lld\n", tgui_array_size(&vertex_array), vertex_array.type_array.capacity, vertex_array.type_array.arena.used, vertex_array.type_array.arena.size);
+        printf("index array size: %lld, capacity: %lld, arena used: %lld, arena size: %lld\n", tgui_array_size(&index_array), index_array.type_array.capacity, index_array.type_array.arena.used, index_array.type_array.arena.size);
+        
         glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -138,7 +166,16 @@ int main(void) {
         app_update(&app, seconds_per_frame, &painter);
 
 #if HARWARE_RENDERING
-        glDrawElements(GL_TRIANGLES, tgui_array_size(&vertex_array), GL_UNSIGNED_INT, tgui_array_data(&index_array));
+    ASSERT(tgui_array_size(&vertex_array) <= MAX_QUAD_PER_BATCH*4);
+    ASSERT(tgui_array_size(&index_array)  <= MAX_QUAD_PER_BATCH*6);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, tgui_array_size(&vertex_array), tgui_array_data(&vertex_array));
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, tgui_array_size(&index_array), tgui_array_data(&index_array));
+    
+    glDrawElements(GL_TRIANGLES, tgui_array_size(&index_array), GL_UNSIGNED_INT, 0);
 #endif
 
         input->mouse_button_was_down = input->mouse_button_is_down;
