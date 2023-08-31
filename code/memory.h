@@ -147,4 +147,30 @@ void *virtual_map_find(VirtualMap *map, u64 key);
 
 b32 virtual_map_contains(VirtualMap *map, u64 key);
 
+/* ------------------------
+        Virtual Array 
+   ------------------------ */
+
+#define  TGuiTypeArrayData(T) \
+        T     *buffer;        \
+        u64    size;          \
+        u64    capacity;      \
+        Arena *arena
+
+typedef struct TGuiVoidArray {
+    TGuiTypeArrayData(void);
+} TGuiVoidArray;
+
+#define TGuiTypeArray(T, name)  \
+    typedef struct name##Type { \
+        TGuiTypeArrayData(T);   \
+    } name##Type
+
+#define TGuiArray(T, name)        \
+    TGuiTypeArray(T, name);       \
+    typedef union name {          \
+        TGuiVoidArray void_array; \
+        name##Type type_array;    \
+    } name
+
 #endif /* _MEMORY_H_ */

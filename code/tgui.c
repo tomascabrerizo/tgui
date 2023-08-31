@@ -1,18 +1,12 @@
-#include "tgui.h"
-#include "common.h"
-#include "geometry.h"
-#include "memory.h"
-#include "painter.h"
-#include "os.h"
 #include "tgui_docker.h"
+
+#include "tgui.h"
 #include "tgui_serializer.h"
-#include <stdio.h>
-#include <string.h>
+#include "os.h"
 
 /* -------------------------- */
 /*       Hash Function     */
 /* -------------------------- */
-
  static u64 murmur_hash64A(const void * key, int len, u64 seed) {
         const u64 m = 0xc6a4a7935bd1e995ull;
         const int r = 47;
@@ -51,6 +45,8 @@
 
         return h;
 } 
+
+u64 murmur_hash64A(const void * key, int len, u64 seed);
 
 /* TODO: This global variables should be static */
 
@@ -1918,3 +1914,4 @@ void tgui_end(Painter *painter) {
 
     tgui_docker_draw_preview(painter);
 }
+

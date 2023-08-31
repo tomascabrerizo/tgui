@@ -5,14 +5,23 @@
 #include "geometry.h"
 #include "memory.h"
 
-typedef struct Point {
-    s32 x, y;
-} Point;
+typedef struct TGuiVertex {
+    float x, y;
+    float u, v;
+    float r, g, b;
+} TGuiVertex;
+
+
+TGuiArray(TGuiVertex, TGuiVertexArray);
+TGuiArray(u32, TGuiU32Array);
 
 typedef struct Painter {
-    u32 *pixels;
     Rectangle dim;
     Rectangle clip;
+
+    TGuiVertexArray *vertex_buffer;
+    TGuiU32Array    *index_buffer;
+    u32 *pixels;
 } Painter;
 
 struct TGuiBitmap;
