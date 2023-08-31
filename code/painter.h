@@ -11,7 +11,6 @@ typedef struct TGuiVertex {
     float r, g, b;
 } TGuiVertex;
 
-
 TGuiArray(TGuiVertex, TGuiVertexArray);
 TGuiArray(u32, TGuiU32Array);
 

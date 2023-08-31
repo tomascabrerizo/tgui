@@ -36,22 +36,6 @@ void arena_terminate(Arena *arena) {
     }
 }
 
-void arena_stack_begin(Arena *arena, u32 type_size, u32 align) {
-    arena->stack_alloc_size = type_size;
-    arena->alloc(arena, 0, align);
-    ASSERT((arena->used & (os_get_page_size() - 1)) == 0);
-}
-
-void arena_stack_end(Arena *arena) {
-    arena->stack_alloc_size = 0;
-}
-
-void *arena_stack_push(Arena *arena) {
-    ASSERT(arena->stack_alloc_size > 0);
-    void *result = arena->alloc(arena, arena->stack_alloc_size, 1);
-    return result;
-}
-
 /* -------------------
       StaticArena 
    ------------------- */
@@ -68,8 +52,6 @@ void static_arena_initialize(Arena *arena, u64 size) {
     arena->used = 0;
     arena->buffer = os_virtual_reserve(align_size);
     os_virtual_commit(arena->buffer, align_size);
-
-    arena->stack_alloc_size = 0;
 }
 
 void static_arena_terminate(Arena *arena) {
@@ -131,8 +113,6 @@ void virtual_arena_initialize(Arena *arena) {
     arena->size = 0;
     arena->used = 0;
     arena->buffer = os_virtual_reserve(align_size);
-
-    arena->stack_alloc_size = 0;
 }
 
 void virtual_arena_terminate(Arena *arena) {
@@ -315,4 +295,39 @@ void *virtual_map_find(VirtualMap *map, u64 key) {
 
 b32 virtual_map_contains(VirtualMap *map, u64 key) {
     return virtual_map_find(map, key) != NULL;
+}
+
+/* ------------------------
+        Virtual Array 
+   ------------------------ */
+
+void _tgui_array_initialize(TGuiVoidArray *array, u64 element_size) {
+    ASSERT(array);
+    arena_initialize(&array->arena, 0, ARENA_TYPE_VIRTUAL);
+
+    array->size = 0;
+    array->capacity = TGUI_ARRAY_DEFAULT_CAPACITY;
+    array->buffer = arena_alloc(&array->arena, TGUI_ARRAY_DEFAULT_CAPACITY*element_size, 8);
+}
+
+void _tgui_array_terminate(TGuiVoidArray *array) {
+    array->buffer = NULL;
+    array->size = 0;
+    array->capacity = 0;
+    arena_terminate(&array->arena);
+}
+
+void _tgui_array_push(TGuiVoidArray *array, u64 element_size) {
+    if((array->size + 1) > array->capacity) {
+        arena_alloc(&array->arena, array->size*element_size, 1);
+        array->capacity += array->size;
+        printf("array increase capacity, size: %lld, capacity: %lld\n", array->size, array->capacity);
+    }
+    
+    ASSERT(array->size < array->capacity);
+    ++array->size;
+}
+
+void _tgui_array_clear(TGuiVoidArray *array) {
+    array->size = 0;
 }

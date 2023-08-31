@@ -24,7 +24,6 @@ typedef struct Arena {
     u64 used;
     u64 size; 
 
-    u32 stack_alloc_size;
     ArenaType type;
 } Arena;
 
@@ -43,12 +42,6 @@ void arena_terminate(Arena *arena);
 
 #define arena_push_array(arena, type, count, align) \
     (type *)(arena)->alloc((arena), (sizeof(type)*(count)), (align))
-
-void arena_stack_begin(Arena *arena, u32 type_size, u32 align);
-
-void arena_stack_end(Arena *arena);
-
-void *arena_stack_push(Arena *arena);
 
 /* -------------------
       StaticArena 
@@ -155,7 +148,7 @@ b32 virtual_map_contains(VirtualMap *map, u64 key);
         T     *buffer;        \
         u64    size;          \
         u64    capacity;      \
-        Arena *arena
+        Arena arena
 
 typedef struct TGuiVoidArray {
     TGuiTypeArrayData(void);
@@ -172,5 +165,31 @@ typedef struct TGuiVoidArray {
         TGuiVoidArray void_array; \
         name##Type type_array;    \
     } name
+
+#define TGUI_ARRAY_DEFAULT_CAPACITY 4 
+
+void _tgui_array_initialize(TGuiVoidArray *array, u64 element_size);
+#define tgui_array_initialize(array) \
+    _tgui_array_initialize(&((array)->void_array), sizeof(*((array)->type_array.buffer)))
+
+void _tgui_array_terminate(TGuiVoidArray *array);
+#define tgui_array_terminate(array) \
+    _tgui_array_terminate(&((array)->void_array))
+
+void _tgui_array_push(TGuiVoidArray *array, u64 element_size);
+#define tgui_array_push(array) \
+    (_tgui_array_push(&((array)->void_array), sizeof(*((array)->type_array.buffer))), \
+     &((array)->type_array.buffer[(array)->type_array.size-1]))
+
+void _tgui_array_clear(TGuiVoidArray *array);
+#define tgui_array_clear(array) \
+    _tgui_array_clear(&((array)->void_array))
+
+#define tgui_array_get(array, index) \
+    ((array)->type_array.buffer[(index)])
+
+#define tgui_array_size(array) \
+    ((array)->type_array.size)
+
 
 #endif /* _MEMORY_H_ */

@@ -15,7 +15,7 @@ root_node: {
   root_node: {
     dir: 1
     window_node: {
-      active_window: 0
+      active_window: 3
       window_count: 2
       window: {
         id: 0
