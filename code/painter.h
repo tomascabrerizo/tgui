@@ -14,7 +14,15 @@ typedef struct TGuiVertex {
 TGuiArray(TGuiVertex, TGuiVertexArray);
 TGuiArray(u32, TGuiU32Array);
 
+typedef enum PainterType {
+    PAINTER_TYPE_SOFTWARE,
+    PAINTER_TYPE_HARDWARE,
+} PainterType;
+
 typedef struct Painter {
+
+    PainterType type;
+
     Rectangle dim;
     Rectangle clip;
 
@@ -25,7 +33,7 @@ typedef struct Painter {
 
 struct TGuiBitmap;
 
-void painter_start(Painter *painter, Rectangle dim, Rectangle *clip, u32 *pixels, TGuiVertexArray *vertex_array, TGuiU32Array *index_array);
+void painter_start(Painter *painter, PainterType type, Rectangle dim, Rectangle *clip, u32 *pixels, TGuiVertexArray *vertex_array, TGuiU32Array *index_array);
 
 void painter_clear(Painter *painter, u32 color);
 
@@ -38,8 +46,6 @@ void painter_draw_rectangle_outline(Painter *painter, Rectangle rectangle, u32 c
 void painter_draw_vline(Painter *painter, s32 x, s32 y0, s32 y1, u32 color);
 
 void painter_draw_hline(Painter *painter, s32 y, s32 x0, s32 x1, u32 color);
-
-void painter_draw_line(Painter *painter, s32 x0, s32 y0, s32 x1, s32 y1, u32 color);
 
 void painter_draw_bitmap(Painter *painter, s32 x, s32 y, struct TGuiBitmap *bitmap, u32 tint);
 

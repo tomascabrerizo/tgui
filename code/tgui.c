@@ -1,6 +1,8 @@
+#include "painter.h"
 #include "tgui_docker.h"
 
 #include "tgui.h"
+#include "tgui_gfx.h"
 #include "tgui_serializer.h"
 #include "os.h"
 
@@ -133,6 +135,8 @@ void tgui_font_initilize(Arena *arena) {
         }
 
         os_font_get_glyph_metrics(os_font, glyph_index, &glyph->adv_width, &glyph->left_bearing, &glyph->top_bearing);
+
+        tgui_texture_atlas_add_bitmap(&state.texture_atlas, &glyph->bitmap);
     }
     
     font.font = os_font;
@@ -1607,7 +1611,8 @@ void tgui_initialize(s32 window_w, s32 window_h) {
     state.free_windows = NULL;
     state.allocated_windows = tgui_allocated_window_node_alloc();
     clink_list_init(state.allocated_windows);
-
+    
+    tgui_texture_atlas_initialize(&state.texture_atlas);
     tgui_font_initilize(&state.arena);
     tgui_docker_initialize();
 }
@@ -1618,6 +1623,7 @@ void tgui_terminate(void) {
     
     tgui_docker_terminate();
     tgui_font_terminate();
+    tgui_texture_atlas_terminate(&state.texture_atlas);
 
     virtual_map_terminate(&state.registry);
     arena_terminate(&state.arena);
@@ -1913,5 +1919,10 @@ void tgui_end(Painter *painter) {
     }
 
     tgui_docker_draw_preview(painter);
+    
+    u32 y = 0;
+    painter_draw_rect(painter, 0, y, state.texture_atlas.bitmap.width, state.texture_atlas.bitmap.height, 0x000000);
+    painter_draw_bitmap(painter, 0, y, &state.texture_atlas.bitmap, 0x00ff00);
+
 }
 

@@ -1,16 +1,29 @@
 #ifndef _TGUI_GFX_H_
 #define _TGUI_GFX_H_
 
+#include "geometry.h"
 #include "memory.h"
-#include "tgui.h"
 
-/* ----------------------------- */
-/*       TGui Texture Atlas      */
-/* ----------------------------- */
+/* ----------------------- */
+/*       TGui Bitmap       */
+/* ----------------------- */
+
+typedef struct TGuiBitmap {
+    u32 *pixels;
+    u32 width, height;
+    struct TGuiTexture *texture;
+} TGuiBitmap;
+
+TGuiBitmap tgui_bitmap_alloc_empty(Arena *arena, u32 w, u32 h);
+
+TGuiBitmap tgui_bitmap_copy(Arena *arena, TGuiBitmap *bitmap);
+
+/* ------------------------ */
+/*       TGui Texture       */
+/* ------------------------ */
 
 typedef struct TGuiTexture {
-    u32 id;
-    f32 u0, u1, v0, v1;
+    Rectangle dim;
     TGuiBitmap *bitmap;
 } TGuiTexture;
 
@@ -21,18 +34,24 @@ typedef struct TGuiTextureBucket {
 TGuiArray(TGuiTextureBucket, TGuiTextureArray);
 
 #define TGUI_TEXTURE_ATLAS_START_WIDTH 1024
+#define TGUI_TEXTURE_ATLAS_DEFAULT_PADDING 16
+
+/* ----------------------------- */
+/*       TGui Texture Atlas      */
+/* ----------------------------- */
 
 typedef struct TGuiTextureAtlas {
-    u32 *pixels;
+    u32 id;
     
-    u32 width;
-    u32 height;
+    TGuiBitmap bitmap;
 
     u32 current_x;
     u32 current_y;
 
     Arena arena;
     TGuiTextureArray textures;
+    
+    u32 last_row_added_height;
 
 } TGuiTextureAtlas;
 
@@ -40,9 +59,9 @@ void tgui_texture_atlas_initialize(TGuiTextureAtlas *texture_atlas);
 
 void tgui_texture_atlas_terminate(TGuiTextureAtlas *texture_atlas);
 
-TGuiTexture *tgui_texture_atlas_create_texture(TGuiTextureAtlas *texture_atlas, u32 id, TGuiBitmap *bitmap);
+void tgui_texture_atlas_add_bitmap(TGuiTextureAtlas *texture_atlas, TGuiBitmap *bitmap);
 
-void tgui_texture_atlas_generate_atlas(TGuiTextureAtlas *texture_atlas);
+void tgui_texture_atlas_generate_atlas(void);
 
 #endif /* _TGUI_GFX_H_ */
 

@@ -20,12 +20,8 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 
-#define HARWARE_RENDERING 1
-#if HARWARE_RENDERING
-#include "painter_hardware.c"
-#else
+#define HARWARE_RENDERING 0
 #include "painter.c"
-#endif
 
 
 #include "app.c"
@@ -207,9 +203,9 @@ int main(void) {
         glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        painter_start(&painter, (Rectangle){0, 0, window_w-1, window_h-1}, 0, NULL, &vertex_array, &index_array);
+        painter_start(&painter, PAINTER_TYPE_HARDWARE, (Rectangle){0, 0, window_w-1, window_h-1}, 0, NULL, &vertex_array, &index_array);
 #else
-        painter_start(&painter, (Rectangle){0, 0, window_w-1, window_h-1}, 0, (u32 *)backbuffer->data, NULL, NULL);
+        painter_start(&painter, PAINTER_TYPE_SOFTWARE, (Rectangle){0, 0, window_w-1, window_h-1}, 0, (u32 *)backbuffer->data, NULL, NULL);
 #endif
         painter_clear(&painter, 0x000000);
         app_update(&app, seconds_per_frame, &painter);

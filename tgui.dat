@@ -30,7 +30,7 @@ root_node: {
     }
   }
   split_node: {
-    split_position: 601
+    split_position: 501
   }
   root_node: {
     dir: 2
@@ -44,7 +44,7 @@ root_node: {
       }
     }
     split_node: {
-      split_position: 453
+      split_position: 281
     }
     window_node: {
       active_window: 0

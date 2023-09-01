@@ -6,6 +6,7 @@
 #include "memory.h"
 #include "painter.h"
 #include "tgui_docker.h"
+#include "tgui_gfx.h"
 
 #define TGUI_ID3(a, b) a#b
 #define TGUI_ID2(a, b) TGUI_ID3(a, b)
@@ -53,11 +54,6 @@ typedef struct TGuiInput {
     TGuiKeyboard keyboard;
  
 } TGuiInput;
-
-typedef struct TGuiBitmap {
-    u32 *pixels;
-    u32 width, height;
-} TGuiBitmap;
 
 /* ---------------------- */
 /*       TGui Window      */
@@ -150,6 +146,8 @@ typedef struct TGui {
     
     u64 active_id;
     TGuiWindow *active_window;
+
+    TGuiTextureAtlas texture_atlas;
 
 } TGui;
 
