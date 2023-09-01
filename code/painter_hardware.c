@@ -29,8 +29,8 @@ void painter_clear(Painter *painter, u32 color) {
 
 static void setup_vertex(TGuiVertex *vertex, s32 x, s32 y, f32 u, f32 v, u32 color) {
     
-    vertex->x = x;
-    vertex->y = y;
+    vertex->x = (f32)x;
+    vertex->y = (f32)y;
     vertex->u = u;
     vertex->v = v;
     
@@ -64,9 +64,14 @@ static inline void clip_rectangle(Rectangle *rect, Rectangle clip, s32 *offset_x
 }
 
 void painter_draw_rectangle(Painter *painter, Rectangle rectangle, u32 color) {
-    
+   
     clip_rectangle(&rectangle, painter->clip, 0, 0);
- 
+    
+    if(rect_invalid(rectangle)) return;
+
+    rectangle.max_x += 1;
+    rectangle.max_y += 1;
+    
     u32 start_vertex_index = tgui_array_size(painter->vertex_buffer);
 
     TGuiVertex *vertex0 = tgui_array_push(painter->vertex_buffer);
@@ -76,8 +81,8 @@ void painter_draw_rectangle(Painter *painter, Rectangle rectangle, u32 color) {
     
     setup_vertex(vertex0, rectangle.min_x, rectangle.min_y, 0.0f, 0.0f, color);
     setup_vertex(vertex1, rectangle.min_x, rectangle.max_y, 0.0f, 0.0f, color);
-    setup_vertex(vertex3, rectangle.max_x, rectangle.max_y, 0.0f, 0.0f, color);
-    setup_vertex(vertex2, rectangle.max_x, rectangle.min_y, 0.0f, 0.0f, color);
+    setup_vertex(vertex2, rectangle.max_x, rectangle.max_y, 0.0f, 0.0f, color);
+    setup_vertex(vertex3, rectangle.max_x, rectangle.min_y, 0.0f, 0.0f, color);
     
     u32 *index0 = tgui_array_push(painter->index_buffer);
     u32 *index1 = tgui_array_push(painter->index_buffer);
@@ -103,15 +108,37 @@ void painter_draw_rect(Painter *painter, s32 x, s32 y, s32 w, s32 h, u32 color) 
 }
 
 void painter_draw_rectangle_outline(Painter *painter, Rectangle rectangle, u32 color) {
-    UNUSED(painter); UNUSED(rectangle); UNUSED(color);
+    Rectangle l = rectangle;
+    l.max_x = l.min_x;
+    Rectangle r = rectangle;
+    r.min_x = r.max_x;
+    painter_draw_rectangle(painter, l, color);
+    painter_draw_rectangle(painter, r, color);
+    
+    Rectangle b = rectangle;
+    b.min_y = b.max_y;
+    Rectangle t = rectangle;
+    t.max_y = t.min_y;
+    painter_draw_rectangle(painter, t, color);
+    painter_draw_rectangle(painter, b, color);
 }
 
 void painter_draw_vline(Painter *painter, s32 x, s32 y0, s32 y1, u32 color) {
-    UNUSED(painter); UNUSED(x); UNUSED(y0); UNUSED(y1); UNUSED(color);
+    Rectangle vline;
+    vline.min_x = x;
+    vline.max_x = x;
+    vline.min_y = y0;
+    vline.max_y = y1;
+    painter_draw_rectangle(painter, vline, color);
 }
 
 void painter_draw_hline(Painter *painter, s32 y, s32 x0, s32 x1, u32 color) {
-    UNUSED(painter); UNUSED(y); UNUSED(x0); UNUSED(x1); UNUSED(color);
+    Rectangle hline;
+    hline.min_y = y;
+    hline.max_y = y;
+    hline.min_x = x0;
+    hline.max_x = x1;
+    painter_draw_rectangle(painter, hline, color);
 }
 
 void painter_draw_line(Painter *painter, s32 x0, s32 y0, s32 x1, s32 y1, u32 color) {

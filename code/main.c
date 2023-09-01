@@ -50,6 +50,44 @@ struct OsBackbuffer *realloc_backbuffer(struct OsBackbuffer *backbuffer, struct 
     return backbuffer;
 }
 
+unsigned int program_create(char *v_src, char *f_src) {
+    int success;
+    static char infoLog[512];
+
+    unsigned int v_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(v_shader, 1, (const char **)&v_src, NULL);
+    glCompileShader(v_shader);
+    glGetShaderiv(v_shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(v_shader, 512, NULL, infoLog);
+        printf("[VERTEX SHADER ERROR]: %s\n", infoLog);
+    }
+
+    unsigned int f_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(f_shader, 1, (const char **)&f_src, NULL);
+    glCompileShader(f_shader);
+    glGetShaderiv(f_shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(f_shader, 512, NULL, infoLog);
+        printf("[FRAGMENT SHADER ERROR]: %s\n", infoLog);
+    }
+
+    unsigned int program = glCreateProgram();
+    glAttachShader(program, v_shader);
+    glAttachShader(program, f_shader);
+    glLinkProgram(program);
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(program, 512, NULL, infoLog);
+        printf("[SHADER PROGRAM ERROR]: %s\n", infoLog);
+    }
+
+    glDeleteShader(v_shader);
+    glDeleteShader(f_shader);
+
+    return program;
+}
+
 int main(void) {
 
     os_initialize();
@@ -65,6 +103,11 @@ int main(void) {
 #if HARWARE_RENDERING
     os_gl_create_context(window);
 
+    glViewport(0, 0, window_w, window_h);
+
+    glDisable(GL_BLEND);
+    glDisable(GL_MULTISAMPLE);  
+
     TGuiVertexArray vertex_array;
     TGuiU32Array  index_array;
 
@@ -72,6 +115,12 @@ int main(void) {
     tgui_array_initialize(&index_array);
 
     #define MAX_QUAD_PER_BATCH 1024
+
+    OsFile *frag = os_file_read_entire("./shaders/quad.frag");
+    OsFile *vert = os_file_read_entire("./shaders/quad.vert");
+    
+    u32 program = program_create(vert->data, frag->data);
+    glUseProgram(program);
 
     u32 vao, vbo, ebo;
     
@@ -88,8 +137,8 @@ int main(void) {
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(TGuiVertex), OFFSET_OF(TGuiVertex, u)); 
 
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(TGuiVertex), OFFSET_OF(TGuiVertex, r)); 
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(TGuiVertex), OFFSET_OF(TGuiVertex, r)); 
 
     glGenBuffers(1, &ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
@@ -149,9 +198,8 @@ int main(void) {
         
         Painter painter;
 #if HARWARE_RENDERING
-
-        printf("vertex array size: %lld, capacity: %lld, arena used: %lld, arena size: %lld\n", tgui_array_size(&vertex_array), vertex_array.type_array.capacity, vertex_array.type_array.arena.used, vertex_array.type_array.arena.size);
-        printf("index array size: %lld, capacity: %lld, arena used: %lld, arena size: %lld\n", tgui_array_size(&index_array), index_array.type_array.capacity, index_array.type_array.arena.used, index_array.type_array.arena.size);
+        //printf("vertex array size: %lld, capacity: %lld, arena used: %lld, arena size: %lld\n", tgui_array_size(&vertex_array), vertex_array.type_array.capacity, vertex_array.type_array.arena.used, vertex_array.type_array.arena.size);
+        //printf("index array size: %lld, capacity: %lld, arena used: %lld, arena size: %lld\n", tgui_array_size(&index_array), index_array.type_array.capacity, index_array.type_array.arena.used, index_array.type_array.arena.size);
         
         glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -160,21 +208,31 @@ int main(void) {
 #else
         painter_start(&painter, (Rectangle){0, 0, window_w-1, window_h-1}, 0, (u32 *)backbuffer->data, NULL, NULL);
 #endif
-
-        painter_clear(&painter, 0x00);
-
+        painter_clear(&painter, 0x000000);
         app_update(&app, seconds_per_frame, &painter);
+        
+        //painter_draw_rect(&painter, 1, 1, 4, 4, 0x00ff00);
+        //painter_draw_rect(&painter, 1, window_h-5, 4, 4, 0x00ff00);
 
 #if HARWARE_RENDERING
+
+
     ASSERT(tgui_array_size(&vertex_array) <= MAX_QUAD_PER_BATCH*4);
     ASSERT(tgui_array_size(&index_array)  <= MAX_QUAD_PER_BATCH*6);
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, tgui_array_size(&vertex_array), tgui_array_data(&vertex_array));
+    glBufferSubData(GL_ARRAY_BUFFER, 0, tgui_array_size(&vertex_array)*sizeof(TGuiVertex), tgui_array_data(&vertex_array));
     
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, tgui_array_size(&index_array), tgui_array_data(&index_array));
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, tgui_array_size(&index_array)*sizeof(u32), tgui_array_data(&index_array));
+
+    glBindVertexArray(vao);
+    glUseProgram(program);
+
+    glUniform1i(glGetUniformLocation(program, "res_x"), window_w);
+    glUniform1i(glGetUniformLocation(program, "res_y"), window_h);
     
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glDrawElements(GL_TRIANGLES, tgui_array_size(&index_array), GL_UNSIGNED_INT, 0);
 #endif
 
