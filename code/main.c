@@ -7,6 +7,7 @@
 #include "tgui.h"
 #include "tgui_docker.h"
 #include "tgui_serializer.h"
+#include "tgui_gfx.h"
 
 #include "os.c"
 #include "geometry.c"
@@ -14,6 +15,8 @@
 #include "tgui.c"
 #include "tgui_docker.c"
 #include "tgui_serializer.c"
+#include "tgui_gfx.c"
+
 #include <GL/gl.h>
 #include <GL/glext.h>
 

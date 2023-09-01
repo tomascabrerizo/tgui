@@ -123,6 +123,14 @@ void painter_draw_rectangle_outline(Painter *painter, Rectangle rectangle, u32 c
     painter_draw_rectangle(painter, b, color);
 }
 
+void painter_draw_bitmap(Painter *painter, s32 x, s32 y, struct TGuiBitmap *bitmap, u32 tint) {
+    UNUSED(painter); UNUSED(x); UNUSED(y); UNUSED(bitmap); UNUSED(tint);
+}
+
+void painter_draw_bitmap_no_alpha(Painter *painter, s32 x, s32 y, struct TGuiBitmap *bitmap) {
+    painter_draw_bitmap(painter, x, y, bitmap, 0xffffff);
+}
+
 void painter_draw_vline(Painter *painter, s32 x, s32 y0, s32 y1, u32 color) {
     Rectangle vline;
     vline.min_x = x;
@@ -143,13 +151,5 @@ void painter_draw_hline(Painter *painter, s32 y, s32 x0, s32 x1, u32 color) {
 
 void painter_draw_line(Painter *painter, s32 x0, s32 y0, s32 x1, s32 y1, u32 color) {
     UNUSED(painter); UNUSED(y0); UNUSED(y1); UNUSED(x0); UNUSED(x1); UNUSED(color);
-}
-
-void painter_draw_bitmap(Painter *painter, s32 x, s32 y, struct TGuiBitmap *bitmap, u32 tint) {
-    UNUSED(painter); UNUSED(x); UNUSED(y); UNUSED(bitmap); UNUSED(tint);
-}
-
-void painter_draw_bitmap_no_alpha(Painter *painter, s32 x, s32 y, struct TGuiBitmap *bitmap) {
-    UNUSED(painter); UNUSED(x); UNUSED(y); UNUSED(bitmap);
 }
 
