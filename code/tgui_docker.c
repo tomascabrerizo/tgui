@@ -134,7 +134,8 @@ char *tgui_docker_node_to_str(TGuiDockerNodeType type) {
     case TGUI_DOCKER_NODE_SPLIT:  { return "TGUI_DOCKER_NODE_SPLIT"; } break;
     case TGUI_DOCKER_NODE_WINDOW: { return "TGUI_DOCKER_NODE_WINDOW"; } break;
     }
-
+    ASSERT(!"Invalid code path");
+    return NULL;
 }
 
 #if 0
@@ -357,7 +358,7 @@ static TGuiWindow *get_window_from_tab(TGuiDockerNode *window_node, u32 pos_x) {
     Rectangle menu_bar_rect = calculate_menu_bar_rect(window_node);
     u32 width = rect_width(menu_bar_rect) / window_node->windows_count;
 
-    u32 index = CLAMP(((pos_x - menu_bar_rect.min_x) / width), 0, window_node->windows_count - 1);
+    u32 index = CLAMP((s32)((pos_x - menu_bar_rect.min_x) / width), (s32)0, (s32)window_node->windows_count - 1);
     
     u32 current_index = 0;
     TGuiWindow *window = window_node->windows->next;

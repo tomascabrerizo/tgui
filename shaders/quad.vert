@@ -1,4 +1,4 @@
-#version 330 core
+#version 330
 
 layout (location = 0) in vec2 aVert;
 layout (location = 1) in vec2 aUvs;
@@ -22,3 +22,4 @@ void main() {
 
     gl_Position = vec4(vert, 0, 1);
 }
+

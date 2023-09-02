@@ -9,6 +9,8 @@
 #include "tgui_serializer.h"
 #include "tgui_gfx.h"
 
+#define HARWARE_RENDERING 1
+
 #include "os.c"
 #include "geometry.c"
 #include "memory.c"
@@ -20,10 +22,7 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 
-#define HARWARE_RENDERING 0
-
 #include "painter.c"
-
 
 #include "app.c"
 #include <stdio.h>
@@ -100,12 +99,17 @@ int main(void) {
     s32 window_h = 600;
     struct OsWindow *window = os_window_create(&arena, "Test Window", 0, 0, window_w, window_h);
 
+    App app;
+    app_initialize(&app, window_w, window_h);
+
 #if HARWARE_RENDERING
     os_gl_create_context(window);
 
     glViewport(0, 0, window_w, window_h);
 
-    glDisable(GL_BLEND);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     glDisable(GL_MULTISAMPLE);  
 
     TGuiVertexArray vertex_array;
@@ -143,6 +147,22 @@ int main(void) {
     glGenBuffers(1, &ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_QUAD_PER_BATCH*(sizeof(u32) * 6), 0, GL_DYNAMIC_DRAW); 
+    
+    TGuiTextureAtlas *texture_atlas = tgui_get_texture_atlas();
+    glGenTextures(1, &texture_atlas->id);
+    glBindTexture(GL_TEXTURE_2D, texture_atlas->id);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 
+            texture_atlas->bitmap.width, texture_atlas->bitmap.height, 
+            0, GL_RGBA, GL_UNSIGNED_BYTE, texture_atlas->bitmap.pixels);
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture_atlas->id);
 
 #else
     struct OsBackbuffer *backbuffer = realloc_backbuffer(0, window, window_w, window_h);
@@ -154,9 +174,6 @@ int main(void) {
      
 
     TGuiInput *input = tgui_get_input();
-
-    App app;
-    app_initialize(&app, window_w, window_h);
     
     while(!os_window_should_close(window)) {
         
@@ -204,9 +221,9 @@ int main(void) {
         glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        painter_start(&painter, PAINTER_TYPE_HARDWARE, (Rectangle){0, 0, window_w-1, window_h-1}, 0, NULL, &vertex_array, &index_array);
+        painter_start(&painter, PAINTER_TYPE_HARDWARE, (Rectangle){0, 0, window_w-1, window_h-1}, 0, NULL, &vertex_array, &index_array, texture_atlas->bitmap.width, texture_atlas->bitmap.height);
 #else
-        painter_start(&painter, PAINTER_TYPE_SOFTWARE, (Rectangle){0, 0, window_w-1, window_h-1}, 0, (u32 *)backbuffer->data, NULL, NULL);
+        painter_start(&painter, PAINTER_TYPE_SOFTWARE, (Rectangle){0, 0, window_w-1, window_h-1}, 0, (u32 *)backbuffer->data, NULL, NULL, 0, 0);
 #endif
         painter_clear(&painter, 0x000000);
         app_update(&app, seconds_per_frame, &painter);
@@ -240,13 +257,11 @@ int main(void) {
         
         u64 current_time = os_get_ticks();
         u64 delta_time = current_time - last_time; (void)delta_time;
-#if HARWARE_RENDERING == 0
         if(delta_time < miliseconds_per_frame) {
             os_sleep(miliseconds_per_frame - delta_time);
             current_time = os_get_ticks(); 
             delta_time = current_time - last_time;
         }
-#endif
         last_time = current_time; (void)last_time; 
         
 

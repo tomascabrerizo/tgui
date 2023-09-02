@@ -66,21 +66,12 @@ TGuiCursor tgui_get_cursor_state(void) {
     return state.cursor;
 }
 
-u64 tgui_hash(void *bytes, u64 size) {
-    return murmur_hash64A(bytes, size, 123);
+TGuiTextureAtlas *tgui_get_texture_atlas(void) {
+    return &state.texture_atlas;
 }
 
-
-/* ---------------------- */
-/*       TGui Bitmap      */
-/* ---------------------- */
-
-TGuiBitmap tgui_bitmap_create_empty(u32 w, u32 h) {
-    TGuiBitmap result;
-    result.pixels = arena_alloc(&state.arena, w*h*sizeof(u32), 8);
-    result.width  = w; 
-    result.height = h;
-    return result;
+u64 tgui_hash(void *bytes, u64 size) {
+    return murmur_hash64A(bytes, size, 123);
 }
 
 /* ---------------------- */
@@ -720,10 +711,10 @@ static u32 u32_color_mix(u32 color0, f32 t, u32 color1) {
     u32 cg = (g0 * (1.0f - t) + g1 * t);
     u32 cb = (b0 * (1.0f - t) + b1 * t);
     
-    return (cr << 16) | (cg << 8) | (cb << 0);
+    return (0xff << 24) | (cr << 16) | (cg << 8) | (cb << 0);
 }
 
-static void colorpicker_calculate_radiant(TGuiBitmap *bitmap, u32 color) {
+void colorpicker_calculate_radiant(TGuiBitmap *bitmap, u32 color) {
     
     u32 w = (bitmap->width - 1) != 0 ? (bitmap->width - 1) : 1;
     f32 inv_w = 1.0f / w;
@@ -763,7 +754,7 @@ static void colorpicker_claculate_section(TGuiBitmap *bitmap, u32 *cursor_x, u32
     *cursor_x += advance;
 }
 
-static void colorpicker_calculate_mini_radiant(TGuiBitmap *bitmap) {
+void colorpicker_calculate_mini_radiant(TGuiBitmap *bitmap) {
     
     u32 advance = 0;
     u32 cursor_x = 0;
@@ -773,8 +764,8 @@ static void colorpicker_calculate_mini_radiant(TGuiBitmap *bitmap) {
     advance = (bitmap->width * 1.0f/6.0f);
     colorpicker_claculate_section(bitmap, &cursor_x, advance - cursor_x, color0, color1);
     
-    color0 = 0xffff00;
-    color1 = 0x00ff00;
+    color0 = 0xffffff00;
+    color1 = 0xff00ff00;
     advance = (bitmap->width * 2.0f/6.0f);
     colorpicker_claculate_section(bitmap, &cursor_x, advance - cursor_x, color0, color1);
     
@@ -877,11 +868,11 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
     
     if(!colorpicker->initialize) {
          
-        colorpicker->mini_radiant = tgui_bitmap_create_empty(w, mini_radiant_h);
+        colorpicker->mini_radiant = tgui_bitmap_alloc_empty(&state.arena, w, mini_radiant_h);
         colorpicker_calculate_mini_radiant(&colorpicker->mini_radiant);
         
         colorpicker->saved_radiant_color = colorpicker_get_color_hue(colorpicker);
-        colorpicker->radiant = tgui_bitmap_create_empty(w, radiant_h);
+        colorpicker->radiant = tgui_bitmap_alloc_empty(&state.arena, w, radiant_h);
         colorpicker_calculate_radiant(&colorpicker->radiant, colorpicker->saved_radiant_color);
         
         colorpicker->sv_cursor_active = false;
@@ -939,14 +930,18 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
 
     u32 color_x = colorpicker->saturation * (colorpicker->radiant.width -  1);
     u32 color_y = colorpicker->value * (colorpicker->radiant.height - 1);
-    
+   
+#if !HARWARE_RENDERING
     painter_draw_bitmap_no_alpha(painter, radiant_rect.min_x, radiant_rect.min_y, &colorpicker->radiant);
+#endif
     painter_draw_rectangle_outline(painter, radiant_rect, 0x444444);
     
     painter_draw_hline(painter, radiant_rect.min_y + color_y, radiant_rect.min_x, radiant_rect.max_x, 0x444444);
     painter_draw_vline(painter, radiant_rect.min_x + color_x, radiant_rect.min_y, radiant_rect.max_y, 0x444444);
     
+#if !HARWARE_RENDERING
     painter_draw_bitmap_no_alpha(painter, mini_radiant_rect.min_x, mini_radiant_rect.min_y, &colorpicker->mini_radiant);
+#endif
     painter_draw_rectangle_outline(painter, mini_radiant_rect, 0x444444);
     
     painter->clip = rect_intersection(window->dim, mini_radiant_rect);
@@ -1919,10 +1914,13 @@ void tgui_end(Painter *painter) {
     }
 
     tgui_docker_draw_preview(painter);
-    
-    u32 y = 0;
-    painter_draw_rect(painter, 0, y, state.texture_atlas.bitmap.width, state.texture_atlas.bitmap.height, 0x000000);
-    painter_draw_bitmap(painter, 0, y, &state.texture_atlas.bitmap, 0x00ff00);
+  
+#if !HARWARE_RENDERING
+    u32 x = 100;
+    u32 y = 100;
+    painter_draw_rect(painter, x, y, state.texture_atlas.bitmap.width, state.texture_atlas.bitmap.height, 0x000000);
+    painter_draw_bitmap(painter, x, y, &state.texture_atlas.bitmap, 0xffffff);
+#endif
 
 }
 

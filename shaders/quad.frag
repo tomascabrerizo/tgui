@@ -1,4 +1,4 @@
-#version 330 core
+#version 330
 
 in vec2 vert;
 in vec2 uvs;
@@ -12,5 +12,6 @@ uniform sampler2D tex;
 
 void main() {
     
-    fragment = vec4(color, 1);
+    fragment = texture(tex, uvs) * vec4(color, 1.0);
 }
+

@@ -135,7 +135,7 @@ void texture_atlas_insert(TGuiTextureAtlas *texture_atlas, TGuiTexture *texture)
 
         Painter painter;
         Rectangle texture_atlas_rect = rect_from_wh(0, 0,texture_atlas->bitmap.width, texture_atlas->bitmap.height);
-        painter_start(&painter, PAINTER_TYPE_SOFTWARE, texture_atlas_rect, 0, texture_atlas->bitmap.pixels, NULL, NULL);
+        painter_start(&painter, PAINTER_TYPE_SOFTWARE, texture_atlas_rect, 0, texture_atlas->bitmap.pixels, NULL, NULL, 0, 0);
         painter_draw_bitmap_no_alpha(&painter, 0, 0, &old_texture_atlas_bitmap);
 
         state.arena.used = temp_arena_checkpoint;
@@ -153,7 +153,7 @@ void texture_atlas_insert(TGuiTextureAtlas *texture_atlas, TGuiTexture *texture)
 
     Painter painter;
     Rectangle texture_atlas_rect = rect_from_wh(0, 0,texture_atlas_bitmap->width, texture_atlas_bitmap->height);
-    painter_start(&painter, PAINTER_TYPE_SOFTWARE, texture_atlas_rect, 0, texture_atlas_bitmap->pixels, NULL, NULL);
+    painter_start(&painter, PAINTER_TYPE_SOFTWARE, texture_atlas_rect, 0, texture_atlas_bitmap->pixels, NULL, NULL, 0, 0);
     
     painter_draw_bitmap_no_alpha(&painter, texture_atlas->current_x, texture_atlas->current_y, bitmap);
     

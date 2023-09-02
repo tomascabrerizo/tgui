@@ -167,6 +167,8 @@ TGuiInput *tgui_get_input(void);
 
 TGuiCursor tgui_get_cursor_state(void);
 
+TGuiTextureAtlas *tgui_get_texture_atlas(void);
+
 #define tgui_safe_dereference(ptr, type) (((ptr) == NULL) ? (type){0} : *((type *)ptr))
 
 /* ---------------------- */

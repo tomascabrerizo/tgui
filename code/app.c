@@ -18,6 +18,7 @@ typedef struct App {
     u32 color0;
     u32 color1;
 
+    TGuiBitmap bitmap0;
 } App;
 
 extern TGuiDocker docker;
@@ -54,9 +55,17 @@ void add_docker_nodes(TGuiDockerNode *node) {
     }
 }
 
+void colorpicker_calculate_mini_radiant(TGuiBitmap *bitmap);
+void colorpicker_calculate_radiant(TGuiBitmap *bitmap, u32 color);
+extern TGui state;
+
 void app_initialize(App *app, s32 w, s32 h) {
     UNUSED(app);
     tgui_initialize(w, h);
+
+    app->bitmap0 = tgui_bitmap_alloc_empty(&state.arena, 256, 64);
+    colorpicker_calculate_mini_radiant(&app->bitmap0);
+    tgui_texture_atlas_add_bitmap(&state.texture_atlas, &app->bitmap0);
 
     tgui_texture_atlas_generate_atlas();
 

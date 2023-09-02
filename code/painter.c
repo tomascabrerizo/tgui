@@ -4,6 +4,7 @@
 #include "memory.h"
 #include "os.h"
 #include "tgui.h"
+#include "tgui_gfx.h"
 
 
 static inline void clip_rectangle(Rectangle *rect, Rectangle clip, s32 *offset_x, s32 *offset_y) {
@@ -52,7 +53,7 @@ void painter_draw_pixel(Painter *painter, s32 x, s32 y, u32 color) {
 }
 
 
-void painter_start(Painter *painter, PainterType type, Rectangle dim, Rectangle *clip, u32 *pixels, TGuiVertexArray *vertex_array, TGuiU32Array *index_array) {
+void painter_start(Painter *painter, PainterType type, Rectangle dim, Rectangle *clip, u32 *pixels, TGuiVertexArray *vertex_array, TGuiU32Array *index_array, u32 atlas_w, u32 atlas_h) {
     painter->type = type;
 
     painter->pixels = pixels;
@@ -67,6 +68,9 @@ void painter_start(Painter *painter, PainterType type, Rectangle dim, Rectangle 
     if(painter->type == PAINTER_TYPE_HARDWARE) {
         ASSERT(vertex_array);
         ASSERT(index_array);
+
+        painter->texture_atlas_w = atlas_w;
+        painter->texture_atlas_h = atlas_h;
 
         painter->vertex_buffer = vertex_array;
         painter->index_buffer = index_array;
@@ -221,31 +225,89 @@ void painter_draw_bitmap_no_alpha(Painter *painter, s32 x, s32 y, struct TGuiBit
 
 void painter_draw_bitmap(Painter *painter, s32 x, s32 y, TGuiBitmap *bitmap, u32 tint) {
 
+    Rectangle rectangle;
+    rectangle.min_x = x;
+    rectangle.min_y = y;
+    rectangle.max_x = x + bitmap->width  - 1;
+    rectangle.max_y = y + bitmap->height - 1;
+
+    Rectangle unclip_rectangle = rectangle;
+    
+    s32 offset_x;
+    s32 offset_y;
+    clip_rectangle(&rectangle, painter->clip, &offset_x, &offset_y);
+
     switch (painter->type) {
 
     case PAINTER_TYPE_HARDWARE: {
+        
+        if(rect_invalid(rectangle)) return;
 
+        ASSERT(bitmap->texture);
+
+        rectangle.max_x += 1;
+        rectangle.max_y += 1;
+
+        unclip_rectangle.max_x += 1;
+        unclip_rectangle.max_y += 1;
+
+        u32 start_vertex_index = tgui_array_size(painter->vertex_buffer);
+
+        TGuiVertex *vertex0 = tgui_array_push(painter->vertex_buffer);
+        TGuiVertex *vertex1 = tgui_array_push(painter->vertex_buffer);
+        TGuiVertex *vertex2 = tgui_array_push(painter->vertex_buffer);
+        TGuiVertex *vertex3 = tgui_array_push(painter->vertex_buffer);
+        
+        u32 color = tint;
+
+        u32 min_offset_x = offset_x;
+        u32 min_offset_y = offset_y;
+        u32 max_offset_x = unclip_rectangle.max_x - rectangle.max_x;
+        u32 max_offset_y = unclip_rectangle.max_y - rectangle.max_y;
+
+        TGuiTexture *texture = bitmap->texture;
+        Rectangle texture_rectangle = texture->dim;
+        texture_rectangle.max_x += 1;
+        texture_rectangle.max_y += 1;
+        
+        f32 min_u = (f32)(texture_rectangle.min_x + min_offset_x) / (f32)painter->texture_atlas_w; 
+        f32 min_v = (f32)(texture_rectangle.min_y + min_offset_y) / (f32)painter->texture_atlas_h;
+        f32 max_u = (f32)(texture_rectangle.max_x - max_offset_x) / (f32)painter->texture_atlas_w; 
+        f32 max_v = (f32)(texture_rectangle.max_y - max_offset_y) / (f32)painter->texture_atlas_h;
+
+        setup_vertex(vertex0, rectangle.min_x, rectangle.min_y, min_u, min_v, color);
+        setup_vertex(vertex1, rectangle.min_x, rectangle.max_y, min_u, max_v, color);
+        setup_vertex(vertex2, rectangle.max_x, rectangle.max_y, max_u, max_v, color);
+        setup_vertex(vertex3, rectangle.max_x, rectangle.min_y, max_u, min_v, color);
+        
+        u32 *index0 = tgui_array_push(painter->index_buffer);
+        u32 *index1 = tgui_array_push(painter->index_buffer);
+        u32 *index2 = tgui_array_push(painter->index_buffer);
+
+        *index0 = start_vertex_index + 0;
+        *index1 = start_vertex_index + 1;
+        *index2 = start_vertex_index + 2;
+
+        u32 *index3 = tgui_array_push(painter->index_buffer);
+        u32 *index4 = tgui_array_push(painter->index_buffer);
+        u32 *index5 = tgui_array_push(painter->index_buffer);
+
+        *index3 = start_vertex_index + 2;
+        *index4 = start_vertex_index + 3;
+        *index5 = start_vertex_index + 0;
+        
+    
     } break;
     case PAINTER_TYPE_SOFTWARE: {
 
-        Rectangle rect;
-        rect.min_x = x;
-        rect.min_y = y;
-        rect.max_x = x + bitmap->width  - 1;
-        rect.max_y = y + bitmap->height - 1;
-        
-        s32 offset_x;
-        s32 offset_y;
-        clip_rectangle(&rect, painter->clip, &offset_x, &offset_y);
-
         u32 painter_w = rect_width(painter->dim);
-        u32 *row = painter->pixels + (rect.min_y * painter_w) + rect.min_x;
+        u32 *row = painter->pixels + (rectangle.min_y * painter_w) + rectangle.min_x;
         u32 *src_row = bitmap->pixels + (offset_y * bitmap->width) + offset_x;
 
-        for(y = rect.min_y; y <= rect.max_y; ++y) {
+        for(y = rectangle.min_y; y <= rectangle.max_y; ++y) {
             u32 *pixel = row;
             u32 *src_pixel = src_row;
-            for(x = rect.min_x; x <= rect.max_x; ++x) {
+            for(x = rectangle.min_x; x <= rectangle.max_x; ++x) {
 
                 u32 src = *src_pixel;
                 u32 des = *pixel;

@@ -242,7 +242,7 @@ TGuiDockerNode *tgui_serializer_read_node_root(TGuiTokenizer *tokenizer, TGuiTok
     
     tgui_serializer_next_token(tokenizer, token, error);
 
-    while((token->type == TGUI_TOKEN_NODE_WINDOW || token->type == TGUI_DOCKER_NODE_ROOT) && *error == false) {
+    while((token->type == TGUI_TOKEN_NODE_WINDOW || token->type == TGUI_TOKEN_NODE_ROOT) && *error == false) {
         
         if(token->type == TGUI_TOKEN_NODE_WINDOW) {
             tgui_serializer_read_node_window(tokenizer, token, error, node, list);

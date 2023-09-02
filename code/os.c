@@ -551,7 +551,7 @@ void os_gl_create_context(struct OsWindow *window) {
     /* Set vertical Sync */
     glXSwapIntervalEXTProc glXSwapIntervalEXT = (glXSwapIntervalEXTProc)glXGetProcAddress((GLubyte *)"glXSwapIntervalEXT");
     if(glXSwapIntervalEXT) {
-        glXSwapIntervalEXT(d, window->os_window, 1);
+        glXSwapIntervalEXT(d, window->os_window, 0);
         printf("Vertical Sync enable\n");
     } else {
         printf("vertical Sync disable\n");
