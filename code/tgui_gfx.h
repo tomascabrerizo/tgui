@@ -34,7 +34,7 @@ typedef struct TGuiTextureBucket {
 TGuiArray(TGuiTextureBucket, TGuiTextureArray);
 
 #define TGUI_TEXTURE_ATLAS_START_WIDTH 1024
-#define TGUI_TEXTURE_ATLAS_DEFAULT_PADDING 16
+#define TGUI_TEXTURE_ATLAS_DEFAULT_PADDING 4
 
 /* ----------------------------- */
 /*       TGui Texture Atlas      */

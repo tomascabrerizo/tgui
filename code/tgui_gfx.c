@@ -96,7 +96,6 @@ void texture_atlas_sort_textures_per_height(TGuiTextureAtlas *texture_atlas) {
 
 void texture_atlas_insert(TGuiTextureAtlas *texture_atlas, TGuiTexture *texture) {
    TGuiBitmap *texture_atlas_bitmap = &texture_atlas->bitmap;
-
     
     TGuiBitmap *bitmap = texture->bitmap;
     ASSERT(bitmap);
@@ -112,13 +111,12 @@ void texture_atlas_insert(TGuiTextureAtlas *texture_atlas, TGuiTexture *texture)
         memset(texture_atlas_bitmap->pixels, 0, texture_atlas_size);
         
         texture_atlas_bitmap->pixels[0] = 0xffffffff;
-        texture_atlas->current_x += 1 + TGUI_TEXTURE_ATLAS_DEFAULT_PADDING;
+        texture_atlas->current_x = 1 + TGUI_TEXTURE_ATLAS_DEFAULT_PADDING;
     }
 
     ASSERT(texture_atlas_bitmap->pixels);
     ASSERT(texture_atlas_bitmap->height >= bitmap->height);
     
-    /* TODO: Realloc texture atlas if the bitmap doesnt fit */
     s32 width_left = texture_atlas_bitmap->width - texture_atlas->current_x; (void) width_left;
     if(width_left < (s32)bitmap->width) {
 
@@ -148,6 +146,8 @@ void texture_atlas_insert(TGuiTextureAtlas *texture_atlas, TGuiTexture *texture)
         texture_atlas->last_row_added_height = new_row_height;
 
     }
+
+    texture_atlas_bitmap = &texture_atlas->bitmap;
 
     texture->dim = rect_from_wh(texture_atlas->current_x, texture_atlas->current_y, bitmap->width, bitmap->height);
 

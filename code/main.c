@@ -21,6 +21,7 @@
 #include <GL/glext.h>
 
 #define HARWARE_RENDERING 0
+
 #include "painter.c"
 
 
