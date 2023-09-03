@@ -19,6 +19,21 @@ TGuiBitmap tgui_bitmap_alloc_empty(Arena *arena, u32 w, u32 h);
 TGuiBitmap tgui_bitmap_copy(Arena *arena, TGuiBitmap *bitmap);
 
 /* ------------------------ */
+/*       TGui FrameBuffer   */
+/* ------------------------ */
+
+/* TODO: Make framebuffer a tgui widget */
+
+typedef struct TGuiFrameBuffer {
+    u32 id;
+    Rectangle dim;
+    struct TGuiWindow *window;
+
+    void *data;
+
+} TGuiFrameBuffer;
+
+/* ------------------------ */
 /*       TGui Texture       */
 /* ------------------------ */
 
@@ -52,7 +67,6 @@ typedef struct TGuiTextureAtlas {
     TGuiTextureArray textures;
     
     u32 last_row_added_height;
-
 } TGuiTextureAtlas;
 
 void tgui_texture_atlas_initialize(TGuiTextureAtlas *texture_atlas);
