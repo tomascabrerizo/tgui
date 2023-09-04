@@ -87,7 +87,8 @@
   X(void, glTexParameterf, (GLenum target, GLenum	pname, GLfloat	param)) \
   X(void, glTexParameteri, (GLenum target, GLenum	pname, GLint	param)) \
   X(void, glDeleteTextures, (GLsizei	n, const GLuint *textures)) \
-  X(void, glTexImage2D, (GLenum target, GLint level, GLint internalFormat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid * data))
+  X(void, glTexImage2D, (GLenum target, GLint level, GLint internalFormat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid * data)) \
+  X(void, glBlitFramebuffer, (GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter))
 
 #define TGUI_GL_PROC(name) TGUI_##name##_PROC
 

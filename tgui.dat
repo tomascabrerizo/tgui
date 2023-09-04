@@ -12,53 +12,43 @@ root_node: {
       }
     }
     split_node: {
-      split_position: 342
+      split_position: 325
+    }
+    window_node: {
+      active_window: 0
+      window_count: 1
+      window: {
+        id: 0
+        name: "Window 0"
+        is_scrolling: 0
+      }
+    }
+  }
+  split_node: {
+    split_position: 261
+  }
+  root_node: {
+    dir: 2
+    window_node: {
+      active_window: 1
+      window_count: 1
+      window: {
+        id: 1
+        name: "Window 1"
+        is_scrolling: 1
+      }
+    }
+    split_node: {
+      split_position: 651
     }
     window_node: {
       active_window: 2
-      window_count: 1
+      window_count: 2
       window: {
         id: 2
         name: "Window 2"
         is_scrolling: 1
       }
-    }
-  }
-  split_node: {
-    split_position: 181
-  }
-  root_node: {
-    dir: 2
-    root_node: {
-      dir: 1
-      window_node: {
-        active_window: 1
-        window_count: 1
-        window: {
-          id: 1
-          name: "Window 1"
-          is_scrolling: 1
-        }
-      }
-      split_node: {
-        split_position: 806
-      }
-      window_node: {
-        active_window: 0
-        window_count: 1
-        window: {
-          id: 0
-          name: "Window 0"
-          is_scrolling: 0
-        }
-      }
-    }
-    split_node: {
-      split_position: 760
-    }
-    window_node: {
-      active_window: 3
-      window_count: 1
       window: {
         id: 3
         name: "Window 3"

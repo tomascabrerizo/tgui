@@ -62,13 +62,14 @@ OsFile *os_file_read_entire(const char *path) {
     u64 file_size = (u64)ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    result = (OsFile *)malloc(sizeof(OsFile) + file_size);
+    result = (OsFile *)malloc(sizeof(OsFile) + file_size+1);
     
     result->data = result + 1;
     result->size = file_size;
 
     ASSERT(((u64)result->data % 8) == 0);
-    fread(result->data, file_size, 1, file);
+    fread(result->data, file_size+1, 1, file);
+    ((u8 *)result->data)[file_size] = '\0';
     
     fclose(file);
 

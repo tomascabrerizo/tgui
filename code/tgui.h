@@ -340,7 +340,6 @@ void _tgui_dropdown_menu(TGuiWindowHandle window, s32 x, s32 y, char **options, 
 
 void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter);
 
-
 /* ---------------------- */
 /*       TGui Font        */
 /* ---------------------- */

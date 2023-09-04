@@ -120,6 +120,10 @@ int main(void) {
 
     #define MAX_QUAD_PER_BATCH 1024
 
+    OsFile *triangle_frag = os_file_read_entire("./shaders/triangle.frag");
+    OsFile *triangle_vert = os_file_read_entire("./shaders/triangle.vert");
+    u32 triangle_program = program_create(triangle_vert->data, triangle_frag->data);
+
     OsFile *frag = os_file_read_entire("./shaders/quad.frag");
     OsFile *vert = os_file_read_entire("./shaders/quad.vert");
     
@@ -163,6 +167,39 @@ int main(void) {
     
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture_atlas->id);
+
+    /* --------------------------------------------- */
+    /* NOTE: Custom FrameBuffer */
+    
+    u32 fbo_texture;
+    glGenTextures(1, &fbo_texture);
+    glBindTexture(GL_TEXTURE_2D, fbo_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1024, 1024, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    u32 rbo_depth;
+    glGenRenderbuffers(1, &rbo_depth);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo_depth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 1024, 1024);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    u32 fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo_depth);
+    
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        printf("Cannot create frame buffer\n");
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    /* --------------------------------------------- */
+
 
 #else
     struct OsBackbuffer *backbuffer = realloc_backbuffer(0, window, window_w, window_h);
@@ -215,21 +252,19 @@ int main(void) {
         
         Painter painter;
 #if HARWARE_RENDERING
-        //printf("vertex array size: %lld, capacity: %lld, arena used: %lld, arena size: %lld\n", tgui_array_size(&vertex_array), vertex_array.type_array.capacity, vertex_array.type_array.arena.used, vertex_array.type_array.arena.size);
-        //printf("index array size: %lld, capacity: %lld, arena used: %lld, arena size: %lld\n", tgui_array_size(&index_array), index_array.type_array.capacity, index_array.type_array.arena.used, index_array.type_array.arena.size);
+        glViewport(0, 0, window_w, window_h);
         
         glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-
+        //printf("vertex array size: %lld, capacity: %lld, arena used: %lld, arena size: %lld\n", tgui_array_size(&vertex_array), vertex_array.type_array.capacity, vertex_array.type_array.arena.used, vertex_array.type_array.arena.size);
+        //printf("index array size: %lld, capacity: %lld, arena used: %lld, arena size: %lld\n", tgui_array_size(&index_array), index_array.type_array.capacity, index_array.type_array.arena.used, index_array.type_array.arena.size);
         painter_start(&painter, PAINTER_TYPE_HARDWARE, (Rectangle){0, 0, window_w-1, window_h-1}, 0, NULL, &vertex_array, &index_array, texture_atlas->bitmap.width, texture_atlas->bitmap.height);
 #else
         painter_start(&painter, PAINTER_TYPE_SOFTWARE, (Rectangle){0, 0, window_w-1, window_h-1}, 0, (u32 *)backbuffer->data, NULL, NULL, 0, 0);
 #endif
+
         painter_clear(&painter, 0x000000);
         app_update(&app, seconds_per_frame, &painter);
-        
-        //painter_draw_rect(&painter, 1, 1, 4, 4, 0x00ff00);
-        //painter_draw_rect(&painter, 1, window_h-5, 4, 4, 0x00ff00);
 
 #if HARWARE_RENDERING
 
@@ -250,7 +285,63 @@ int main(void) {
     glUniform1i(glGetUniformLocation(program, "res_y"), window_h);
     
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+
+    glBindTexture(GL_TEXTURE_2D, texture_atlas->id);
+
     glDrawElements(GL_TRIANGLES, tgui_array_size(&index_array), GL_UNSIGNED_INT, 0);
+
+    /* ------------------------------------------ */
+    /* Render frame buffer */
+    
+    TGuiWindow *w = tgui_window_get_from_handle(app.window1);
+
+    if(tgui_window_update_widget(w)) {
+
+
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glViewport(0, 0, 1024, 1024);
+        glUseProgram(triangle_program);
+
+        TGuiVertex tri_vertices[3] = {
+            {-0.5f, -0.5f,   0, 0,  1,0,0}, 
+            { 0.5f, -0.5f,   0, 1,  0,1,0}, 
+            { 0.0f,  0.5f,   1, 1,  0,0,1}, 
+        };
+        
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, 3*sizeof(TGuiVertex), tri_vertices);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, window_w, window_h);
+
+        TGuiVertex quad_vertices[6] = {
+            {w->dim.min_x  , w->dim.min_y  ,   0, 1,  1,1,1}, 
+            {w->dim.min_x  , w->dim.max_y+1,   0, 0,  1,1,1}, 
+            {w->dim.max_x+1, w->dim.max_y+1,   1, 0,  1,1,1}, 
+            
+            {w->dim.max_x+1, w->dim.max_y+1,   1, 0,  1,1,1}, 
+            {w->dim.max_x+1, w->dim.min_y  ,   1, 1,  1,1,1}, 
+            {w->dim.min_x  , w->dim.min_y  ,   0, 1,  1,1,1} 
+        };
+
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, 6*sizeof(TGuiVertex), quad_vertices);
+        
+        glUseProgram(program);
+        glBindTexture(GL_TEXTURE_2D, fbo_texture);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    }
+
+
+    /* ------------------------------------------ */
+
 #endif
 
         input->mouse_button_was_down = input->mouse_button_is_down;
