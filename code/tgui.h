@@ -63,6 +63,11 @@ typedef struct TGuiInput {
 
 struct TGuiAllocatedWindow;
 
+typedef enum TGuiWindowFlags {
+    TGUI_WINDOW_SCROLLING   = 1 << 0,
+    TGUI_WINDOW_TRANSPARENT = 1 << 1,
+} TGuiWindowFlags;
+
 typedef struct TGuiWindow {
     
     u32 id;
@@ -71,7 +76,8 @@ typedef struct TGuiWindow {
     
     struct TGuiWidget *widgets;
     
-    b32 is_scrolling;
+    TGuiWindowFlags flags;
+
     Rectangle h_scroll_bar;
     Rectangle v_scroll_bar;
     
@@ -91,13 +97,21 @@ typedef struct TGuiWindow {
 
 typedef u32 TGuiWindowHandle;
 
-TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll, struct TGuiAllocatedWindow *list);
+TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, TGuiWindowFlags flags, struct TGuiAllocatedWindow *list);
 
 TGuiWindow *tgui_window_get_from_handle(TGuiWindowHandle window);
 
-TGuiWindowHandle tgui_create_root_window(char *name, b32 scroll);
+TGuiWindowHandle tgui_create_root_window(char *name, TGuiWindowFlags flags);
 
-TGuiWindowHandle tgui_split_window(TGuiWindowHandle window, TGuiSplitDirection dir, char *name, b32 scroll);
+TGuiWindowHandle tgui_split_window(TGuiWindowHandle window, TGuiSplitDirection dir, char *name, TGuiWindowFlags flags);
+
+void tgui_window_set_transparent(TGuiWindowHandle window, b32 state);
+
+b32 tgui_window_flag_is_set(TGuiWindow *window, TGuiWindowFlags flags);
+
+void tgui_window_flag_set(TGuiWindow *window, TGuiWindowFlags flag);
+
+void tgui_window_flag_clear(TGuiWindow *window, TGuiWindowFlags flag);
 
 typedef void (*TGuiWidgetInternalFunc) (struct TGuiWidget *widget, Painter *painter);
 

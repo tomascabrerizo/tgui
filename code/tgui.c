@@ -236,7 +236,7 @@ void tgui_window_process_widgets(TGuiWindow *window, Painter *painter) {
     Rectangle saved_clip = painter->clip;
     while(!clink_list_end(widget, window->widgets)) {
         
-        if(window->is_scrolling) {
+        if(tgui_window_flag_is_set(window, TGUI_WINDOW_SCROLLING)) {
             widget->x -= window->h_scroll_offset * (rect_width(window->scroll_saved_rect) - rect_width(window->dim));
             widget->y -= window->v_scroll_offset * (rect_height(window->scroll_saved_rect) - rect_height(window->dim));
         }
@@ -1526,7 +1526,19 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter) {
 /*       TGui Window      */
 /* ---------------------- */
 
-TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll, TGuiAllocatedWindow *list) {
+b32 tgui_window_flag_is_set(TGuiWindow *window, TGuiWindowFlags flags) {
+    return window->flags & flags;
+}
+
+void tgui_window_flag_set(TGuiWindow *window, TGuiWindowFlags flag) {
+    window->flags |= flag;
+}
+
+void tgui_window_flag_clear(TGuiWindow *window, TGuiWindowFlags flag) {
+    window->flags &= ~flag;
+}
+
+TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, TGuiWindowFlags flags, TGuiAllocatedWindow *list) {
 
     TGuiAllocatedWindow *allocated_window_node = tgui_allocated_window_node_alloc();
     clink_list_insert_back(list, allocated_window_node);
@@ -1542,7 +1554,7 @@ TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, b32 scroll, TG
     window->widgets = tgui_widget_alloc();
     clink_list_init(window->widgets);
 
-    window->is_scrolling = scroll;
+    window->flags = flags;
 
     window->h_scroll_bar = rect_set_invalid();
     window->v_scroll_bar = rect_set_invalid();
@@ -1582,6 +1594,15 @@ TGuiWindowHandle tgui_split_window(TGuiWindowHandle handle, TGuiSplitDirection d
     TGuiWindow *new_window = tgui_window_alloc(new_window_node, name, scroll, state.allocated_windows);
     ASSERT(new_window);
     return new_window->id;
+}
+
+void tgui_window_set_transparent(TGuiWindowHandle handle, b32 state) {
+    TGuiWindow *window = tgui_window_get_from_handle(handle);
+    if(state == true) {
+        tgui_window_flag_set(window, TGUI_WINDOW_TRANSPARENT);
+    } else {
+        tgui_window_flag_clear(window, TGUI_WINDOW_TRANSPARENT);
+    }
 }
 
 /* ---------------------- */
@@ -1748,7 +1769,7 @@ static inline Rectangle calculate_total_widget_rect(TGuiWindow *window) {
 }
 
 void tgui_scroll_window_recalculate_dim(TGuiWindow *window) {
-    if(!window->is_scrolling) return;
+    if(!tgui_window_flag_is_set(window, TGUI_WINDOW_SCROLLING)) return;
     
     b32 h_bar_added = false;
     b32 v_bar_added = false;
@@ -1821,7 +1842,7 @@ void tgui_scroll_window_recalculate_dim(TGuiWindow *window) {
 }
 
 void tgui_process_scroll_window(TGuiWindow *window, Painter *painter) {
-    if(!window->is_scrolling) return;
+    if(!tgui_window_flag_is_set(window, TGUI_WINDOW_SCROLLING)) return;
     
     Rectangle saved_painter_clip = painter->clip;
     painter->clip = rect_intersection(painter->clip, tgui_docker_get_client_rect(window->parent));

@@ -597,7 +597,10 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
     switch (node->type) {
      
     case TGUI_DOCKER_NODE_WINDOW: {
-        painter_draw_rectangle(painter, node->dim, 0x777777);
+        TGuiWindow *window = tgui_window_get_from_handle(node->active_window);
+        if(!tgui_window_flag_is_set(window, TGUI_WINDOW_TRANSPARENT)) {
+            painter_draw_rectangle(painter, node->dim, 0x777777);
+        }
         
         u32 border_color = 0x333333;
         painter_draw_rectangle_outline(painter, node->dim, border_color);

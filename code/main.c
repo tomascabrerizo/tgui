@@ -262,11 +262,60 @@ int main(void) {
 #else
         painter_start(&painter, PAINTER_TYPE_SOFTWARE, (Rectangle){0, 0, window_w-1, window_h-1}, 0, (u32 *)backbuffer->data, NULL, NULL, 0, 0);
 #endif
-
-        painter_clear(&painter, 0x000000);
         app_update(&app, seconds_per_frame, &painter);
 
 #if HARWARE_RENDERING
+        
+        /* ------------------------------------------ */
+        /* Render frame buffer */
+        
+        TGuiWindow *w = tgui_window_get_from_handle(app.window1);
+
+        if(tgui_window_update_widget(w)) {
+
+
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+            glViewport(0, 0, 1024, 1024);
+            glUseProgram(triangle_program);
+
+            TGuiVertex tri_vertices[3] = {
+                {-0.5f, -0.5f,   0, 0,  1,0,0}, 
+                { 0.5f, -0.5f,   0, 1,  0,1,0}, 
+                { 0.0f,  0.5f,   1, 1,  0,0,1}, 
+            };
+            
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            glBindVertexArray(vao);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, 3*sizeof(TGuiVertex), tri_vertices);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(0, 0, window_w, window_h);
+
+            TGuiVertex quad_vertices[6] = {
+                {w->dim.min_x  , w->dim.min_y  ,   0, 1,  1,1,1}, 
+                {w->dim.min_x  , w->dim.max_y+1,   0, 0,  1,1,1}, 
+                {w->dim.max_x+1, w->dim.max_y+1,   1, 0,  1,1,1}, 
+                
+                {w->dim.max_x+1, w->dim.max_y+1,   1, 0,  1,1,1}, 
+                {w->dim.max_x+1, w->dim.min_y  ,   1, 1,  1,1,1}, 
+                {w->dim.min_x  , w->dim.min_y  ,   0, 1,  1,1,1} 
+            };
+
+            glBindVertexArray(vao);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, 6*sizeof(TGuiVertex), quad_vertices);
+            
+            glUseProgram(program);
+            glBindTexture(GL_TEXTURE_2D, fbo_texture);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        }
+
+        /* ------------------------------------------ */
 
 
     ASSERT(tgui_array_size(&vertex_array) <= MAX_QUAD_PER_BATCH*4);
@@ -290,57 +339,6 @@ int main(void) {
 
     glDrawElements(GL_TRIANGLES, tgui_array_size(&index_array), GL_UNSIGNED_INT, 0);
 
-    /* ------------------------------------------ */
-    /* Render frame buffer */
-    
-    TGuiWindow *w = tgui_window_get_from_handle(app.window1);
-
-    if(tgui_window_update_widget(w)) {
-
-
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        glViewport(0, 0, 1024, 1024);
-        glUseProgram(triangle_program);
-
-        TGuiVertex tri_vertices[3] = {
-            {-0.5f, -0.5f,   0, 0,  1,0,0}, 
-            { 0.5f, -0.5f,   0, 1,  0,1,0}, 
-            { 0.0f,  0.5f,   1, 1,  0,0,1}, 
-        };
-        
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glBindVertexArray(vao);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, 3*sizeof(TGuiVertex), tri_vertices);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, window_w, window_h);
-
-        TGuiVertex quad_vertices[6] = {
-            {w->dim.min_x  , w->dim.min_y  ,   0, 1,  1,1,1}, 
-            {w->dim.min_x  , w->dim.max_y+1,   0, 0,  1,1,1}, 
-            {w->dim.max_x+1, w->dim.max_y+1,   1, 0,  1,1,1}, 
-            
-            {w->dim.max_x+1, w->dim.max_y+1,   1, 0,  1,1,1}, 
-            {w->dim.max_x+1, w->dim.min_y  ,   1, 1,  1,1,1}, 
-            {w->dim.min_x  , w->dim.min_y  ,   0, 1,  1,1,1} 
-        };
-
-        glBindVertexArray(vao);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, 6*sizeof(TGuiVertex), quad_vertices);
-        
-        glUseProgram(program);
-        glBindTexture(GL_TEXTURE_2D, fbo_texture);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-
-    }
-
-
-    /* ------------------------------------------ */
 
 #endif
 

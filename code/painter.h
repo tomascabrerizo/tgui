@@ -28,6 +28,7 @@ typedef struct Painter {
 
     TGuiVertexArray *vertex_buffer;
     TGuiU32Array    *index_buffer;
+
     u32 *pixels;
 
     u32 texture_atlas_w;

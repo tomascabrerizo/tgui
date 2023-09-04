@@ -31,7 +31,7 @@ void tgui_serializer_write_window(TGuiWindow *window, u32 depth) {
     write_to_file(depth, "window: {\n");
     write_to_file(depth+1, "id: %d\n", window->id);
     write_to_file(depth+1, "name: \"%s\"\n", window->name);
-    write_to_file(depth+1, "is_scrolling: %d\n", window->is_scrolling);
+    write_to_file(depth+1, "flags: %d\n", window->flags);
     write_to_file(depth, "}\n");
 }
 
@@ -143,13 +143,13 @@ TGuiWindow *tgui_serializer_read_window(TGuiTokenizer *tokenizer, TGuiToken *tok
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_STRING, error, "'name' value must be a string");
     char *name = tgui_token_to_c_string(token);
 
-    tgui_serializer_expect_identifier(tokenizer, token, "is_scrolling", error, "Third member of window must be 'is_scrolling'");
-    tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_NUMBER, error, "'is_scrolling' value must be a number");
-    b32 scroll = token->value;
+    tgui_serializer_expect_identifier(tokenizer, token, "flags", error, "Third member of window must be 'flags'");
+    tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_NUMBER, error, "'flags' value must be a number");
+    TGuiWindowFlags flags = token->value;
 
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_CLOSE_BRACE, error, "split_node must end with '}'");
     
-    TGuiWindow *window = tgui_window_alloc(parent, name, scroll, list);
+    TGuiWindow *window = tgui_window_alloc(parent, name, flags, list);
     window->id = id;
 
     return window;

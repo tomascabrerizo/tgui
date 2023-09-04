@@ -75,6 +75,8 @@ void app_initialize(App *app, s32 w, s32 h) {
     app->window3 = tgui_split_window(app->window1, TGUI_SPLIT_DIR_HORIZONTAL, "Window 3", false);
     app->window4 = tgui_split_window(app->window3, TGUI_SPLIT_DIR_VERTICAL,   "Window 4", true);
 
+    tgui_window_set_transparent(app->window1, true);
+    
     tgui_try_to_load_data_file();
 }
 
@@ -108,6 +110,10 @@ void app_update(App *app, f32 dt, Painter *painter) {
     tgui_text_input(app->window2, 180, 10);
     
     tgui_color_picker(app->window1, 10, 10, 300, 100, &app->color1);
+
+    if(tgui_button(app->window1, "button", 320, 10)) {
+        printf("click! 5\n");
+    }
     
     void *user_data = NULL;
 
@@ -116,7 +122,7 @@ void app_update(App *app, f32 dt, Painter *painter) {
     _tgui_tree_view_end(&user_data);
 
     if(tgui_button(app->window2, "button", 10, 100)) {
-        printf("click! 5\n");
+        printf("click! 6\n");
     }
 
     char *options[] = {
