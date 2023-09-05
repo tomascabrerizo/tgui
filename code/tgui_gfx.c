@@ -38,8 +38,6 @@ void tgui_texture_atlas_initialize(TGuiTextureAtlas *texture_atlas) {
     arena_initialize(&texture_atlas->arena, 0, ARENA_TYPE_VIRTUAL);
     tgui_array_initialize(&texture_atlas->textures);
 
-    texture_atlas->id = 0;
-
     texture_atlas->bitmap.pixels = NULL;
     texture_atlas->bitmap.height = 0;
     texture_atlas->bitmap.width = TGUI_TEXTURE_ATLAS_START_WIDTH;
@@ -135,7 +133,7 @@ void texture_atlas_insert(TGuiTextureAtlas *texture_atlas, TGuiTexture *texture)
 
         Painter painter;
         Rectangle texture_atlas_rect = rect_from_wh(0, 0,texture_atlas->bitmap.width, texture_atlas->bitmap.height);
-        painter_start(&painter, PAINTER_TYPE_SOFTWARE, texture_atlas_rect, 0, texture_atlas->bitmap.pixels, NULL, NULL, 0, 0);
+        painter_start(&painter, PAINTER_TYPE_SOFTWARE, texture_atlas_rect, 0, texture_atlas->bitmap.pixels, NULL);
         painter_draw_bitmap_no_alpha(&painter, 0, 0, &old_texture_atlas_bitmap);
 
         state.arena.used = temp_arena_checkpoint;
@@ -153,7 +151,7 @@ void texture_atlas_insert(TGuiTextureAtlas *texture_atlas, TGuiTexture *texture)
 
     Painter painter;
     Rectangle texture_atlas_rect = rect_from_wh(0, 0,texture_atlas_bitmap->width, texture_atlas_bitmap->height);
-    painter_start(&painter, PAINTER_TYPE_SOFTWARE, texture_atlas_rect, 0, texture_atlas_bitmap->pixels, NULL, NULL, 0, 0);
+    painter_start(&painter, PAINTER_TYPE_SOFTWARE, texture_atlas_rect, 0, texture_atlas_bitmap->pixels, NULL);
     
     painter_draw_bitmap_no_alpha(&painter, texture_atlas->current_x, texture_atlas->current_y, bitmap);
     
@@ -174,4 +172,52 @@ void tgui_texture_atlas_generate_atlas(void) {
         
         texture_atlas_insert(texture_atlas, texture);
     }
+
+    state.gfx->destroy_texture(state.texture_default);
+    state.texture_default = state.gfx->create_texture(texture_atlas->bitmap.pixels, texture_atlas->bitmap.width, texture_atlas->bitmap.height);
+    tgui_render_buffer_set_texture(&state.render_buffer, state.texture_default);
+
+}
+
+u32 tgui_texture_atlas_get_width(TGuiTextureAtlas *texture_atlas) {
+    return texture_atlas->bitmap.width;
+}
+
+u32 tgui_texture_atlas_get_height(TGuiTextureAtlas *texture_atlas) {
+    return texture_atlas->bitmap.height;
+}
+
+/* ----------------------------------- */
+/*          TGui Render Buffer         */
+/* ----------------------------------- */
+
+void tgui_render_buffer_initialize(TGuiRenderBuffer *render_buffer, struct TGuiHardwareProgram *program, struct TGuiHardwareTexture *texture, TGuiTextureAtlas *texture_atlas) {
+    ASSERT(program);
+    ASSERT(texture);
+
+    render_buffer->program = program;
+    render_buffer->texture = texture;
+    render_buffer->texture_atlas = texture_atlas;
+    
+    tgui_array_initialize(&render_buffer->vertex_buffer);
+    tgui_array_initialize(&render_buffer->index_buffer);
+
+}
+
+void tgui_render_buffer_terminate(TGuiRenderBuffer *render_buffer) {
+    tgui_array_terminate(&render_buffer->vertex_buffer);
+    tgui_array_terminate(&render_buffer->index_buffer);
+}
+
+void tgui_render_buffer_clear(TGuiRenderBuffer *render_buffer) {
+    tgui_array_clear(&render_buffer->vertex_buffer);
+    tgui_array_clear(&render_buffer->index_buffer);
+}
+
+void tgui_render_buffer_set_program(TGuiRenderBuffer *render_buffer, struct TGuiHardwareProgram *program) {
+    render_buffer->program = program;
+}
+
+void tgui_render_buffer_set_texture(TGuiRenderBuffer *render_buffer, struct TGuiHardwareTexture *texture) {
+    render_buffer->texture = texture;
 }

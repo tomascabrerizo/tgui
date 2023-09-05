@@ -160,18 +160,24 @@ typedef struct TGui {
     
     u64 active_id;
     TGuiWindow *active_window;
+    
+    TGuiGfxBackend *gfx;
 
     TGuiTextureAtlas texture_atlas;
+    TGuiRenderBuffer render_buffer;
+
+    struct TGuiHardwareTexture *texture_default;
+    struct TGuiHardwareProgram *program_default;
 
 } TGui;
 
-void tgui_initialize(s32 w, s32 h);
+void tgui_initialize(s32 w, s32 h, TGuiGfxBackend *gfx);
 
 void tgui_terminate(void);
 
 void tgui_begin(f32 dt);
 
-void tgui_end(Painter *painter);
+void tgui_end(void);
 
 void tgui_try_to_load_data_file(void);
 

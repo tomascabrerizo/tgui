@@ -1,18 +1,7 @@
 #ifndef _PAINTER_H_
 #define _PAINTER_H_
 
-#include "common.h"
-#include "geometry.h"
-#include "memory.h"
-
-typedef struct TGuiVertex {
-    float x, y;
-    float u, v;
-    float r, g, b;
-} TGuiVertex;
-
-TGuiArray(TGuiVertex, TGuiVertexArray);
-TGuiArray(u32, TGuiU32Array);
+#include "tgui_gfx.h"
 
 typedef enum PainterType {
     PAINTER_TYPE_SOFTWARE,
@@ -26,19 +15,15 @@ typedef struct Painter {
     Rectangle dim;
     Rectangle clip;
 
-    TGuiVertexArray *vertex_buffer;
-    TGuiU32Array    *index_buffer;
-
     u32 *pixels;
 
-    u32 texture_atlas_w;
-    u32 texture_atlas_h;
+    TGuiRenderBuffer *render_buffer;
 
 } Painter;
 
 struct TGuiBitmap;
 
-void painter_start(Painter *painter, PainterType type, Rectangle dim, Rectangle *clip, u32 *pixels, TGuiVertexArray *vertex_array, TGuiU32Array *index_array, u32 atlas_w, u32 atlas_h);
+void painter_start(Painter *painter, PainterType type, Rectangle dim, Rectangle *clip, u32 *pixels, TGuiRenderBuffer *render_buffer);
 
 void painter_clear(Painter *painter, u32 color);
 

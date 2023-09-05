@@ -2,17 +2,32 @@ root_node: {
   dir: 2
   root_node: {
     dir: 1
-    window_node: {
-      active_window: 4
-      window_count: 1
-      window: {
-        id: 4
-        name: "Window 4"
-        flags: 1
+    root_node: {
+      dir: 2
+      window_node: {
+        active_window: 4
+        window_count: 1
+        window: {
+          id: 4
+          name: "Window 4"
+          flags: 1
+        }
+      }
+      split_node: {
+        split_position: 500
+      }
+      window_node: {
+        active_window: 2
+        window_count: 1
+        window: {
+          id: 2
+          name: "Window 2"
+          flags: 1
+        }
       }
     }
     split_node: {
-      split_position: 225
+      split_position: 264
     }
     window_node: {
       active_window: 1
@@ -30,19 +45,7 @@ root_node: {
     }
   }
   split_node: {
-    split_position: 627
-  }
-  window_node: {
-    active_window: 2
-    window_count: 1
-    window: {
-      id: 2
-      name: "Window 2"
-      flags: 1
-    }
-  }
-  split_node: {
-    split_position: 865
+    split_position: 791
   }
   window_node: {
     active_window: 3

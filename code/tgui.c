@@ -1,3 +1,4 @@
+#include "geometry.h"
 #include "memory.h"
 #include "painter.h"
 #include "tgui_docker.h"
@@ -932,7 +933,7 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
     u32 color_x = colorpicker->saturation * (colorpicker->radiant.width -  1);
     u32 color_y = colorpicker->value * (colorpicker->radiant.height - 1);
    
-#if !HARWARE_RENDERING
+#if 0 
     painter_draw_bitmap_no_alpha(painter, radiant_rect.min_x, radiant_rect.min_y, &colorpicker->radiant);
 #endif
     painter_draw_rectangle_outline(painter, radiant_rect, 0x444444);
@@ -940,7 +941,7 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
     painter_draw_hline(painter, radiant_rect.min_y + color_y, radiant_rect.min_x, radiant_rect.max_x, 0x444444);
     painter_draw_vline(painter, radiant_rect.min_x + color_x, radiant_rect.min_y, radiant_rect.max_y, 0x444444);
     
-#if !HARWARE_RENDERING
+#if 0 
     painter_draw_bitmap_no_alpha(painter, mini_radiant_rect.min_x, mini_radiant_rect.min_y, &colorpicker->mini_radiant);
 #endif
     painter_draw_rectangle_outline(painter, mini_radiant_rect, 0x444444);
@@ -1609,7 +1610,7 @@ void tgui_window_set_transparent(TGuiWindowHandle handle, b32 state) {
 /*       TGui Fuction     */
 /* ---------------------- */
 
-void tgui_initialize(s32 window_w, s32 window_h) {
+void tgui_initialize(s32 window_w, s32 window_h, TGuiGfxBackend *gfx) {
     
     memset(&state, 0, sizeof(TGui));
 
@@ -1632,12 +1633,23 @@ void tgui_initialize(s32 window_w, s32 window_h) {
     tgui_texture_atlas_initialize(&state.texture_atlas);
     tgui_font_initilize(&state.arena);
     tgui_docker_initialize();
+    
+    state.gfx = gfx;
+
+    TGuiTextureAtlas *ta = &state.texture_atlas;
+    state.program_default = state.gfx->create_program("./shaders/quad.vert", "./shaders/quad.frag");
+    state.texture_default = state.gfx->create_texture(ta->bitmap.pixels, ta->bitmap.width, ta->bitmap.height);
+    tgui_render_buffer_initialize(&state.render_buffer, state.program_default, state.texture_default, &state.texture_atlas);
 }
 
 void tgui_terminate(void) {
-
+    
     tgui_serializer_write_docker_tree(docker.root, "./tgui.dat");
     
+    state.gfx->destroy_program(state.program_default);
+    state.gfx->destroy_texture(state.texture_default);
+    tgui_render_buffer_terminate(&state.render_buffer);
+
     tgui_docker_terminate();
     tgui_font_terminate();
     tgui_texture_atlas_terminate(&state.texture_atlas);
@@ -1917,32 +1929,37 @@ void tgui_process_scroll_window(TGuiWindow *window, Painter *painter) {
     painter->clip = saved_painter_clip;
 }
 
-void tgui_end(Painter *painter) {
+void tgui_end(void) {
     
-    tgui_docker_root_node_draw(painter);
+    tgui_render_buffer_clear(&state.render_buffer);
 
-    TGuiAllocatedWindow *allocated_window = state.allocated_windows->next;
-    while(!clink_list_end(allocated_window, state.allocated_windows)) { 
+    if(docker.root != NULL) {
+        Painter painter;
+        painter_start(&painter, PAINTER_TYPE_HARDWARE, docker.root->dim, 0, NULL, &state.render_buffer);
 
-        TGuiWindow *window = &allocated_window->window;
+        tgui_docker_root_node_draw(&painter);
 
-        tgui_scroll_window_recalculate_dim(window);
-        tgui_window_process_widgets(window, painter);
-        tgui_process_scroll_window(window, painter);
+        TGuiAllocatedWindow *allocated_window = state.allocated_windows->next;
+        while(!clink_list_end(allocated_window, state.allocated_windows)) { 
 
-        tgui_window_free_widgets(window);
+            TGuiWindow *window = &allocated_window->window;
+
+            tgui_scroll_window_recalculate_dim(window);
+            tgui_window_process_widgets(window, &painter);
+            tgui_process_scroll_window(window, &painter);
+
+            tgui_window_free_widgets(window);
+            
+            allocated_window = allocated_window->next;
+        }
+
+        tgui_docker_draw_preview(&painter);
         
-        allocated_window = allocated_window->next;
+        u32 width = rect_width(docker.root->dim);
+        u32 height = rect_height(docker.root->dim);
+        state.gfx->set_program_width_and_height(state.program_default, width, height);
+        state.gfx->draw_buffers(state.render_buffer.program, state.render_buffer.texture, &state.render_buffer.vertex_buffer, &state.render_buffer.index_buffer);
     }
-
-    tgui_docker_draw_preview(painter);
-  
-#if !HARWARE_RENDERING
-    u32 x = 100;
-    u32 y = 100;
-    painter_draw_rect(painter, x, y, state.texture_atlas.bitmap.width, state.texture_atlas.bitmap.height, 0x000000);
-    painter_draw_bitmap(painter, x, y, &state.texture_atlas.bitmap, 0xffffff);
-#endif
 
 }
 

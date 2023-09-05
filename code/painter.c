@@ -53,7 +53,7 @@ void painter_draw_pixel(Painter *painter, s32 x, s32 y, u32 color) {
 }
 
 
-void painter_start(Painter *painter, PainterType type, Rectangle dim, Rectangle *clip, u32 *pixels, TGuiVertexArray *vertex_array, TGuiU32Array *index_array, u32 atlas_w, u32 atlas_h) {
+void painter_start(Painter *painter, PainterType type, Rectangle dim, Rectangle *clip, u32 *pixels, TGuiRenderBuffer *render_buffer) {
     painter->type = type;
 
     painter->pixels = pixels;
@@ -66,17 +66,7 @@ void painter_start(Painter *painter, PainterType type, Rectangle dim, Rectangle 
     }
     
     if(painter->type == PAINTER_TYPE_HARDWARE) {
-        ASSERT(vertex_array);
-        ASSERT(index_array);
-
-        painter->texture_atlas_w = atlas_w;
-        painter->texture_atlas_h = atlas_h;
-
-        painter->vertex_buffer = vertex_array;
-        painter->index_buffer = index_array;
-
-        tgui_array_clear(painter->vertex_buffer);
-        tgui_array_clear(painter->index_buffer);
+        painter->render_buffer = render_buffer;
     }
 
 }
@@ -87,36 +77,38 @@ void painter_draw_rectangle(Painter *painter, Rectangle rectangle, u32 color) {
 
     switch (painter->type) {
     case PAINTER_TYPE_HARDWARE: {
-
         
         if(rect_invalid(rectangle)) return;
+
+        TGuiVertexArray *vertex_buffer = &painter->render_buffer->vertex_buffer;
+        TGuiU32Array *index_buffer = &painter->render_buffer->index_buffer;
 
         rectangle.max_x += 1;
         rectangle.max_y += 1;
         
-        u32 start_vertex_index = tgui_array_size(painter->vertex_buffer);
+        u32 start_vertex_index = tgui_array_size(vertex_buffer);
 
-        TGuiVertex *vertex0 = tgui_array_push(painter->vertex_buffer);
-        TGuiVertex *vertex1 = tgui_array_push(painter->vertex_buffer);
-        TGuiVertex *vertex2 = tgui_array_push(painter->vertex_buffer);
-        TGuiVertex *vertex3 = tgui_array_push(painter->vertex_buffer);
+        TGuiVertex *vertex0 = tgui_array_push(vertex_buffer);
+        TGuiVertex *vertex1 = tgui_array_push(vertex_buffer);
+        TGuiVertex *vertex2 = tgui_array_push(vertex_buffer);
+        TGuiVertex *vertex3 = tgui_array_push(vertex_buffer);
         
         setup_vertex(vertex0, rectangle.min_x, rectangle.min_y, 0.0f, 0.0f, color);
         setup_vertex(vertex1, rectangle.min_x, rectangle.max_y, 0.0f, 0.0f, color);
         setup_vertex(vertex2, rectangle.max_x, rectangle.max_y, 0.0f, 0.0f, color);
         setup_vertex(vertex3, rectangle.max_x, rectangle.min_y, 0.0f, 0.0f, color);
         
-        u32 *index0 = tgui_array_push(painter->index_buffer);
-        u32 *index1 = tgui_array_push(painter->index_buffer);
-        u32 *index2 = tgui_array_push(painter->index_buffer);
+        u32 *index0 = tgui_array_push(index_buffer);
+        u32 *index1 = tgui_array_push(index_buffer);
+        u32 *index2 = tgui_array_push(index_buffer);
 
         *index0 = start_vertex_index + 0;
         *index1 = start_vertex_index + 1;
         *index2 = start_vertex_index + 2;
 
-        u32 *index3 = tgui_array_push(painter->index_buffer);
-        u32 *index4 = tgui_array_push(painter->index_buffer);
-        u32 *index5 = tgui_array_push(painter->index_buffer);
+        u32 *index3 = tgui_array_push(index_buffer);
+        u32 *index4 = tgui_array_push(index_buffer);
+        u32 *index5 = tgui_array_push(index_buffer);
 
         *index3 = start_vertex_index + 2;
         *index4 = start_vertex_index + 3;
@@ -243,6 +235,9 @@ void painter_draw_bitmap(Painter *painter, s32 x, s32 y, TGuiBitmap *bitmap, u32
         
         if(rect_invalid(rectangle)) return;
 
+        TGuiVertexArray *vertex_buffer = &painter->render_buffer->vertex_buffer;
+        TGuiU32Array *index_buffer = &painter->render_buffer->index_buffer;
+
         ASSERT(bitmap->texture);
 
         rectangle.max_x += 1;
@@ -251,12 +246,12 @@ void painter_draw_bitmap(Painter *painter, s32 x, s32 y, TGuiBitmap *bitmap, u32
         unclip_rectangle.max_x += 1;
         unclip_rectangle.max_y += 1;
 
-        u32 start_vertex_index = tgui_array_size(painter->vertex_buffer);
+        u32 start_vertex_index = tgui_array_size(vertex_buffer);
 
-        TGuiVertex *vertex0 = tgui_array_push(painter->vertex_buffer);
-        TGuiVertex *vertex1 = tgui_array_push(painter->vertex_buffer);
-        TGuiVertex *vertex2 = tgui_array_push(painter->vertex_buffer);
-        TGuiVertex *vertex3 = tgui_array_push(painter->vertex_buffer);
+        TGuiVertex *vertex0 = tgui_array_push(vertex_buffer);
+        TGuiVertex *vertex1 = tgui_array_push(vertex_buffer);
+        TGuiVertex *vertex2 = tgui_array_push(vertex_buffer);
+        TGuiVertex *vertex3 = tgui_array_push(vertex_buffer);
         
         u32 color = tint;
 
@@ -270,27 +265,33 @@ void painter_draw_bitmap(Painter *painter, s32 x, s32 y, TGuiBitmap *bitmap, u32
         texture_rectangle.max_x += 1;
         texture_rectangle.max_y += 1;
         
-        f32 min_u = (f32)(texture_rectangle.min_x + min_offset_x) / (f32)painter->texture_atlas_w; 
-        f32 min_v = (f32)(texture_rectangle.min_y + min_offset_y) / (f32)painter->texture_atlas_h;
-        f32 max_u = (f32)(texture_rectangle.max_x - max_offset_x) / (f32)painter->texture_atlas_w; 
-        f32 max_v = (f32)(texture_rectangle.max_y - max_offset_y) / (f32)painter->texture_atlas_h;
+        TGuiTextureAtlas *texture_atlas = painter->render_buffer->texture_atlas;
+        ASSERT(texture_atlas);
+
+        u32 texture_atlas_w = texture_atlas->bitmap.width;
+        u32 texture_atlas_h = texture_atlas->bitmap.height;
+
+        f32 min_u = (f32)(texture_rectangle.min_x + min_offset_x) / (f32)texture_atlas_w; 
+        f32 min_v = (f32)(texture_rectangle.min_y + min_offset_y) / (f32)texture_atlas_h;
+        f32 max_u = (f32)(texture_rectangle.max_x - max_offset_x) / (f32)texture_atlas_w; 
+        f32 max_v = (f32)(texture_rectangle.max_y - max_offset_y) / (f32)texture_atlas_h;
 
         setup_vertex(vertex0, rectangle.min_x, rectangle.min_y, min_u, min_v, color);
         setup_vertex(vertex1, rectangle.min_x, rectangle.max_y, min_u, max_v, color);
         setup_vertex(vertex2, rectangle.max_x, rectangle.max_y, max_u, max_v, color);
         setup_vertex(vertex3, rectangle.max_x, rectangle.min_y, max_u, min_v, color);
         
-        u32 *index0 = tgui_array_push(painter->index_buffer);
-        u32 *index1 = tgui_array_push(painter->index_buffer);
-        u32 *index2 = tgui_array_push(painter->index_buffer);
+        u32 *index0 = tgui_array_push(index_buffer);
+        u32 *index1 = tgui_array_push(index_buffer);
+        u32 *index2 = tgui_array_push(index_buffer);
 
         *index0 = start_vertex_index + 0;
         *index1 = start_vertex_index + 1;
         *index2 = start_vertex_index + 2;
 
-        u32 *index3 = tgui_array_push(painter->index_buffer);
-        u32 *index4 = tgui_array_push(painter->index_buffer);
-        u32 *index5 = tgui_array_push(painter->index_buffer);
+        u32 *index3 = tgui_array_push(index_buffer);
+        u32 *index4 = tgui_array_push(index_buffer);
+        u32 *index5 = tgui_array_push(index_buffer);
 
         *index3 = start_vertex_index + 2;
         *index4 = start_vertex_index + 3;

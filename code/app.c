@@ -9,6 +9,9 @@
 #include <stdio.h>
 
 typedef struct App {
+
+    TGuiGfxBackend *gfx;
+
     TGuiWindowHandle window0;
     TGuiWindowHandle window1;
     TGuiWindowHandle window2;
@@ -18,7 +21,6 @@ typedef struct App {
     u32 color0;
     u32 color1;
 
-    TGuiBitmap bitmap0;
 } App;
 
 extern TGuiDocker docker;
@@ -60,12 +62,8 @@ void colorpicker_calculate_radiant(TGuiBitmap *bitmap, u32 color);
 extern TGui state;
 
 void app_initialize(App *app, s32 w, s32 h) {
-    UNUSED(app);
-    tgui_initialize(w, h);
-
-    app->bitmap0 = tgui_bitmap_alloc_empty(&state.arena, 256, 64);
-    colorpicker_calculate_mini_radiant(&app->bitmap0);
-    tgui_texture_atlas_add_bitmap(&state.texture_atlas, &app->bitmap0);
+    
+    tgui_initialize(w, h, app->gfx);
 
     tgui_texture_atlas_generate_atlas();
 
@@ -85,7 +83,7 @@ void app_terminate(App *app) {
     tgui_terminate();
 }
 
-void app_update(App *app, f32 dt, Painter *painter) {
+void app_update(App *app, f32 dt) {
     
     tgui_begin(dt);
 
@@ -142,7 +140,6 @@ void app_update(App *app, f32 dt, Painter *painter) {
     
     _tgui_dropdown_menu(app->window2, 180, 60, options, APP_ARRAY_LEN(options), &option_index, TGUI_ID);
 
-
-    tgui_end(painter);
+    tgui_end();
 
 }
