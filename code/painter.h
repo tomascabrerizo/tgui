@@ -41,4 +41,6 @@ void painter_draw_bitmap(Painter *painter, s32 x, s32 y, struct TGuiBitmap *bitm
 
 void painter_draw_bitmap_no_alpha(Painter *painter, s32 x, s32 y, struct TGuiBitmap *bitmap);
 
+void painter_draw_render_buffer_texture(Painter *painter, Rectangle dim);
+
 #endif /* _PAINTER_H_ */

@@ -189,6 +189,20 @@ void tgui_font_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u
     }
 }
 
+/* --------------------------- */
+/*       TGui Framebuffer      */
+/* --------------------------- */
+
+void tgui_texture(TGuiWindowHandle handle, TGuiRenderStateProgramIndex program, TGuiRenderStateTextureIndex texture) {
+    TGuiWindow *window = tgui_window_get_from_handle(handle);
+    if(!rect_invalid(window->dim)) {
+        TGuiRenderBuffer *render_buffer = tgui_render_state_push_render_buffer_custom(&state.render_state, program, texture, NULL);
+        Painter painter;
+        painter_start(&painter, PAINTER_TYPE_HARDWARE, window->dim, 0, NULL, render_buffer);
+        painter_draw_render_buffer_texture(&painter, window->dim);
+    }
+}
+
 /* ---------------------- */
 /*       TGui Widgets     */
 /* ---------------------- */
@@ -1758,6 +1772,7 @@ void tgui_begin(f32 dt) {
     while(!clink_list_end(allocated_window, state.allocated_windows)) {
         
         TGuiWindow *window = &allocated_window->window;
+
         Rectangle window_dim = tgui_docker_get_client_rect(window->parent);
         window->dim = window_dim;
         
@@ -1925,14 +1940,21 @@ void tgui_process_scroll_window(TGuiWindow *window, Painter *painter) {
 }
 
 void tgui_end(void) {
-    
-    tgui_render_state_clear_render_buffers(&state.render_state);
-    
-    TGuiRenderBuffer *default_render_buffer = tgui_render_state_push_render_buffer(&state.render_state, state.default_program, state.default_texture, state.default_texture_atlas);
 
+
+    TGuiRenderBuffer *render_buffer_tgui = &state.render_state.render_buffer_tgui;
+    tgui_render_buffer_set_program(render_buffer_tgui, state.default_program);
+    tgui_render_buffer_set_texture(render_buffer_tgui, state.default_texture);
+    tgui_render_buffer_set_texture_atlas(render_buffer_tgui, state.default_texture_atlas);
+
+    TGuiRenderBuffer *render_buffer_tgui_on_top = &state.render_state.render_buffer_tgui_on_top;
+    tgui_render_buffer_set_program(render_buffer_tgui_on_top, state.default_program);
+    tgui_render_buffer_set_texture(render_buffer_tgui_on_top, state.default_texture);
+    tgui_render_buffer_set_texture_atlas(render_buffer_tgui_on_top, state.default_texture_atlas);
+    
     if(docker.root != NULL) {
         Painter painter;
-        painter_start(&painter, PAINTER_TYPE_HARDWARE, docker.root->dim, 0, NULL, default_render_buffer);
+        painter_start(&painter, PAINTER_TYPE_HARDWARE, docker.root->dim, 0, NULL, render_buffer_tgui);
 
         tgui_docker_root_node_draw(&painter);
 
@@ -1960,5 +1982,6 @@ void tgui_end(void) {
 
     }
 
+    tgui_render_state_clear_render_buffers(&state.render_state);
 }
 

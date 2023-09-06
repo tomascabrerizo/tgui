@@ -76,6 +76,7 @@ void app_initialize(App *app, s32 w, s32 h) {
     tgui_window_set_transparent(app->window1, true);
     
     tgui_try_to_load_data_file();
+
 }
 
 void app_terminate(App *app) {
@@ -83,9 +84,24 @@ void app_terminate(App *app) {
     tgui_terminate();
 }
 
+
+char *options[] = {
+    "option 0",
+    "option 1",
+    "option 2",
+    "option 3",
+    "option 4",
+    "option 5",
+    "option 6",
+    "option 7",
+    "option 8",
+    "option 9",
+};
+
+s32 option_index;
+
 void app_update(App *app, f32 dt) {
-    
-    tgui_begin(dt);
+    UNUSED(dt);
 
     if(tgui_button(app->window0, "button", 10, 10)) {
         printf("click! 0\n");
@@ -122,24 +138,9 @@ void app_update(App *app, f32 dt) {
     if(tgui_button(app->window2, "button", 10, 100)) {
         printf("click! 6\n");
     }
-
-    char *options[] = {
-        "option 0",
-        "option 1",
-        "option 2",
-        "option 3",
-        "option 4",
-        "option 5",
-        "option 6",
-        "option 7",
-        "option 8",
-        "option 9",
-    };
-    s32 option_index = 0;
+    
     _tgui_dropdown_menu(app->window2, 10, 60, options, APP_ARRAY_LEN(options), &option_index, TGUI_ID);
     
     _tgui_dropdown_menu(app->window2, 180, 60, options, APP_ARRAY_LEN(options), &option_index, TGUI_ID);
-
-    tgui_end();
 
 }

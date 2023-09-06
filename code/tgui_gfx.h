@@ -85,6 +85,7 @@ TGuiArray(u32, TGuiU32Array);
 struct TGuiHardwareTexture;
 struct TGuiHardwareProgram;
 
+struct TGuiRenderState;
 typedef s32 TGuiRenderStateTextureIndex;
 typedef s32 TGuiRenderStateProgramIndex;
 
@@ -118,6 +119,8 @@ void tgui_render_buffer_set_texture(TGuiRenderBuffer *render_buffer, TGuiRenderS
 
 void tgui_render_buffer_set_texture_atlas(TGuiRenderBuffer *render_buffer, TGuiTextureAtlas *texture_atlas);
 
+void tgui_render_buffer_draw(struct TGuiRenderState *render_state, TGuiRenderBuffer *render_buffer);
+
 /* ----------------------------------- */
 /*          TGui Render State          */
 /* ----------------------------------- */
@@ -130,8 +133,11 @@ typedef struct TGuiRenderState {
     TGuiHardwareTextureArray textures;
     TGuiTextureAtlasArray    textures_atlas;
 
-    TGuiRenderBufferArray    render_buffers;
-    u32 current_render_buffer_pushed_count;
+    TGuiRenderBuffer      render_buffer_tgui;
+    TGuiRenderBuffer      render_buffer_tgui_on_top;
+    
+    TGuiRenderBufferArray render_buffers_custom;
+    u32 current_render_buffer_custom_pushed_count;
 
 } TGuiRenderState;
 
@@ -145,7 +151,7 @@ TGuiRenderStateProgramIndex tgui_render_state_alloc_program(TGuiRenderState *ren
 
 TGuiTextureAtlas *tgui_render_state_alloc_texture_atlas(TGuiRenderState *render_state);
 
-TGuiRenderBuffer *tgui_render_state_push_render_buffer(TGuiRenderState *render_state, TGuiRenderStateProgramIndex program, TGuiRenderStateTextureIndex texture, TGuiTextureAtlas *texture_atlas);
+TGuiRenderBuffer *tgui_render_state_push_render_buffer_custom(TGuiRenderState *render_state, TGuiRenderStateProgramIndex program, TGuiRenderStateTextureIndex texture, TGuiTextureAtlas *texture_atlas);
 
 void tgui_render_state_clear_render_buffers(TGuiRenderState *render_state);
 

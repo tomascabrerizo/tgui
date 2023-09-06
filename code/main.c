@@ -55,45 +55,6 @@ struct OsBackbuffer *realloc_backbuffer(struct OsBackbuffer *backbuffer, struct 
     return backbuffer;
 }
 
-unsigned int program_create(char *v_src, char *f_src) {
-    int success;
-    static char infoLog[512];
-
-    unsigned int v_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(v_shader, 1, (const char **)&v_src, NULL);
-    glCompileShader(v_shader);
-    glGetShaderiv(v_shader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(v_shader, 512, NULL, infoLog);
-        printf("[VERTEX SHADER ERROR]: %s\n", infoLog);
-    }
-
-    unsigned int f_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(f_shader, 1, (const char **)&f_src, NULL);
-    glCompileShader(f_shader);
-    glGetShaderiv(f_shader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(f_shader, 512, NULL, infoLog);
-        printf("[FRAGMENT SHADER ERROR]: %s\n", infoLog);
-    }
-
-    unsigned int program = glCreateProgram();
-    glAttachShader(program, v_shader);
-    glAttachShader(program, f_shader);
-    glLinkProgram(program);
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(program, 512, NULL, infoLog);
-        printf("[SHADER PROGRAM ERROR]: %s\n", infoLog);
-    }
-
-    glDeleteShader(v_shader);
-    glDeleteShader(f_shader);
-
-    return program;
-}
-
-
 /* -------------------------------------------- */
 /*         TGui Backend implementation          */
 /* -------------------------------------------- */
@@ -209,9 +170,7 @@ void tgui_opengl_draw_buffers(struct TGuiHardwareProgram *program, struct TGuiHa
         glDrawElements(GL_TRIANGLES, tgui_array_size(index_buffer), GL_UNSIGNED_INT, 0);
 
 }
-
 /* -------------------------------------------- */
-
 
 int main(void) {
 
@@ -268,6 +227,30 @@ int main(void) {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_QUAD_PER_BATCH*(sizeof(u32) * 6), 0, GL_DYNAMIC_DRAW); 
 
 
+    /* ------------------------------------------------ */
+    /*       FrameBuffer test                           */
+
+    TGuiRenderStateProgramIndex custom_program = tgui_render_state_alloc_program(&state.render_state, "./shaders/triangle.vert", "./shaders/triangle.frag");
+    TGuiRenderStateTextureIndex custom_texture = tgui_render_state_alloc_texture(&state.render_state, NULL, 1024, 1024);
+
+    u32 fbo_texture = tgui_render_state_get_texture(&state.render_state, custom_texture)->id;
+    u32 fbo_program = tgui_render_state_get_program(&state.render_state, custom_program)->id;
+
+    u32 rbo_depth;
+    glGenRenderbuffers(1, &rbo_depth);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo_depth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 1024, 1024);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    u32 fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo_depth);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    /* ------------------------------------------------ */
+
     u64 miliseconds_per_frame = 16;
     f32 seconds_per_frame = (f32)miliseconds_per_frame / 1000.0f; (void)seconds_per_frame;
     u64 last_time = os_get_ticks();
@@ -311,12 +294,49 @@ int main(void) {
 
         }
         
+        /* ------------------------------------------------ */
+        /*       FrameBuffer test                           */
+
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glViewport(0, 0, 1024, 1024);
+
+        glUseProgram(fbo_program);
+        
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+        TGuiVertex tri_vertices[3] = {
+            {-0.5f, -0.5f,   0, 0,  1,0,0}, 
+            { 0.5f, -0.5f,   0, 1,  0,1,0}, 
+            { 0.0f,  0.5f,   1, 1,  0,0,1}, 
+        };
+        
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, 3*sizeof(TGuiVertex), tri_vertices);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+         
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        /* ------------------------------------------------ */
+        
+
+        /* ------------------------------------------------ */
+        /*       TGui test                           */
+        
         glViewport(0, 0, window_w, window_h);
         
         glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         
+        tgui_begin(seconds_per_frame);
+        
+        tgui_texture(app.window1, state.default_program, custom_texture);
         app_update(&app, seconds_per_frame);
+
+        tgui_end();
+        /* ------------------------------------------------ */
 
         input->mouse_button_was_down = input->mouse_button_is_down;
         

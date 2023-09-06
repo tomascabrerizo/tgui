@@ -186,6 +186,12 @@ TGuiCursor tgui_get_cursor_state(void);
 
 #define tgui_safe_dereference(ptr, type) (((ptr) == NULL) ? (type){0} : *((type *)ptr))
 
+/* --------------------------- */
+/*       TGui Framebuffer      */
+/* --------------------------- */
+
+void tgui_texture(TGuiWindowHandle window, TGuiRenderStateProgramIndex program, TGuiRenderStateTextureIndex texture);
+
 /* ---------------------- */
 /*       TGui Widgets     */
 /* ---------------------- */

@@ -66,3 +66,7 @@ Rectangle rect_translate(Rectangle rect, s32 x, s32 y) {
     result.max_y = rect_height(rect)-1;
     return result;
 }
+
+void rect_print(Rectangle rect) {
+    printf("min_x:%d, min_y:%d, max_x:%d, max_y:%d\n", rect.min_x, rect.min_y, rect.max_x, rect.max_y);
+}

@@ -226,14 +226,17 @@ void tgui_render_buffer_set_texture_atlas(TGuiRenderBuffer *render_buffer, TGuiT
 /* ----------------------------------- */
 
 void tgui_render_state_initialize(TGuiRenderState *render_state, struct TGuiGfxBackend *gfx) {
+
+    tgui_render_buffer_initialize(&render_state->render_buffer_tgui);
+    tgui_render_buffer_initialize(&render_state->render_buffer_tgui_on_top);
     
     tgui_array_initialize(&render_state->programs);
     tgui_array_initialize(&render_state->textures);
     tgui_array_initialize(&render_state->textures_atlas);
-    tgui_array_initialize(&render_state->render_buffers);
+    tgui_array_initialize(&render_state->render_buffers_custom);
 
     render_state->gfx = gfx;
-    render_state->current_render_buffer_pushed_count = 0;
+    render_state->current_render_buffer_custom_pushed_count = 0;
 }
 
 void tgui_render_state_terminate(TGuiRenderState *render_state) {
@@ -256,22 +259,28 @@ void tgui_render_state_terminate(TGuiRenderState *render_state) {
     }
     tgui_array_terminate(&render_state->textures_atlas);
 
-    for(u32 i = 0; i < tgui_array_size(&render_state->render_buffers); ++i) {
-        TGuiRenderBuffer *render_buffer = tgui_array_get_ptr(&render_state->render_buffers, i);
+    for(u32 i = 0; i < tgui_array_size(&render_state->render_buffers_custom); ++i) {
+        TGuiRenderBuffer *render_buffer = tgui_array_get_ptr(&render_state->render_buffers_custom, i);
         tgui_render_buffer_terminate(render_buffer);
     }
-    tgui_array_terminate(&render_state->render_buffers);
+    tgui_array_terminate(&render_state->render_buffers_custom);
+
+    tgui_render_buffer_terminate(&render_state->render_buffer_tgui);
+    tgui_render_buffer_terminate(&render_state->render_buffer_tgui_on_top);
 
 }
 
 void tgui_render_state_clear_render_buffers(TGuiRenderState *render_state) {
 
-    for(u32 i = 0; i < tgui_array_size(&render_state->render_buffers); ++i) {
-        TGuiRenderBuffer *render_buffer = tgui_array_get_ptr(&render_state->render_buffers, i);
+    tgui_render_buffer_clear(&render_state->render_buffer_tgui);
+    tgui_render_buffer_clear(&render_state->render_buffer_tgui_on_top);
+
+    for(u32 i = 0; i < tgui_array_size(&render_state->render_buffers_custom); ++i) {
+        TGuiRenderBuffer *render_buffer = tgui_array_get_ptr(&render_state->render_buffers_custom, i);
         tgui_render_buffer_clear(render_buffer);
     }
 
-    render_state->current_render_buffer_pushed_count = 0;
+    render_state->current_render_buffer_custom_pushed_count = 0;
 
 }
 
@@ -295,16 +304,16 @@ TGuiTextureAtlas *tgui_render_state_alloc_texture_atlas(TGuiRenderState *render_
     return texture_atlas;
 }
 
-TGuiRenderBuffer *tgui_render_state_push_render_buffer(TGuiRenderState *render_state, TGuiRenderStateProgramIndex program, TGuiRenderStateTextureIndex texture, TGuiTextureAtlas *texture_atlas) {
+TGuiRenderBuffer *tgui_render_state_push_render_buffer_custom(TGuiRenderState *render_state, TGuiRenderStateProgramIndex program, TGuiRenderStateTextureIndex texture, TGuiTextureAtlas *texture_atlas) {
     TGuiRenderBuffer *render_buffer = NULL;
     
-    if(render_state->current_render_buffer_pushed_count >= tgui_array_size(&render_state->render_buffers)) {
-        render_buffer = tgui_array_push(&render_state->render_buffers);
+    if(render_state->current_render_buffer_custom_pushed_count >= tgui_array_size(&render_state->render_buffers_custom)) {
+        render_buffer = tgui_array_push(&render_state->render_buffers_custom);
         tgui_render_buffer_initialize(render_buffer);
     } else {
-        render_buffer = tgui_array_get_ptr(&render_state->render_buffers, render_state->current_render_buffer_pushed_count);
+        render_buffer = tgui_array_get_ptr(&render_state->render_buffers_custom, render_state->current_render_buffer_custom_pushed_count);
     }
-    ++render_state->current_render_buffer_pushed_count;
+    ++render_state->current_render_buffer_custom_pushed_count;
 
     tgui_render_buffer_set_program(render_buffer, program);
     tgui_render_buffer_set_texture(render_buffer, texture);
@@ -332,15 +341,24 @@ void tgui_render_state_update_programs_width_and_height(TGuiRenderState *render_
 
 }
 
+void tgui_render_buffer_draw(TGuiRenderState *render_state, TGuiRenderBuffer *render_buffer) {
+    struct TGuiHardwareProgram *program = tgui_render_state_get_program(render_state, render_buffer->program);
+    struct TGuiHardwareTexture *texture = tgui_render_state_get_texture(render_state, render_buffer->texture);
+    render_state->gfx->draw_buffers(program, texture, &render_buffer->vertex_buffer, &render_buffer->index_buffer);
+}
+
 void tgui_render_state_draw_buffers(TGuiRenderState *render_state) {
-    ASSERT(render_state->current_render_buffer_pushed_count >= tgui_array_size(&render_state->render_buffers));
 
-    for(u32 i = 0; i < render_state->current_render_buffer_pushed_count; ++i) {
+    ASSERT(render_state->current_render_buffer_custom_pushed_count <= tgui_array_size(&render_state->render_buffers_custom));
 
-        TGuiRenderBuffer *render_buffer = tgui_array_get_ptr(&render_state->render_buffers, i);
-        struct TGuiHardwareProgram *program = tgui_render_state_get_program(render_state, render_buffer->program);
-        struct TGuiHardwareTexture *texture = tgui_render_state_get_texture(render_state, render_buffer->texture);
+    for(u32 i = 0; i < render_state->current_render_buffer_custom_pushed_count; ++i) {
 
-        render_state->gfx->draw_buffers(program, texture, &render_buffer->vertex_buffer, &render_buffer->index_buffer);
+        TGuiRenderBuffer *render_buffer = tgui_array_get_ptr(&render_state->render_buffers_custom, i);
+
+        tgui_render_buffer_draw(render_state, render_buffer);
     }
+    
+    tgui_render_buffer_draw(render_state, &render_state->render_buffer_tgui);
+
+    tgui_render_buffer_draw(render_state, &render_state->render_buffer_tgui_on_top);
 }

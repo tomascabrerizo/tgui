@@ -412,6 +412,69 @@ void painter_draw_hline(Painter *painter, s32 y, s32 x0, s32 x1, u32 color) {
 
 }
 
+void painter_draw_render_buffer_texture(Painter *painter, Rectangle dim) {
+
+    Rectangle rectangle = dim;
+
+    clip_rectangle(&rectangle, painter->clip, 0, 0);
+
+    switch (painter->type) {
+
+    case PAINTER_TYPE_HARDWARE: {
+        
+        if(rect_invalid(rectangle)) return;
+
+        TGuiVertexArray *vertex_buffer = &painter->render_buffer->vertex_buffer;
+        TGuiU32Array *index_buffer = &painter->render_buffer->index_buffer;
+
+        rectangle.max_x += 1;
+        rectangle.max_y += 1;
+
+        u32 start_vertex_index = tgui_array_size(vertex_buffer);
+
+        TGuiVertex *vertex0 = tgui_array_push(vertex_buffer);
+        TGuiVertex *vertex1 = tgui_array_push(vertex_buffer);
+        TGuiVertex *vertex2 = tgui_array_push(vertex_buffer);
+        TGuiVertex *vertex3 = tgui_array_push(vertex_buffer);
+        
+        u32 color = 0xffffff;
+
+        f32 min_u = 0.0f; 
+        f32 min_v = 1.0f;
+        f32 max_u = 1.0f; 
+        f32 max_v = 0.0f;
+
+        setup_vertex(vertex0, rectangle.min_x, rectangle.min_y, min_u, min_v, color);
+        setup_vertex(vertex1, rectangle.min_x, rectangle.max_y, min_u, max_v, color);
+        setup_vertex(vertex2, rectangle.max_x, rectangle.max_y, max_u, max_v, color);
+        setup_vertex(vertex3, rectangle.max_x, rectangle.min_y, max_u, min_v, color);
+        
+        u32 *index0 = tgui_array_push(index_buffer);
+        u32 *index1 = tgui_array_push(index_buffer);
+        u32 *index2 = tgui_array_push(index_buffer);
+
+        *index0 = start_vertex_index + 0;
+        *index1 = start_vertex_index + 1;
+        *index2 = start_vertex_index + 2;
+
+        u32 *index3 = tgui_array_push(index_buffer);
+        u32 *index4 = tgui_array_push(index_buffer);
+        u32 *index5 = tgui_array_push(index_buffer);
+
+        *index3 = start_vertex_index + 2;
+        *index4 = start_vertex_index + 3;
+        *index5 = start_vertex_index + 0;
+        
+    
+    } break;
+    case PAINTER_TYPE_SOFTWARE: {
+        ASSERT(!"Invalid code path");
+    } break;
+
+    }
+
+}
+
 #if 0
 void painter_draw_line(Painter *painter, s32 x0, s32 y0, s32 x1, s32 y1, u32 color) {
    

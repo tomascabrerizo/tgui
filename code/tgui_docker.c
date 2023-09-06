@@ -346,6 +346,11 @@ static void calculate_preview_split(TGuiDockerNode *mouse_over_node) {
 
 Rectangle tgui_docker_get_client_rect(TGuiDockerNode *window) {
     ASSERT(window->type == TGUI_DOCKER_NODE_WINDOW);
+    
+    if(rect_invalid(window->dim)) {
+        return window->dim;
+    }
+
     Rectangle client_rect = window->dim;
     client_rect.min_x += 1;
     client_rect.min_y += (MENU_BAR_HEIGHT + 1);
@@ -480,6 +485,9 @@ static void window_grabbing_start(TGuiDockerNode *window) {
 
         tgui_docker_node_recalculate_dim(parent);
     }
+    
+    ASSERT(docker.active_node->type == TGUI_DOCKER_NODE_WINDOW);
+    docker.active_node->dim = rect_set_invalid();
 
 }
 

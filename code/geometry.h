@@ -30,4 +30,6 @@ Rectangle rect_set_invalid(void);
 
 Rectangle rect_translate(Rectangle rect, s32 x, s32 y);
 
+void rect_print(Rectangle rect);
+
 #endif /* _GEOMETRY_H_ */
