@@ -1,3 +1,7 @@
+Diagnostics:
+    ClangTidy:
+    Remove: bugprone-sizeof-expression
+
 -pedantic
 -D_GNU_SOURCE 
 -Wall
@@ -7,3 +11,4 @@
 -g
 -I./code
 -I./thirdparty
+

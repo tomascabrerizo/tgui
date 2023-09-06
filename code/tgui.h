@@ -161,13 +161,10 @@ typedef struct TGui {
     u64 active_id;
     TGuiWindow *active_window;
     
-    TGuiGfxBackend *gfx;
-
-    TGuiTextureAtlas texture_atlas;
-    TGuiRenderBuffer render_buffer;
-
-    struct TGuiHardwareTexture *texture_default;
-    struct TGuiHardwareProgram *program_default;
+    TGuiRenderState render_state;
+    TGuiRenderStateTextureIndex default_texture;
+    TGuiRenderStateProgramIndex default_program;
+    TGuiTextureAtlas           *default_texture_atlas;
 
 } TGui;
 
@@ -186,8 +183,6 @@ void tgui_free_allocated_windows_list(struct TGuiAllocatedWindow *list);
 TGuiInput *tgui_get_input(void);
 
 TGuiCursor tgui_get_cursor_state(void);
-
-TGuiTextureAtlas *tgui_get_texture_atlas(void);
 
 #define tgui_safe_dereference(ptr, type) (((ptr) == NULL) ? (type){0} : *((type *)ptr))
 

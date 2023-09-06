@@ -1,3 +1,4 @@
+#include "common.h"
 #include "geometry.h"
 #include "memory.h"
 #include "painter.h"
@@ -7,6 +8,7 @@
 #include "tgui_gfx.h"
 #include "tgui_serializer.h"
 #include "os.h"
+#include <stdio.h>
 
 /* -------------------------- */
 /*       Hash Function     */
@@ -68,10 +70,6 @@ TGuiCursor tgui_get_cursor_state(void) {
     return state.cursor;
 }
 
-TGuiTextureAtlas *tgui_get_texture_atlas(void) {
-    return &state.texture_atlas;
-}
-
 u64 tgui_hash(void *bytes, u64 size) {
     return murmur_hash64A(bytes, size, 123);
 }
@@ -129,7 +127,7 @@ void tgui_font_initilize(Arena *arena) {
 
         os_font_get_glyph_metrics(os_font, glyph_index, &glyph->adv_width, &glyph->left_bearing, &glyph->top_bearing);
 
-        tgui_texture_atlas_add_bitmap(&state.texture_atlas, &glyph->bitmap);
+        tgui_texture_atlas_add_bitmap(state.default_texture_atlas, &glyph->bitmap);
     }
     
     font.font = os_font;
@@ -1630,29 +1628,26 @@ void tgui_initialize(s32 window_w, s32 window_h, TGuiGfxBackend *gfx) {
     state.allocated_windows = tgui_allocated_window_node_alloc();
     clink_list_init(state.allocated_windows);
     
-    tgui_texture_atlas_initialize(&state.texture_atlas);
+    /* ---------------------------------------------- */
+
+    tgui_render_state_initialize(&state.render_state, gfx);
+    
+    state.default_texture_atlas = tgui_render_state_alloc_texture_atlas(&state.render_state);
+    state.default_program = tgui_render_state_alloc_program(&state.render_state, "./shaders/quad.vert", "./shaders/quad.frag");
+
     tgui_font_initilize(&state.arena);
     tgui_docker_initialize();
-    
-    state.gfx = gfx;
 
-    TGuiTextureAtlas *ta = &state.texture_atlas;
-    state.program_default = state.gfx->create_program("./shaders/quad.vert", "./shaders/quad.frag");
-    state.texture_default = state.gfx->create_texture(ta->bitmap.pixels, ta->bitmap.width, ta->bitmap.height);
-    tgui_render_buffer_initialize(&state.render_buffer, state.program_default, state.texture_default, &state.texture_atlas);
 }
 
 void tgui_terminate(void) {
     
     tgui_serializer_write_docker_tree(docker.root, "./tgui.dat");
-    
-    state.gfx->destroy_program(state.program_default);
-    state.gfx->destroy_texture(state.texture_default);
-    tgui_render_buffer_terminate(&state.render_buffer);
 
     tgui_docker_terminate();
     tgui_font_terminate();
-    tgui_texture_atlas_terminate(&state.texture_atlas);
+
+    tgui_render_state_terminate(&state.render_state);
 
     virtual_map_terminate(&state.registry);
     arena_terminate(&state.arena);
@@ -1931,11 +1926,13 @@ void tgui_process_scroll_window(TGuiWindow *window, Painter *painter) {
 
 void tgui_end(void) {
     
-    tgui_render_buffer_clear(&state.render_buffer);
+    tgui_render_state_clear_render_buffers(&state.render_state);
+    
+    TGuiRenderBuffer *default_render_buffer = tgui_render_state_push_render_buffer(&state.render_state, state.default_program, state.default_texture, state.default_texture_atlas);
 
     if(docker.root != NULL) {
         Painter painter;
-        painter_start(&painter, PAINTER_TYPE_HARDWARE, docker.root->dim, 0, NULL, &state.render_buffer);
+        painter_start(&painter, PAINTER_TYPE_HARDWARE, docker.root->dim, 0, NULL, default_render_buffer);
 
         tgui_docker_root_node_draw(&painter);
 
@@ -1957,8 +1954,10 @@ void tgui_end(void) {
         
         u32 width = rect_width(docker.root->dim);
         u32 height = rect_height(docker.root->dim);
-        state.gfx->set_program_width_and_height(state.program_default, width, height);
-        state.gfx->draw_buffers(state.render_buffer.program, state.render_buffer.texture, &state.render_buffer.vertex_buffer, &state.render_buffer.index_buffer);
+
+        tgui_render_state_update_programs_width_and_height(&state.render_state, width, height);
+        tgui_render_state_draw_buffers(&state.render_state);
+
     }
 
 }
