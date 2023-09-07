@@ -127,12 +127,15 @@ void *virtual_arena_alloc(Arena *arena, u64 size, u32 align) {
     
     if(align_used + size > arena->size) {
         commit_more_pages(arena, size);
+        //printf("new pages commited\n");
     }
 
     ASSERT(align_used + size <= arena->size);
     
     void *result = arena->buffer + align_used;
     arena->used = align_used + size;
+
+    //printf("arena arena used: %lld, size: %lld\n", arena->used, arena->size);
     
     return (void *)result;
 }

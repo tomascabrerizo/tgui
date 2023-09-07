@@ -319,7 +319,7 @@ void tgui_calculate_hot_widget(TGuiWindow *window, Rectangle rect, u64 id) {
     Rectangle visible_rect = rect_intersection(rect, window->dim);
     b32 mouse_is_over = rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
     
-    if(mouse_is_over && !state.active) {
+    if(mouse_is_over && (!state.active || state.active == id)) {
         state.hot = id;
     }
 
@@ -1376,12 +1376,15 @@ void _tgui_tree_view_internal(TGuiWidget *widget, Painter *painter) {
 void _tgui_dropdown_menu(TGuiWindowHandle handle, s32 x, s32 y, char **options, u32 options_size, s32 *selected_option_index, char *tgui_id) {
 
     TGuiWindow *window = tgui_window_get_from_handle(handle);
+    
+    u64 id = tgui_get_widget_id(tgui_id);
 
     if(!tgui_window_update_widget(window)) {
+        if(state.active == id) {
+            state.active = 0;
+        }
         return;
     }
-
-    u64 id = tgui_get_widget_id(tgui_id);
     
     TGuiDropDownMenu *dropdown = tgui_widget_get_state(id, TGuiDropDownMenu);
     if(!dropdown->initialize) {
@@ -1459,7 +1462,7 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter) {
             state.active = 0;
         }
 
-        if(mouse_in_node && !input.mouse_button_is_down && input.mouse_button_was_down) {
+        if(mouse_in_node && !input.mouse_button_is_down && input.mouse_button_was_down && state.hot == id) {
 
             for(u32 i = 0; i < dropdown->options_size; ++i) {
                 Rectangle option_rect = calculate_option_rect(rect.min_x, rect.min_y, i);
@@ -1471,7 +1474,6 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter) {
             }
         }
     }
-
 
     Rectangle header_rect = rect_from_wh(rect.min_x, rect.min_y, TGUI_DROPDOWN_MENU_DELFAUT_W, TGUI_DROPDOWN_MENU_DELFAUT_H);
     Rectangle saved_painter_clip = painter->clip;
@@ -1488,7 +1490,7 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter) {
             s32 label_y = option_rect.min_y + (rect_height(option_rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2;
 
             u32 color = 0x999999;
-            if(rect_point_overlaps(option_rect, input.mouse_x, input.mouse_y)) {
+            if(state.hot == id && rect_point_overlaps(option_rect, input.mouse_x, input.mouse_y)) {
                 color = 0x777777;
             }
             painter_draw_rectangle(painter, option_rect, color);
@@ -1530,6 +1532,9 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter) {
         painter_draw_rectangle(painter, h_rect, 0x999999);
     }
 
+    //printf("hot widget:%lld, widget id:%lld\n", state.hot, id);
+    //painter_draw_rectangle(painter, rect, 0xff00ff);
+    
     painter->clip = saved_painter_clip;
 
 
