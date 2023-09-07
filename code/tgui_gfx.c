@@ -173,7 +173,7 @@ void tgui_texture_atlas_generate_atlas(void) {
         texture_atlas_insert(texture_atlas, texture);
     }
 
-    state.default_texture = tgui_render_state_alloc_texture(&state.render_state, texture_atlas->bitmap.pixels, texture_atlas->bitmap.width, texture_atlas->bitmap.height);
+    state.default_texture = state.render_state.gfx->create_texture(texture_atlas->bitmap.pixels, texture_atlas->bitmap.width, texture_atlas->bitmap.height);
 }
 
 u32 tgui_texture_atlas_get_width(TGuiTextureAtlas *texture_atlas) {
@@ -193,8 +193,8 @@ void tgui_render_buffer_initialize(TGuiRenderBuffer *render_buffer) {
     tgui_array_initialize(&render_buffer->vertex_buffer);
     tgui_array_initialize(&render_buffer->index_buffer);
 
-    render_buffer->program       = -1;
-    render_buffer->texture       = -1;
+    render_buffer->program = NULL;
+    render_buffer->texture = NULL;
     render_buffer->texture_atlas = NULL;
 
 }
@@ -209,11 +209,11 @@ void tgui_render_buffer_clear(TGuiRenderBuffer *render_buffer) {
     tgui_array_clear(&render_buffer->index_buffer);
 }
 
-void tgui_render_buffer_set_program(TGuiRenderBuffer *render_buffer, TGuiRenderStateProgramIndex program) {
+void tgui_render_buffer_set_program(TGuiRenderBuffer *render_buffer, void *program) {
     render_buffer->program = program;
 }
 
-void tgui_render_buffer_set_texture(TGuiRenderBuffer *render_buffer, TGuiRenderStateTextureIndex texture) {
+void tgui_render_buffer_set_texture(TGuiRenderBuffer *render_buffer, void *texture) {
     render_buffer->texture = texture;
 }
 
@@ -230,9 +230,6 @@ void tgui_render_state_initialize(TGuiRenderState *render_state, struct TGuiGfxB
     tgui_render_buffer_initialize(&render_state->render_buffer_tgui);
     tgui_render_buffer_initialize(&render_state->render_buffer_tgui_on_top);
     
-    tgui_array_initialize(&render_state->programs);
-    tgui_array_initialize(&render_state->textures);
-    tgui_array_initialize(&render_state->textures_atlas);
     tgui_array_initialize(&render_state->render_buffers_custom);
 
     render_state->gfx = gfx;
@@ -240,24 +237,6 @@ void tgui_render_state_initialize(TGuiRenderState *render_state, struct TGuiGfxB
 }
 
 void tgui_render_state_terminate(TGuiRenderState *render_state) {
-
-    for(u32 i = 0; i < tgui_array_size(&render_state->programs); ++i) {
-        struct TGuiHardwareProgram *program = tgui_array_get(&render_state->programs, i);
-        render_state->gfx->destroy_program(program);
-    }
-    tgui_array_terminate(&render_state->programs);
-    
-    for(u32 i = 0; i < tgui_array_size(&render_state->textures); ++i) {
-        struct TGuiHardwareTexture *texture = tgui_array_get(&render_state->textures, i);
-        render_state->gfx->destroy_texture(texture);
-    }
-    tgui_array_terminate(&render_state->textures);
-    
-    for(u32 i = 0; i < tgui_array_size(&render_state->textures_atlas); ++i) {
-        TGuiTextureAtlas *texture_atlas = tgui_array_get_ptr(&render_state->textures_atlas, i);
-        tgui_texture_atlas_terminate(texture_atlas);
-    }
-    tgui_array_terminate(&render_state->textures_atlas);
 
     for(u32 i = 0; i < tgui_array_size(&render_state->render_buffers_custom); ++i) {
         TGuiRenderBuffer *render_buffer = tgui_array_get_ptr(&render_state->render_buffers_custom, i);
@@ -284,27 +263,7 @@ void tgui_render_state_clear_render_buffers(TGuiRenderState *render_state) {
 
 }
 
-TGuiRenderStateTextureIndex tgui_render_state_alloc_texture(TGuiRenderState *render_state, u32 *data, u32 width, u32 height) {
-    TGuiRenderStateTextureIndex index = tgui_array_size(&render_state->textures);
-    struct TGuiHardwareTexture **texture = tgui_array_push(&render_state->textures);
-    *texture = render_state->gfx->create_texture(data, width, height);
-    return index;
-}
-
-TGuiRenderStateProgramIndex tgui_render_state_alloc_program(TGuiRenderState *render_state, char *vert, char *frag) {
-    TGuiRenderStateProgramIndex index = tgui_array_size(&render_state->programs);
-    struct TGuiHardwareProgram **program = tgui_array_push(&render_state->programs);
-    *program = render_state->gfx->create_program(vert, frag);
-    return index;
-}
-
-TGuiTextureAtlas *tgui_render_state_alloc_texture_atlas(TGuiRenderState *render_state) {
-    TGuiTextureAtlas *texture_atlas = tgui_array_push(&render_state->textures_atlas);
-    tgui_texture_atlas_initialize(texture_atlas);
-    return texture_atlas;
-}
-
-TGuiRenderBuffer *tgui_render_state_push_render_buffer_custom(TGuiRenderState *render_state, TGuiRenderStateProgramIndex program, TGuiRenderStateTextureIndex texture, TGuiTextureAtlas *texture_atlas) {
+TGuiRenderBuffer *tgui_render_state_push_render_buffer_custom(TGuiRenderState *render_state, void *program, void *texture, TGuiTextureAtlas *texture_atlas) {
     TGuiRenderBuffer *render_buffer = NULL;
     
     if(render_state->current_render_buffer_custom_pushed_count >= tgui_array_size(&render_state->render_buffers_custom)) {
@@ -323,28 +282,8 @@ TGuiRenderBuffer *tgui_render_state_push_render_buffer_custom(TGuiRenderState *r
     return render_buffer;
 }
 
-struct TGuiHardwareProgram *tgui_render_state_get_program(TGuiRenderState *render_state, TGuiRenderStateProgramIndex index) {
-    ASSERT((index >= 0) && (index < (s32)tgui_array_size(&render_state->programs)));
-    return tgui_array_get(&render_state->programs, index);
-}
-
-struct TGuiHardwareTexture *tgui_render_state_get_texture(TGuiRenderState *render_state, TGuiRenderStateTextureIndex index) {
-    ASSERT((index >= 0) && (index < (s32)tgui_array_size(&render_state->textures)));
-    return tgui_array_get(&render_state->textures, index);
-}
-
-void tgui_render_state_update_programs_width_and_height(TGuiRenderState *render_state, u32 width, u32 height) {
-    for(u32 i = 0; i < tgui_array_size(&render_state->programs); ++i) {
-        struct TGuiHardwareProgram *program = tgui_array_get(&render_state->programs, i);
-        render_state->gfx->set_program_width_and_height(program, width, height);
-    }
-
-}
-
 void tgui_render_buffer_draw(TGuiRenderState *render_state, TGuiRenderBuffer *render_buffer) {
-    struct TGuiHardwareProgram *program = tgui_render_state_get_program(render_state, render_buffer->program);
-    struct TGuiHardwareTexture *texture = tgui_render_state_get_texture(render_state, render_buffer->texture);
-    render_state->gfx->draw_buffers(program, texture, &render_buffer->vertex_buffer, &render_buffer->index_buffer);
+    render_state->gfx->draw_buffers(render_buffer->program, render_buffer->texture, &render_buffer->vertex_buffer, &render_buffer->index_buffer);
 }
 
 void tgui_render_state_draw_buffers(TGuiRenderState *render_state) {

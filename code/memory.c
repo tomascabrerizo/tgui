@@ -332,6 +332,13 @@ void _tgui_array_push(TGuiVoidArray *array, u64 element_size) {
     ++array->size;
 }
 
+void _tgui_array_reserve(TGuiVoidArray *array, u32 count, u64 element_size) {
+    arena_alloc(&array->arena, count*element_size, 1);
+    array->capacity += count;
+    ASSERT(array->size < array->capacity);
+    array->size += count;
+}
+
 void _tgui_array_clear(TGuiVoidArray *array) {
     array->size = 0;
 }

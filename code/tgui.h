@@ -162,9 +162,10 @@ typedef struct TGui {
     TGuiWindow *active_window;
     
     TGuiRenderState render_state;
-    TGuiRenderStateTextureIndex default_texture;
-    TGuiRenderStateProgramIndex default_program;
-    TGuiTextureAtlas           *default_texture_atlas;
+    
+    void *default_texture;
+    void *default_program;
+    TGuiTextureAtlas *default_texture_atlas;
 
 } TGui;
 
@@ -190,7 +191,7 @@ TGuiCursor tgui_get_cursor_state(void);
 /*       TGui Framebuffer      */
 /* --------------------------- */
 
-void tgui_texture(TGuiWindowHandle window, TGuiRenderStateProgramIndex program, TGuiRenderStateTextureIndex texture);
+void tgui_texture(TGuiWindowHandle window, void *texture);
 
 /* ---------------------- */
 /*       TGui Widgets     */
@@ -302,6 +303,8 @@ typedef struct TGuiTreeViewNode {
 
 #define TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH 16 
 
+TGuiArray(b32, TGuiB32Array);
+
 typedef struct TGuiTreeView {
     
     TGuiTreeViewNode *root;
@@ -313,11 +316,17 @@ typedef struct TGuiTreeView {
     Rectangle dim;
     
     /* TODO: Make this two arrays dynamic or use hash table or link list */
-
+#if 0
     b32 root_node_state[TGUI_TREEVIEW_MAX_STATE_SIZE];
     u32 root_node_state_head; 
 
     b32 selected_node_data[TGUI_TREEVIEW_MAX_STATE_SIZE];
+    u32 selected_node_data_head;
+#endif
+    
+    TGuiB32Array root_node_state;
+    u32 root_node_state_head; 
+    TGuiB32Array selected_node_data;
     u32 selected_node_data_head;
    
     u32 rect_w;

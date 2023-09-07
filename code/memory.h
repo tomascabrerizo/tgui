@@ -181,6 +181,10 @@ void _tgui_array_push(TGuiVoidArray *array, u64 element_size);
     (_tgui_array_push(&((array)->void_array), sizeof(*((array)->type_array.buffer))), \
      &((array)->type_array.buffer[(array)->type_array.size-1]))
 
+void _tgui_array_reserve(TGuiVoidArray *array, u32 count, u64 element_size);
+#define tgui_array_reserve(array, count) \
+    (_tgui_array_reserve(&((array)->void_array), (count), sizeof(*((array)->type_array.buffer))))
+
 void _tgui_array_clear(TGuiVoidArray *array);
 #define tgui_array_clear(array) \
     _tgui_array_clear(&((array)->void_array))

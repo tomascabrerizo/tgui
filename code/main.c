@@ -25,14 +25,6 @@
 #include "app.c"
 #include <stdio.h>
 
-typedef struct TGuiHardwareTexture {
-    u32 id;
-} TGuiHardwareTexture;
-
-typedef struct TGuiHardwareProgram {
-    u32 id;
-} TGuiHardwareProgram;
-
 struct OsBackbuffer *realloc_backbuffer(struct OsBackbuffer *backbuffer, struct OsWindow *window, s32 w, s32 h) {
     
     static Arena arena;
@@ -63,7 +55,7 @@ struct OsBackbuffer *realloc_backbuffer(struct OsBackbuffer *backbuffer, struct 
 u32 vao, vbo, ebo;
 #define MAX_QUAD_PER_BATCH 1024
 
-struct TGuiHardwareProgram *tgui_opengl_create_program(char *vert, char *frag) {
+void *tgui_opengl_create_program(char *vert, char *frag) {
     
     OsFile *file_vert = os_file_read_entire(vert);
     OsFile *file_frag = os_file_read_entire(frag);
@@ -92,14 +84,13 @@ struct TGuiHardwareProgram *tgui_opengl_create_program(char *vert, char *frag) {
         printf("[FRAGMENT SHADER ERROR]: %s\n", infoLog);
     }
     
-    TGuiHardwareProgram *program = malloc(sizeof(TGuiHardwareProgram));
-    program->id = glCreateProgram();
-    glAttachShader(program->id, v_shader);
-    glAttachShader(program->id, f_shader);
-    glLinkProgram(program->id);
-    glGetProgramiv(program->id, GL_LINK_STATUS, &success);
+    u32 program = glCreateProgram();
+    glAttachShader(program, v_shader);
+    glAttachShader(program, f_shader);
+    glLinkProgram(program);
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (!success) {
-        glGetProgramInfoLog(program->id, 512, NULL, infoLog);
+        glGetProgramInfoLog(program, 512, NULL, infoLog);
         printf("[SHADER PROGRAM ERROR]: %s\n", infoLog);
     }
 
@@ -109,20 +100,18 @@ struct TGuiHardwareProgram *tgui_opengl_create_program(char *vert, char *frag) {
     os_file_free(file_vert);
     os_file_free(file_frag);
 
-    return program;
+    return (void *)(u64)program;
 }
 
-void tgui_opengl_destroy_program(struct TGuiHardwareProgram *program) {
-    glDeleteProgram(program->id);
-    free(program);
+void tgui_opengl_destroy_program(void *program) {
+    glDeleteProgram((u64)program);
 }
 
-struct TGuiHardwareTexture *tgui_opengl_create_texture(u32 *data, u32 width, u32 height) {
+void *tgui_opengl_create_texture(u32 *data, u32 width, u32 height) {
     
-    TGuiHardwareTexture *texture = (TGuiHardwareTexture *)malloc(sizeof(TGuiHardwareTexture));
-    
-    glGenTextures(1, &texture->id);
-    glBindTexture(GL_TEXTURE_2D, texture->id);
+    u32 texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
@@ -134,26 +123,28 @@ struct TGuiHardwareTexture *tgui_opengl_create_texture(u32 *data, u32 width, u32
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    return texture;
+    return (void *)(u64)texture;
 }
 
-void tgui_opengl_destroy_texture(struct TGuiHardwareTexture *texture) {
-    glDeleteTextures(1, &texture->id);
-    free(texture);
+void tgui_opengl_destroy_texture(void *texture) {
+    u32 id = (u64)texture;
+    glDeleteTextures(1, &id);
 }
 
-void tgui_opengl_set_program_width_and_height(struct TGuiHardwareProgram *program, u32 width, u32 height) {
-    glUseProgram(program->id);
-    glUniform1i(glGetUniformLocation(program->id, "res_x"), width);
-    glUniform1i(glGetUniformLocation(program->id, "res_y"), height);
+void tgui_opengl_set_program_width_and_height(void *program, u32 width, u32 height) {
+    u32 id = (u64)program;
+    glUseProgram(id);
+    glUniform1i(glGetUniformLocation(id, "res_x"), width);
+    glUniform1i(glGetUniformLocation(id, "res_y"), height);
 }
 
-void tgui_opengl_draw_buffers(struct TGuiHardwareProgram *program, struct TGuiHardwareTexture *texture, TGuiVertexArray *vertex_buffer, TGuiU32Array *index_buffer) {
+void tgui_opengl_draw_buffers(void *program, void *texture, TGuiVertexArray *vertex_buffer, TGuiU32Array *index_buffer) {
 
         ASSERT(tgui_array_size(vertex_buffer) <= MAX_QUAD_PER_BATCH*4);
         ASSERT(tgui_array_size(index_buffer)  <= MAX_QUAD_PER_BATCH*6);
         
-        glUseProgram(program->id);
+        u32 program_id = (u64)program;
+        glUseProgram(program_id);
 
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferSubData(GL_ARRAY_BUFFER, 0, tgui_array_size(vertex_buffer)*sizeof(TGuiVertex), tgui_array_data(vertex_buffer));
@@ -165,7 +156,8 @@ void tgui_opengl_draw_buffers(struct TGuiHardwareProgram *program, struct TGuiHa
         
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 
-        glBindTexture(GL_TEXTURE_2D, texture->id);
+        u32 texture_id = (u64)texture;
+        glBindTexture(GL_TEXTURE_2D, texture_id);
 
         glDrawElements(GL_TRIANGLES, tgui_array_size(index_buffer), GL_UNSIGNED_INT, 0);
 
@@ -230,11 +222,8 @@ int main(void) {
     /* ------------------------------------------------ */
     /*       FrameBuffer test                           */
 
-    TGuiRenderStateProgramIndex custom_program = tgui_render_state_alloc_program(&state.render_state, "./shaders/triangle.vert", "./shaders/triangle.frag");
-    TGuiRenderStateTextureIndex custom_texture = tgui_render_state_alloc_texture(&state.render_state, NULL, 1024, 1024);
-
-    u32 fbo_texture = tgui_render_state_get_texture(&state.render_state, custom_texture)->id;
-    u32 fbo_program = tgui_render_state_get_program(&state.render_state, custom_program)->id;
+    void *custom_program = tgui_opengl_create_program("./shaders/triangle.vert", "./shaders/triangle.frag");
+    void *custom_texture = tgui_opengl_create_texture(NULL, 1024, 1024);
 
     u32 rbo_depth;
     glGenRenderbuffers(1, &rbo_depth);
@@ -245,7 +234,7 @@ int main(void) {
     u32 fbo;
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, (u64)custom_texture, 0);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo_depth);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -300,7 +289,7 @@ int main(void) {
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
         glViewport(0, 0, 1024, 1024);
 
-        glUseProgram(fbo_program);
+        glUseProgram((u64)custom_program);
         
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -332,8 +321,8 @@ int main(void) {
         
         tgui_begin(seconds_per_frame);
         
-        tgui_texture(app.window1, state.default_program, custom_texture);
         app_update(&app, seconds_per_frame);
+        tgui_texture(app.window1, custom_texture);
 
         tgui_end();
         /* ------------------------------------------------ */
@@ -354,6 +343,9 @@ int main(void) {
         //printf("ms: %lld\n", delta_time);
         
     }
+
+    tgui_opengl_destroy_texture(custom_texture);
+    tgui_opengl_destroy_program(custom_program);
     
     app_terminate(&app);
 

@@ -1,5 +1,22 @@
 root_node: {
   dir: 2
+  window_node: {
+    active_window: 4
+    window_count: 2
+    window: {
+      id: 4
+      name: "Window 4"
+      flags: 1
+    }
+    window: {
+      id: 3
+      name: "Window 3"
+      flags: 0
+    }
+  }
+  split_node: {
+    split_position: 306
+  }
   root_node: {
     dir: 1
     window_node: {
@@ -11,39 +28,22 @@ root_node: {
         flags: 1
       }
       window: {
-        id: 4
-        name: "Window 4"
-        flags: 1
-      }
-    }
-    split_node: {
-      split_position: 357
-    }
-    window_node: {
-      active_window: 1
-      window_count: 2
-      window: {
-        id: 1
-        name: "Window 1"
-        flags: 2
-      }
-      window: {
         id: 0
         name: "Window 0"
         flags: 0
       }
     }
-  }
-  split_node: {
-    split_position: 688
-  }
-  window_node: {
-    active_window: 3
-    window_count: 1
-    window: {
-      id: 3
-      name: "Window 3"
-      flags: 0
+    split_node: {
+      split_position: 425
+    }
+    window_node: {
+      active_window: 1
+      window_count: 1
+      window: {
+        id: 1
+        name: "Window 1"
+        flags: 2
+      }
     }
   }
 }

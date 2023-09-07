@@ -193,10 +193,10 @@ void tgui_font_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u
 /*       TGui Framebuffer      */
 /* --------------------------- */
 
-void tgui_texture(TGuiWindowHandle handle, TGuiRenderStateProgramIndex program, TGuiRenderStateTextureIndex texture) {
+void tgui_texture(TGuiWindowHandle handle, void *texture) {
     TGuiWindow *window = tgui_window_get_from_handle(handle);
     if(!rect_invalid(window->dim)) {
-        TGuiRenderBuffer *render_buffer = tgui_render_state_push_render_buffer_custom(&state.render_state, program, texture, NULL);
+        TGuiRenderBuffer *render_buffer = tgui_render_state_push_render_buffer_custom(&state.render_state, state.default_program, texture, NULL);
         Painter painter;
         painter_start(&painter, PAINTER_TYPE_HARDWARE, window->dim, 0, NULL, render_buffer);
         painter_draw_render_buffer_texture(&painter, window->dim);
@@ -1038,15 +1038,21 @@ void _tgui_tree_view_begin(TGuiWindowHandle handle, char *tgui_id) {
 
         treeview->first_free_node = 0;
         
-        for(u32 i = 0; i < TGUI_TREEVIEW_MAX_STATE_SIZE; ++i) {
-            treeview->root_node_state[i] = true;
-        }
-        treeview->root_node_state_head = 0;
         treeview->rect_w = 8;
         treeview->padding = 6;
 
         treeview->selection_index = -1;
         treeview->selection_data = NULL;
+
+        tgui_array_initialize(&treeview->root_node_state);
+        tgui_array_initialize(&treeview->selected_node_data);
+
+        tgui_array_reserve(&treeview->root_node_state,    256);
+        tgui_array_reserve(&treeview->selected_node_data, 256);
+        for(u32 i = 0; i < tgui_array_size(&treeview->root_node_state); ++i) {
+            b32 *root_state = tgui_array_get_ptr(&treeview->root_node_state, i);
+            *root_state = true;
+        }
 
         treeview->initiliaze = true;
     }
@@ -1094,16 +1100,22 @@ void treeview_node_setup(TGuiTreeView *treeview, TGuiTreeViewNode *node, char *l
     node->label = label;
 
     node->selected_state_index = treeview->selected_node_data_head++;
-    ASSERT(treeview->selected_node_data_head <= TGUI_TREEVIEW_MAX_STATE_SIZE);
+    if(node->selected_state_index >= tgui_array_size(&treeview->selected_node_data)) {
+        tgui_array_push(&treeview->selected_node_data);
+    }
+    ASSERT(treeview->selected_node_data_head <= tgui_array_size(&treeview->selected_node_data));
 
     if(node->childs) {
         node->state_index = treeview->root_node_state_head++;
-        ASSERT(treeview->root_node_state_head <= TGUI_TREEVIEW_MAX_STATE_SIZE);
+        if(node->state_index >= tgui_array_size(&treeview->root_node_state)) {
+            tgui_array_push(&treeview->root_node_state);
+        }
+        ASSERT(treeview->root_node_state_head <= tgui_array_size(&treeview->root_node_state));
     }
 
     node->label_depth = depth;
     
-    if((node->parent && node->parent == treeview->root) || (node->parent && treeview->root_node_state[node->parent->state_index] && node->parent->visible)){
+    if((node->parent && node->parent == treeview->root) || (node->parent && tgui_array_get(&treeview->root_node_state, node->parent->state_index) && node->parent->visible)){
         
         u32 depth_in_pixels = depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH;
         u32 x = treeview->padding*2 + treeview->rect_w + depth_in_pixels;
@@ -1227,7 +1239,7 @@ void treeview_node_draw(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeView
 
     painter_draw_rectangle(painter, fake_node_dim, _color);
 
-    if((u32)treeview->selection_index == node->selected_state_index && treeview->selected_node_data[treeview->selection_index]) {
+    if((u32)treeview->selection_index == node->selected_state_index && tgui_array_get(&treeview->selected_node_data, treeview->selection_index)) {
         _color = 0xaaaaff;
         painter_draw_rectangle_outline(painter, fake_node_dim, _color);
     }
@@ -1245,7 +1257,7 @@ void treeview_node_draw(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeView
         
         Rectangle cruz_rect = treeview_calculate_node_cruz_rect(treeview, node);
 
-        if(treeview->root_node_state[node->state_index] == false) {
+        if(tgui_array_get(&treeview->root_node_state, node->state_index) == false) {
             Rectangle cruz_rect_v = cruz_rect;
             cruz_rect_v.min_x += treeview->rect_w/4;
             cruz_rect_v.max_x -= treeview->rect_w/4;
@@ -1315,21 +1327,24 @@ void treeview_update_node(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeVi
         if(on_cruz && node->childs) {
             
             if(!input.mouse_button_is_down) {
-               treeview->root_node_state[node->state_index] = !treeview->root_node_state[node->state_index];
-               state.active = 0;
+                b32 *root_node_state = tgui_array_get_ptr(&treeview->root_node_state, node->state_index);
+                *root_node_state = !(*root_node_state);
+                state.active = 0;
             } 
 
         } else {
             if(mouse_in_node && input.mouse_button_is_down) {
                 
                 if(treeview->selection_index >= 0) {
-                    treeview->selected_node_data[treeview->selection_index] = false;
+                    b32 *selected_node_data = tgui_array_get_ptr(&treeview->selected_node_data, treeview->selection_index); 
+                    *selected_node_data = false;
                 }
 
                 treeview->selection_data = node->user_data;
                 treeview->selection_index = node->selected_state_index;
 
-                treeview->selected_node_data[treeview->selection_index] = true;
+                b32 *selected_node_data = tgui_array_get_ptr(&treeview->selected_node_data, treeview->selection_index); 
+                *selected_node_data = true;
                 state.active = 0;
             }
         }
@@ -1651,8 +1666,10 @@ void tgui_initialize(s32 window_w, s32 window_h, TGuiGfxBackend *gfx) {
 
     tgui_render_state_initialize(&state.render_state, gfx);
     
-    state.default_texture_atlas = tgui_render_state_alloc_texture_atlas(&state.render_state);
-    state.default_program = tgui_render_state_alloc_program(&state.render_state, "./shaders/quad.vert", "./shaders/quad.frag");
+    state.default_texture_atlas = arena_push_struct(&state.arena, TGuiTextureAtlas, 8);
+    tgui_texture_atlas_initialize(state.default_texture_atlas);
+
+    state.default_program = gfx->create_program("./shaders/quad.vert", "./shaders/quad.frag");
 
     tgui_font_initilize(&state.arena);
     tgui_docker_initialize();
@@ -1982,7 +1999,7 @@ void tgui_end(void) {
         u32 width = rect_width(docker.root->dim);
         u32 height = rect_height(docker.root->dim);
 
-        tgui_render_state_update_programs_width_and_height(&state.render_state, width, height);
+        state.render_state.gfx->set_program_width_and_height(state.default_program, width, height);
         tgui_render_state_draw_buffers(&state.render_state);
 
     }
