@@ -2,9 +2,7 @@
 #define _TGUI_DOCKER_H_
 
 #include "common.h"
-#include "memory.h"
-#include "geometry.h"
-#include "painter.h"
+#include "tgui_painter.h"
 
 #define SPLIT_HALF_SIZE 1
 #define MENU_BAR_HEIGHT 20
@@ -30,7 +28,7 @@ typedef enum TGuiPosition {
 } TGuiPosition;
 
 typedef struct TGuiDockerNode {
-    Rectangle dim;
+    TGuiRectangle dim;
     
     TGuiDockerNodeType type;
 
@@ -71,7 +69,7 @@ typedef struct TGuiDocker {
     TGuiDockerNode *active_node;
     b32 grabbing_window;
     b32 grabbing_window_start;
-    Rectangle preview_window;
+    TGuiRectangle preview_window;
 
     b32 saved_mouse_x;
     b32 saved_mouse_y;
@@ -99,11 +97,11 @@ void tgui_docker_window_node_remove_window(struct TGuiWindow *window);
 b32 tgui_docker_window_has_tabs(TGuiDockerNode *window_node);
 
 
-void tgui_docker_root_node_draw(Painter *painter);
+void tgui_docker_root_node_draw(TGuiPainter *painter);
 
-void tgui_docker_draw_preview(Painter *painter);
+void tgui_docker_draw_preview(TGuiPainter *painter);
 
-Rectangle tgui_docker_get_client_rect(TGuiDockerNode *window);
+TGuiRectangle tgui_docker_get_client_rect(TGuiDockerNode *window);
 
 b32 tgui_docker_window_is_visible(TGuiDockerNode *window_node, struct TGuiWindow *window);
 

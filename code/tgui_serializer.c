@@ -1,7 +1,6 @@
 #include "tgui_serializer.h"
 #include "common.h"
-#include "memory.h"
-#include "os.h"
+#include "tgui_os.h"
 #include "tgui_docker.h"
 #include "tgui.h"
 
@@ -44,7 +43,7 @@ void tgui_serializer_write_node(TGuiDockerNode *node, u32 depth) {
             write_to_file(depth+1, "active_window: %d\n", node->active_window);
             write_to_file(depth+1, "window_count: %d\n", node->windows_count);
             TGuiWindow *window = node->windows->next;
-            while (!clink_list_end(window, node->windows)) {
+            while (!tgui_clink_list_end(window, node->windows)) {
                 tgui_serializer_write_window(window, depth+1);
                 window = window->next;
             }
@@ -62,7 +61,7 @@ void tgui_serializer_write_node(TGuiDockerNode *node, u32 depth) {
             write_to_file(depth, "root_node: {\n");
             write_to_file(depth+1, "dir: %d\n", node->dir);
             TGuiDockerNode *child = node->childs->next;
-            while(!clink_list_end(child, node->childs)) {
+            while(!tgui_clink_list_end(child, node->childs)) {
                 tgui_serializer_write_node(child, depth+1);
                 child = child->next;
             }
@@ -123,7 +122,7 @@ char *tgui_token_to_c_string(TGuiToken *token) {
     char *end = token->end - 1;
 
     u32 str_size = end - start + 1;
-    char *c_str = arena_alloc(&state.arena, str_size+1, 8);
+    char *c_str = tgui_arena_alloc(&state.arena, str_size+1, 8);
     memcpy(c_str, start, str_size);
     c_str[str_size] = '\0';
     return c_str;
@@ -195,7 +194,7 @@ TGuiDockerNode *tgui_serializer_read_node_window(TGuiTokenizer *tokenizer, TGuiT
     
     if(parent) {
         ASSERT(parent->type == TGUI_DOCKER_NODE_ROOT);
-        clink_list_insert_back(parent->childs, node);
+        tgui_clink_list_insert_back(parent->childs, node);
     }
     
     return node;
@@ -222,7 +221,7 @@ TGuiDockerNode *tgui_serializer_read_node_split(TGuiTokenizer *tokenizer, TGuiTo
     
     if(parent) {
         ASSERT(parent->type == TGUI_DOCKER_NODE_ROOT);
-        clink_list_insert_back(parent->childs, node);
+        tgui_clink_list_insert_back(parent->childs, node);
     }
 
     return node;
@@ -269,7 +268,7 @@ TGuiDockerNode *tgui_serializer_read_node_root(TGuiTokenizer *tokenizer, TGuiTok
 
     if(parent) {
         ASSERT(parent->type == TGUI_DOCKER_NODE_ROOT);
-        clink_list_insert_back(parent->childs, node);
+        tgui_clink_list_insert_back(parent->childs, node);
     }
 
     return node;
@@ -294,11 +293,11 @@ TGuiDockerNode *tgui_serializer_read_node(TGuiTokenizer *tokenizer, b32 *error, 
 
 }
 
-void tgui_serializer_read_docker_tree(OsFile *file, struct TGuiDockerNode **node, TGuiAllocatedWindow *list) {
+void tgui_serializer_read_docker_tree(TGuiOsFile *file, struct TGuiDockerNode **node, TGuiAllocatedWindow *list) {
     b32 serializer_error = false;
     
     ASSERT(list);
-    clink_list_init(list);
+    tgui_clink_list_init(list);
 
     TGuiToken token;
     TGuiTokenizer tokenizer;
@@ -456,7 +455,7 @@ void tokenizer_token_single_char(TGuiTokenizer *tokenizer, TGuiToken *token, TGu
 
 }
 
-void tgui_tokenizer_start(TGuiTokenizer *tokenizer, struct OsFile *file) {
+void tgui_tokenizer_start(TGuiTokenizer *tokenizer, struct TGuiOsFile *file) {
     tokenizer->current = (char *)file->data;
     tokenizer->end = (char *)((u8 *)file->data + file->size);
     tokenizer->current_line = TGUI_START_LINE_AND_COL;

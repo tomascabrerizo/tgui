@@ -132,7 +132,7 @@ void texture_atlas_insert(TGuiTextureAtlas *texture_atlas, TGuiTexture *texture)
         texture_atlas->bitmap = tgui_bitmap_alloc_empty(&texture_atlas->arena, new_texture_atlas_w, new_texture_atlas_h);
 
         TGuiPainter painter;
-        TGuiRectangle texture_atlas_rect = tgui_rect_from_wh(0, 0,texture_atlas->bitmap.width, texture_atlas->bitmap.height);
+        Rectangle texture_atlas_rect = rect_from_wh(0, 0,texture_atlas->bitmap.width, texture_atlas->bitmap.height);
         tgui_painter_start(&painter, TGUI_PAINTER_TYPE_SOFTWARE, texture_atlas_rect, 0, texture_atlas->bitmap.pixels, NULL);
         tgui_painter_draw_bitmap_no_alpha(&painter, 0, 0, &old_texture_atlas_bitmap);
 
@@ -147,10 +147,10 @@ void texture_atlas_insert(TGuiTextureAtlas *texture_atlas, TGuiTexture *texture)
 
     texture_atlas_bitmap = &texture_atlas->bitmap;
 
-    texture->dim = tgui_rect_from_wh(texture_atlas->current_x, texture_atlas->current_y, bitmap->width, bitmap->height);
+    texture->dim = rect_from_wh(texture_atlas->current_x, texture_atlas->current_y, bitmap->width, bitmap->height);
 
     TGuiPainter painter;
-    TGuiRectangle texture_atlas_rect = tgui_rect_from_wh(0, 0,texture_atlas_bitmap->width, texture_atlas_bitmap->height);
+    Rectangle texture_atlas_rect = rect_from_wh(0, 0,texture_atlas_bitmap->width, texture_atlas_bitmap->height);
     tgui_painter_start(&painter, TGUI_PAINTER_TYPE_SOFTWARE, texture_atlas_rect, 0, texture_atlas_bitmap->pixels, NULL);
     
     tgui_painter_draw_bitmap_no_alpha(&painter, texture_atlas->current_x, texture_atlas->current_y, bitmap);

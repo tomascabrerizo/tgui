@@ -1,13 +1,12 @@
 #include "common.h"
-#include "geometry.h"
-#include "memory.h"
-#include "painter.h"
+#include "tgui_painter.h"
 #include "tgui_docker.h"
 
 #include "tgui.h"
 #include "tgui_gfx.h"
 #include "tgui_serializer.h"
-#include "os.h"
+#include "tgui_os.h"
+
 #include <stdio.h>
 
 /* -------------------------- */
@@ -88,26 +87,26 @@ static u32 get_codepoint_index(u32 codepoint) {
     return index;
 }
 
-void tgui_font_initilize(Arena *arena) {
+void tgui_font_initilize(TGuiArena *arena) {
     
-    struct OsFont *os_font = os_font_create(arena, "/usr/share/fonts/truetype/liberation2/LiberationMono-Regular.ttf", 18);
+    struct TGuiOsFont *os_font = tgui_os_font_create(arena, "/usr/share/fonts/truetype/liberation2/LiberationMono-Regular.ttf", 18);
     //struct OsFont *os_font = os_font_create(arena, "/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf", 18);
     
     font.glyph_rage_start = 32;
     font.glyph_rage_end = 126;
     font.glyph_count = (font.glyph_rage_end - font.glyph_rage_start + 1);
-    font.glyphs = arena_push_array(arena, TGuiGlyph, font.glyph_count, 8);
-    os_font_get_vmetrics(os_font, &font.ascent, &font.descent, &font.line_gap);
+    font.glyphs = tgui_arena_push_array(arena, TGuiGlyph, font.glyph_count, 8);
+    tgui_os_font_get_vmetrics(os_font, &font.ascent, &font.descent, &font.line_gap);
 
-    void *temp_buffer = arena_alloc(arena, 512*512, 8);
+    void *temp_buffer = tgui_arena_alloc(arena, 512*512, 8);
 
     for(u32 glyph_index = font.glyph_rage_start; glyph_index <= font.glyph_rage_end; ++glyph_index) {
         
         s32 w, h, bpp;
-        os_font_rasterize_glyph(os_font, glyph_index, &temp_buffer, &w, &h, &bpp);
+        tgui_os_font_rasterize_glyph(os_font, glyph_index, &temp_buffer, &w, &h, &bpp);
     
         TGuiGlyph *glyph = font.glyphs + (glyph_index - font.glyph_rage_start);
-        glyph->bitmap.pixels = arena_alloc(arena, sizeof(u32)*w*h, 8);
+        glyph->bitmap.pixels = tgui_arena_alloc(arena, sizeof(u32)*w*h, 8);
         glyph->bitmap.width  = w;
         glyph->bitmap.height = h;
         
@@ -125,7 +124,7 @@ void tgui_font_initilize(Arena *arena) {
             des_row += w;
         }
 
-        os_font_get_glyph_metrics(os_font, glyph_index, &glyph->adv_width, &glyph->left_bearing, &glyph->top_bearing);
+        tgui_os_font_get_glyph_metrics(os_font, glyph_index, &glyph->adv_width, &glyph->left_bearing, &glyph->top_bearing);
 
         tgui_texture_atlas_add_bitmap(state.default_texture_atlas, &glyph->bitmap);
     }
@@ -139,15 +138,15 @@ void tgui_font_initilize(Arena *arena) {
 }
 
 void tgui_font_terminate(void) {
-    os_font_destroy(font.font);
+    tgui_os_font_destroy(font.font);
 }
 
 TGuiGlyph *tgui_font_get_codepoint_glyph(u32 codepoint) {
     return font.glyphs + get_codepoint_index(codepoint);
 }
 
-Rectangle tgui_get_size_text_dim(s32 x, s32 y, char *text, u32 size) {
-    Rectangle result;
+TGuiRectangle tgui_get_size_text_dim(s32 x, s32 y, char *text, u32 size) {
+    TGuiRectangle result;
     
     s32 w = 0;
     s32 h = font.max_glyph_height;
@@ -166,11 +165,11 @@ Rectangle tgui_get_size_text_dim(s32 x, s32 y, char *text, u32 size) {
     return result;
 }
 
-Rectangle tgui_get_text_dim(s32 x, s32 y, char *text) {
+TGuiRectangle tgui_get_text_dim(s32 x, s32 y, char *text) {
     return tgui_get_size_text_dim(x, y, text, strlen(text));
 }
 
-void tgui_font_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u32 color) {
+void tgui_font_draw_text(TGuiPainter *painter, s32 x, s32 y, char *text, u32 size, u32 color) {
     s32 cursor = x;
     s32 base   = y + font.ascent;
 
@@ -182,7 +181,7 @@ void tgui_font_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u
         u32 index = get_codepoint_index(text[i]);
 
         TGuiGlyph *glyph = font.glyphs + index;
-        painter_draw_bitmap(painter, cursor + glyph->left_bearing, base - glyph->top_bearing, &glyph->bitmap, color);
+        tgui_painter_draw_bitmap(painter, cursor + glyph->left_bearing, base - glyph->top_bearing, &glyph->bitmap, color);
         cursor += glyph->adv_width;
 
         last_index = index;
@@ -195,11 +194,11 @@ void tgui_font_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u
 
 void tgui_texture(TGuiWindowHandle handle, void *texture) {
     TGuiWindow *window = tgui_window_get_from_handle(handle);
-    if(!rect_invalid(window->dim)) {
+    if(!tgui_rect_invalid(window->dim)) {
         TGuiRenderBuffer *render_buffer = tgui_render_state_push_render_buffer_custom(&state.render_state, state.default_program, texture, NULL);
-        Painter painter;
-        painter_start(&painter, PAINTER_TYPE_HARDWARE, window->dim, 0, NULL, render_buffer);
-        painter_draw_render_buffer_texture(&painter, window->dim);
+        TGuiPainter painter;
+        tgui_painter_start(&painter, TGUI_PAINTER_TYPE_HARDWARE, window->dim, 0, NULL, render_buffer);
+        tgui_painter_draw_render_buffer_texture(&painter, window->dim);
     }
 }
 
@@ -213,7 +212,7 @@ TGuiAllocatedWindow *tgui_allocated_window_node_alloc(void) {
         result = state.free_windows;
         state.free_windows = state.free_windows->next;
     } else {
-        result = arena_push_struct(&state.arena, TGuiAllocatedWindow, 8);
+        result = tgui_arena_push_struct(&state.arena, TGuiAllocatedWindow, 8);
     }
     ASSERT(result);
     memset(result, 0, sizeof(TGuiAllocatedWindow));
@@ -232,7 +231,7 @@ TGuiWidget *tgui_widget_alloc(void) {
         widget = state.first_free_widget;
         state.first_free_widget = state.first_free_widget->next;
     } else {
-        widget = arena_push_struct(&state.arena, TGuiWidget, 8);
+        widget = tgui_arena_push_struct(&state.arena, TGuiWidget, 8);
     }
     memset(widget, 0, sizeof(TGuiWidget));
     ASSERT(widget);
@@ -244,17 +243,17 @@ void tgui_widget_free(TGuiWidget *widget)  {
     state.first_free_widget = widget;
 }
 
-void tgui_window_process_widgets(TGuiWindow *window, Painter *painter) {
+void tgui_window_process_widgets(TGuiWindow *window, TGuiPainter *painter) {
     TGuiWidget *widget = window->widgets->next;
-    Rectangle saved_clip = painter->clip;
-    while(!clink_list_end(widget, window->widgets)) {
+    TGuiRectangle saved_clip = painter->clip;
+    while(!tgui_clink_list_end(widget, window->widgets)) {
         
         if(tgui_window_flag_is_set(window, TGUI_WINDOW_SCROLLING)) {
-            widget->x -= window->h_scroll_offset * (rect_width(window->scroll_saved_rect) - rect_width(window->dim));
-            widget->y -= window->v_scroll_offset * (rect_height(window->scroll_saved_rect) - rect_height(window->dim));
+            widget->x -= window->h_scroll_offset * (tgui_rect_width(window->scroll_saved_rect) - tgui_rect_width(window->dim));
+            widget->y -= window->v_scroll_offset * (tgui_rect_height(window->scroll_saved_rect) - tgui_rect_height(window->dim));
         }
 
-        painter->clip = rect_intersection(window->dim, painter->clip);
+        painter->clip = tgui_rect_intersection(window->dim, painter->clip);
         widget->internal(widget, painter);
         painter->clip = saved_clip;
         widget = widget->next;
@@ -264,10 +263,10 @@ void tgui_window_process_widgets(TGuiWindow *window, Painter *painter) {
 
 void tgui_window_free_widgets(TGuiWindow *window) {
     TGuiWidget *widget = window->widgets->next;
-    while(!clink_list_end(widget, window->widgets)) {
+    while(!tgui_clink_list_end(widget, window->widgets)) {
         TGuiWidget *to_free = widget;
         widget = widget->next;
-        clink_list_remove(to_free);
+        tgui_clink_list_remove(to_free);
         tgui_widget_free(to_free);
     }
 }
@@ -275,11 +274,11 @@ void tgui_window_free_widgets(TGuiWindow *window) {
 void *_tgui_widget_get_state(u64 id, u64 size) {
     void *result = NULL;
 
-    result = virtual_map_find(&state.registry, id);
+    result = tgui_virtual_map_find(&state.registry, id);
     if(result == NULL) {
-        result = arena_alloc(&state.arena, size, 8);
+        result = tgui_arena_alloc(&state.arena, size, 8);
         memset(result, 0, size);
-        virtual_map_insert(&state.registry, id, (void *)result);
+        tgui_virtual_map_insert(&state.registry, id, (void *)result);
     }
 
     ASSERT(result != NULL);
@@ -290,7 +289,7 @@ b32 tgui_window_update_widget(TGuiWindow *window) {
     return tgui_docker_window_is_visible(window->parent, window);
 }
 
-static Rectangle calculate_widget_rect(TGuiWidget *widget) {
+static TGuiRectangle calculate_widget_rect(TGuiWidget *widget) {
 
     TGuiWindow *window = widget->parent;
     s32 x = widget->x;
@@ -298,8 +297,8 @@ static Rectangle calculate_widget_rect(TGuiWidget *widget) {
     s32 w = widget->w;
     s32 h = widget->h;
     
-    Rectangle window_rect = window->dim;
-    Rectangle rect = {
+    TGuiRectangle window_rect = window->dim;
+    TGuiRectangle rect = {
         window_rect.min_x + x,
         window_rect.min_y + y,
         window_rect.min_x + x + w - 1,
@@ -314,10 +313,10 @@ u64 tgui_get_widget_id(char *tgui_id) {
     return id;
 }
 
-void tgui_calculate_hot_widget(TGuiWindow *window, Rectangle rect, u64 id) {
+void tgui_calculate_hot_widget(TGuiWindow *window, TGuiRectangle rect, u64 id) {
 
-    Rectangle visible_rect = rect_intersection(rect, window->dim);
-    b32 mouse_is_over = rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
+    TGuiRectangle visible_rect = tgui_rect_intersection(rect, window->dim);
+    b32 mouse_is_over = tgui_rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
     
     if(mouse_is_over && (!state.active || state.active == id)) {
         state.hot = id;
@@ -347,7 +346,7 @@ void tgui_widget_alloc_into_window(u64 id, TGuiWidgetInternalFunc internal, TGui
 
     widget->internal = internal;
 
-    clink_list_insert_back(window->widgets, widget);
+    tgui_clink_list_insert_back(window->widgets, widget);
 }
 
 b32 _tgui_button(TGuiWindowHandle handle, char *label, s32 x, s32 y, char *tgui_id) {
@@ -368,12 +367,12 @@ b32 _tgui_button(TGuiWindowHandle handle, char *label, s32 x, s32 y, char *tgui_
     return button_state->result;
 }
 
-void _tgui_button_internal(TGuiWidget *widget, Painter *painter) {
+void _tgui_button_internal(TGuiWidget *widget, TGuiPainter *painter) {
 
     TGuiWindow *window = widget->parent;
     u64 id = widget->id;
     
-    Rectangle rect = calculate_widget_rect(widget); 
+    TGuiRectangle rect = calculate_widget_rect(widget); 
     tgui_calculate_hot_widget(window, rect, id);
 
     b32 result = false;
@@ -404,27 +403,27 @@ void _tgui_button_internal(TGuiWidget *widget, Painter *painter) {
     
     /* TODO: All this rendering is temporal, the API should have a render independent way to give render primitives to the user */
 
-    Rectangle saved_painter_clip = painter->clip;
-    painter->clip = rect_intersection(rect, window->dim);
+    TGuiRectangle saved_painter_clip = painter->clip;
+    painter->clip = tgui_rect_intersection(rect, window->dim);
     
-    painter_draw_rectangle(painter, rect, button_color);
+    tgui_painter_draw_rectangle(painter, rect, button_color);
     
     TGuiButton *button_state = tgui_widget_get_state(id, TGuiButton);
     
     char *label = button_state->label;
-    Rectangle label_rect = tgui_get_text_dim(0, 0, label);
+    TGuiRectangle label_rect = tgui_get_text_dim(0, 0, label);
     
-    s32 label_x = rect.min_x + (rect_width(rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
-    s32 label_y = rect.min_y + (rect_height(rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2;
+    s32 label_x = rect.min_x + (tgui_rect_width(rect) - 1) / 2 - (tgui_rect_width(label_rect) - 1) / 2;
+    s32 label_y = rect.min_y + (tgui_rect_height(rect) - 1) / 2 - (tgui_rect_height(label_rect) - 1) / 2;
     tgui_font_draw_text(painter, label_x, label_y, label,  strlen(label), decoration_color);
-    painter_draw_rectangle_outline(painter, rect, decoration_color);
+    tgui_painter_draw_rectangle_outline(painter, rect, decoration_color);
 
     painter->clip = saved_painter_clip;
     
     button_state->result = result;
 }
 
-static Rectangle calculate_selection_rect(TGuiTextInput *text_input, s32 x, s32 y, u32 start, u32 end) {
+static TGuiRectangle calculate_selection_rect(TGuiTextInput *text_input, s32 x, s32 y, u32 start, u32 end) {
 
     if(start > end) {
         u32 temp = start;
@@ -433,7 +432,7 @@ static Rectangle calculate_selection_rect(TGuiTextInput *text_input, s32 x, s32 
     }
     ASSERT(start <= end);
 
-    Rectangle result = {
+    TGuiRectangle result = {
         x + (start - text_input->offset) * font.max_glyph_width,
         y,
         x + (end - text_input->offset) * font.max_glyph_width,
@@ -490,14 +489,14 @@ TGuiTextInput *_tgui_text_input(TGuiWindowHandle handle, s32 x, s32 y, char *tgu
     return text_input; 
 }
 
-void _tgui_text_input_internal(TGuiWidget *widget, Painter *painter) {
+void _tgui_text_input_internal(TGuiWidget *widget, TGuiPainter *painter) {
 
     TGuiWindow *window = widget->parent;
     u64 id = widget->id;
     
     TGuiKeyboard *keyboard = &input.keyboard;
 
-    Rectangle rect = calculate_widget_rect(widget);
+    TGuiRectangle rect = calculate_widget_rect(widget);
     tgui_calculate_hot_widget(window, rect, id);
     
     TGuiTextInput *text_input = tgui_widget_get_state(id, TGuiTextInput);
@@ -531,9 +530,9 @@ void _tgui_text_input_internal(TGuiWidget *widget, Painter *painter) {
         }
     }
 
-    Rectangle visible_rect = rect_intersection(rect, window->dim);
+    TGuiRectangle visible_rect = tgui_rect_intersection(rect, window->dim);
     u32 padding_x = 8;
-    u32 visible_glyphs = MAX((s32)((rect_width(visible_rect) - padding_x*2)/font.max_glyph_width), (s32)0);
+    u32 visible_glyphs = MAX((s32)((tgui_rect_width(visible_rect) - padding_x*2)/font.max_glyph_width), (s32)0);
 
     if(state.active == id) {
         
@@ -656,12 +655,12 @@ void _tgui_text_input_internal(TGuiWidget *widget, Painter *painter) {
         }    
     }
 
-    b32 mouse_is_over = rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
+    b32 mouse_is_over = tgui_rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
     if(state.active == id && !mouse_is_over && input.mouse_button_was_down && !input.mouse_button_is_down) {
         state.active = 0;
     }
  
-    Rectangle saved_painter_clip = painter->clip;
+    TGuiRectangle saved_painter_clip = painter->clip;
     painter->clip = window->dim; 
     
     u32 color = 0x888888;
@@ -677,34 +676,34 @@ void _tgui_text_input_internal(TGuiWidget *widget, Painter *painter) {
         decoration_color = 0x333333;
     }
 
-    painter_draw_rectangle(painter, rect, color);
-    painter_draw_rectangle_outline(painter, rect, decoration_color);
+    tgui_painter_draw_rectangle(painter, rect, color);
+    tgui_painter_draw_rectangle_outline(painter, rect, decoration_color);
 
-    Rectangle clipping_rect = rect;
+    TGuiRectangle clipping_rect = rect;
     clipping_rect.min_x += padding_x;
     clipping_rect.max_x -= padding_x;
-    painter->clip = rect_intersection(clipping_rect, painter->clip);
+    painter->clip = tgui_rect_intersection(clipping_rect, painter->clip);
     
     s32 text_x = rect.min_x + padding_x;
-    s32 text_y = rect.min_y + ((rect_height(rect) - 1) / 2) - ((font.max_glyph_height - 1) / 2);
+    s32 text_y = rect.min_y + ((tgui_rect_height(rect) - 1) / 2) - ((font.max_glyph_height - 1) / 2);
     
 
     if(text_input->selection) {
-        Rectangle selection_rect = calculate_selection_rect(text_input, text_x, text_y, text_input->selection_start, text_input->selection_end);
-        painter_draw_rectangle(painter, selection_rect, 0x7777ff);
+        TGuiRectangle selection_rect = calculate_selection_rect(text_input, text_x, text_y, text_input->selection_start, text_input->selection_end);
+        tgui_painter_draw_rectangle(painter, selection_rect, 0x7777ff);
     }
 
     tgui_font_draw_text(painter, text_x, text_y, (char *)text_input->buffer + text_input->offset,
             text_input->used - text_input->offset, decoration_color);
 
     if(state.active == id && text_input->draw_cursor) {
-        Rectangle cursor_rect = {
+        TGuiRectangle cursor_rect = {
             text_x + ((text_input->cursor - text_input->offset) * font.max_glyph_width),
             text_y,
             text_x + ((text_input->cursor - text_input->offset) * font.max_glyph_width),
             text_y + font.max_glyph_height,
         };
-        painter_draw_rectangle(painter, cursor_rect, cursor_color);
+        tgui_painter_draw_rectangle(painter, cursor_rect, cursor_color);
     }
     
     painter->clip = saved_painter_clip;
@@ -859,14 +858,14 @@ void _tgui_color_picker(TGuiWindowHandle handle, s32 x, s32 y, s32 w, s32 h, u32
 
 }
 
-void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
+void _tgui_color_picker_internal(TGuiWidget *widget, TGuiPainter *painter) {
     
     TGuiWindow *window = widget->parent;
     u64 id = widget->id;
     u32 w = widget->w;
     u32 h = widget->h;
     
-    Rectangle rect = calculate_widget_rect(widget);
+    TGuiRectangle rect = calculate_widget_rect(widget);
     tgui_calculate_hot_widget(window, rect, id);
 
     TGuiColorPicker *colorpicker = tgui_widget_get_state(id, TGuiColorPicker);
@@ -895,17 +894,17 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
         colorpicker->initialize = true;
     }
 
-    Rectangle radiant_rect = rect_from_wh(rect.min_x, rect.min_y, colorpicker->radiant.width, colorpicker->radiant.height);
-    Rectangle mini_radiant_rect = rect_from_wh(rect.min_x, rect.max_y - mini_radiant_h, colorpicker->mini_radiant.width, colorpicker->mini_radiant.height);
+    TGuiRectangle radiant_rect = tgui_rect_from_wh(rect.min_x, rect.min_y, colorpicker->radiant.width, colorpicker->radiant.height);
+    TGuiRectangle mini_radiant_rect = tgui_rect_from_wh(rect.min_x, rect.max_y - mini_radiant_h, colorpicker->mini_radiant.width, colorpicker->mini_radiant.height);
 
     if(state.hot == id) {
-        b32 mouse_is_over = rect_point_overlaps(mini_radiant_rect, input.mouse_x, input.mouse_y); 
+        b32 mouse_is_over = tgui_rect_point_overlaps(mini_radiant_rect, input.mouse_x, input.mouse_y); 
         if(mouse_is_over && input.mouse_button_is_down && !input.mouse_button_was_down) {
             state.active = id;
             colorpicker->hue_cursor_active = true;
         }
 
-        mouse_is_over = rect_point_overlaps(radiant_rect, input.mouse_x, input.mouse_y); 
+        mouse_is_over = tgui_rect_point_overlaps(radiant_rect, input.mouse_x, input.mouse_y); 
         if(mouse_is_over && input.mouse_button_is_down && !input.mouse_button_was_down) {
             state.active = id;
             colorpicker->sv_cursor_active = true;
@@ -928,7 +927,7 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
     }
 
     u32 cursor_w = 6;
-    Rectangle hue_cursor = mini_radiant_rect;
+    TGuiRectangle hue_cursor = mini_radiant_rect;
 
     hue_cursor.min_x += (colorpicker->hue * (colorpicker->mini_radiant.width - cursor_w)); 
     hue_cursor.max_x = hue_cursor.min_x + cursor_w - 1;  
@@ -939,8 +938,8 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
         colorpicker->saved_radiant_color = radiant_color;
     }
     
-    Rectangle saved_clip = painter->clip;
-    painter->clip = rect_intersection(painter->clip, window->dim);
+    TGuiRectangle saved_clip = painter->clip;
+    painter->clip = tgui_rect_intersection(painter->clip, window->dim);
 
     u32 color_x = colorpicker->saturation * (colorpicker->radiant.width -  1);
     u32 color_y = colorpicker->value * (colorpicker->radiant.height - 1);
@@ -948,20 +947,20 @@ void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter) {
 #if 0 
     painter_draw_bitmap_no_alpha(painter, radiant_rect.min_x, radiant_rect.min_y, &colorpicker->radiant);
 #endif
-    painter_draw_rectangle_outline(painter, radiant_rect, 0x444444);
-    
-    painter_draw_hline(painter, radiant_rect.min_y + color_y, radiant_rect.min_x, radiant_rect.max_x, 0x444444);
-    painter_draw_vline(painter, radiant_rect.min_x + color_x, radiant_rect.min_y, radiant_rect.max_y, 0x444444);
+    tgui_painter_draw_rectangle_outline(painter, radiant_rect, 0x444444);
+
+    tgui_painter_draw_hline(painter, radiant_rect.min_y + color_y, radiant_rect.min_x, radiant_rect.max_x, 0x444444);
+    tgui_painter_draw_vline(painter, radiant_rect.min_x + color_x, radiant_rect.min_y, radiant_rect.max_y, 0x444444);
     
 #if 0 
     painter_draw_bitmap_no_alpha(painter, mini_radiant_rect.min_x, mini_radiant_rect.min_y, &colorpicker->mini_radiant);
 #endif
-    painter_draw_rectangle_outline(painter, mini_radiant_rect, 0x444444);
+    tgui_painter_draw_rectangle_outline(painter, mini_radiant_rect, 0x444444);
     
-    painter->clip = rect_intersection(window->dim, mini_radiant_rect);
+    painter->clip = tgui_rect_intersection(window->dim, mini_radiant_rect);
 
-    painter_draw_rectangle(painter, hue_cursor, 0x444444);
-    painter_draw_rectangle_outline(painter, hue_cursor, 0x888888);
+    tgui_painter_draw_rectangle(painter, hue_cursor, 0x444444);
+    tgui_painter_draw_rectangle_outline(painter, hue_cursor, 0x888888);
 
     painter->clip = saved_clip;
     
@@ -976,7 +975,7 @@ TGuiTreeViewNode *treeview_alloc_node(TGuiTreeView *treeview, void *user_data) {
         node = treeview->first_free_node;
         treeview->first_free_node = treeview->first_free_node->next;
     } else {
-        node = arena_push_struct(&state.arena, TGuiTreeViewNode, 8);
+        node = tgui_arena_push_struct(&state.arena, TGuiTreeViewNode, 8);
     }
     ASSERT(node);
     memset(node, 0, sizeof(TGuiTreeViewNode));
@@ -988,7 +987,7 @@ void treeview_free_node(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
     if(node->childs) {
         
         TGuiTreeViewNode *child = node->childs->next;
-        while(!clink_list_end(child, node->childs)) {
+        while(!tgui_clink_list_end(child, node->childs)) {
             
             TGuiTreeViewNode *to_free = child;
             child = child->next;
@@ -1008,12 +1007,12 @@ void treeview_free_node(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
 TGuiTreeViewNode *treeview_alloc_root_node(TGuiTreeView *treeview, void *user_data) {
     TGuiTreeViewNode *node = treeview_alloc_node(treeview, user_data);
     node->childs = treeview_alloc_node(treeview, NULL);
-    clink_list_init(node->childs);
+    tgui_clink_list_init(node->childs);
     return node;
 }
 
 void treeview_insert_node(TGuiTreeViewNode *node, TGuiTreeViewNode *parent) {
-    clink_list_insert_back(parent->childs, node);
+    tgui_clink_list_insert_back(parent->childs, node);
     node->parent = parent;
 }
 
@@ -1032,7 +1031,7 @@ void _tgui_tree_view_begin(TGuiWindowHandle handle, char *tgui_id) {
     }
     
     TGuiTreeView *treeview = tgui_widget_get_state(state.active_id, TGuiTreeView);
-    treeview->dim = (Rectangle){ 0, 0, 0, 0 };
+    treeview->dim = (TGuiRectangle){ 0, 0, 0, 0 };
 
     if(!treeview->initiliaze) {
 
@@ -1079,8 +1078,8 @@ void _tgui_tree_view_end(void **selected_data) {
     TGuiTreeView *treeview = tgui_widget_get_state(state.active_id, TGuiTreeView);
     s32 x = treeview->dim.min_x;
     s32 y = treeview->dim.min_y;
-    s32 w = rect_width(treeview->dim);
-    s32 h = rect_height(treeview->dim);
+    s32 w = tgui_rect_width(treeview->dim);
+    s32 h = tgui_rect_height(treeview->dim);
 
     tgui_widget_alloc_into_window(state.active_id, _tgui_tree_view_internal, state.active_window, x, y, w, h);
 
@@ -1120,8 +1119,8 @@ void treeview_node_setup(TGuiTreeView *treeview, TGuiTreeViewNode *node, char *l
         u32 depth_in_pixels = depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH;
         u32 x = treeview->padding*2 + treeview->rect_w + depth_in_pixels;
         
-        Rectangle text_label = tgui_get_text_dim(x, treeview->dim.max_y+1, label);
-        treeview->dim = rect_union(treeview->dim, text_label);
+        TGuiRectangle text_label = tgui_get_text_dim(x, treeview->dim.max_y+1, label);
+        treeview->dim = tgui_rect_union(treeview->dim, text_label);
 
         node->dim = text_label;
         node->dim.min_x = depth_in_pixels;
@@ -1177,11 +1176,11 @@ void tree_view_translate_node_dim(TGuiTreeView *treeview, TGuiTreeViewNode *node
 
     s32 x = node->dim.min_x;
     s32 y = node->dim.min_y;
-    s32 w = rect_width(node->dim);
-    s32 h = rect_height(node->dim);
+    s32 w = tgui_rect_width(node->dim);
+    s32 h = tgui_rect_height(node->dim);
     
-    Rectangle treeview_rect = treeview->dim; 
-    Rectangle result = {
+    TGuiRectangle treeview_rect = treeview->dim; 
+    TGuiRectangle result = {
         treeview_rect.min_x + x,
         treeview_rect.min_y + y,
         treeview_rect.min_x + x + w - 1,
@@ -1191,28 +1190,28 @@ void tree_view_translate_node_dim(TGuiTreeView *treeview, TGuiTreeViewNode *node
     node->dim = result;
 }
 
-Rectangle treeview_get_fake_dim(TGuiTreeView *treeview, TGuiWindow *window) {
-    Rectangle result = treeview->dim;
+TGuiRectangle treeview_get_fake_dim(TGuiTreeView *treeview, TGuiWindow *window) {
+    TGuiRectangle result = treeview->dim;
     result.min_x = window->dim.min_x;
     result.max_x = window->dim.max_x;
     return result;
 }
 
-Rectangle treeview_node_get_fake_dim(TGuiTreeViewNode *node, TGuiWindow *window) {
-    Rectangle result = node->dim;
+TGuiRectangle treeview_node_get_fake_dim(TGuiTreeViewNode *node, TGuiWindow *window) {
+    TGuiRectangle result = node->dim;
     result.min_x = window->dim.min_x;
     result.max_x = window->dim.max_x;
     return result;
 }
 
-Rectangle treeview_calculate_node_cruz_rect(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
+TGuiRectangle treeview_calculate_node_cruz_rect(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
     s32 x = node->dim.min_x + treeview->rect_w/2;
     s32 y = node->dim.min_y + treeview->rect_w/2;
-    Rectangle result = rect_from_wh(x, y, treeview->rect_w, treeview->rect_w);
+    TGuiRectangle result = tgui_rect_from_wh(x, y, treeview->rect_w, treeview->rect_w);
     return result;
 }
 
-void treeview_node_draw(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeViewNode *node, Painter *painter, u32 *color) {
+void treeview_node_draw(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeViewNode *node, TGuiPainter *painter, u32 *color) {
     if(!node->visible) return;
 
     if(*color == TGUI_TREEVIEW_COLOR0) {
@@ -1223,25 +1222,25 @@ void treeview_node_draw(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeView
 
     TGuiWindow *window = widget->parent;
 
-    Rectangle fake_node_dim = treeview_node_get_fake_dim(node, window);
+    TGuiRectangle fake_node_dim = treeview_node_get_fake_dim(node, window);
     
     u32 rect_w = treeview->rect_w;
     u32 padding = treeview->padding;
 
-    b32 mouse_in_node = rect_point_overlaps(fake_node_dim, input.mouse_x, input.mouse_y);
+    b32 mouse_in_node = tgui_rect_point_overlaps(fake_node_dim, input.mouse_x, input.mouse_y);
     u32 _color = *color;
     if(state.hot == widget->id && mouse_in_node) {
         _color = 0xaaaaff;
     }
     
-    Rectangle saved_painter_clip = painter->clip;
-    painter->clip = rect_intersection(fake_node_dim, painter->clip);
+    TGuiRectangle saved_painter_clip = painter->clip;
+    painter->clip = tgui_rect_intersection(fake_node_dim, painter->clip);
 
-    painter_draw_rectangle(painter, fake_node_dim, _color);
+    tgui_painter_draw_rectangle(painter, fake_node_dim, _color);
 
     if((u32)treeview->selection_index == node->selected_state_index && tgui_array_get(&treeview->selected_node_data, treeview->selection_index)) {
         _color = 0xaaaaff;
-        painter_draw_rectangle_outline(painter, fake_node_dim, _color);
+        tgui_painter_draw_rectangle_outline(painter, fake_node_dim, _color);
     }
 
 
@@ -1250,28 +1249,28 @@ void treeview_node_draw(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeView
 
     for(u32 i = 0; i < node->label_depth; ++i) {
         u32 depth_in_pixel = TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH * ((node->label_depth-1) - i);
-        painter_draw_vline(painter, node->dim.min_x - treeview->rect_w - depth_in_pixel, node->dim.min_y, node->dim.max_y, 0x333333);
+        tgui_painter_draw_vline(painter, node->dim.min_x - treeview->rect_w - depth_in_pixel, node->dim.min_y, node->dim.max_y, 0x333333);
     }
     
     if(node->childs) {
         
-        Rectangle cruz_rect = treeview_calculate_node_cruz_rect(treeview, node);
+        TGuiRectangle cruz_rect = treeview_calculate_node_cruz_rect(treeview, node);
 
         if(tgui_array_get(&treeview->root_node_state, node->state_index) == false) {
-            Rectangle cruz_rect_v = cruz_rect;
+            TGuiRectangle cruz_rect_v = cruz_rect;
             cruz_rect_v.min_x += treeview->rect_w/4;
             cruz_rect_v.max_x -= treeview->rect_w/4;
-            painter_draw_rectangle(painter, cruz_rect_v, 0x333333);
+            tgui_painter_draw_rectangle(painter, cruz_rect_v, 0x333333);
 
-            Rectangle cruz_rect_h = cruz_rect;
+            TGuiRectangle cruz_rect_h = cruz_rect;
             cruz_rect_h.min_y += treeview->rect_w/4;
             cruz_rect_h.max_y -= treeview->rect_w/4;
-            painter_draw_rectangle(painter, cruz_rect_h, 0x333333);
+            tgui_painter_draw_rectangle(painter, cruz_rect_h, 0x333333);
         } else {
-            Rectangle cruz_rect_h = cruz_rect;
+            TGuiRectangle cruz_rect_h = cruz_rect;
             cruz_rect_h.min_y += treeview->rect_w/4;
             cruz_rect_h.max_y -= treeview->rect_w/4;
-            painter_draw_rectangle(painter, cruz_rect_h, 0x333333);
+            tgui_painter_draw_rectangle(painter, cruz_rect_h, 0x333333);
         }
 
     } 
@@ -1281,7 +1280,7 @@ void treeview_node_draw(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeView
     if(node->childs) {
 
         TGuiTreeViewNode *child = node->childs->next;
-        while(!clink_list_end(child, node->childs)) {
+        while(!tgui_clink_list_end(child, node->childs)) {
             treeview_node_draw(widget, treeview, child, painter, color);
             child = child->next;
         }
@@ -1296,7 +1295,7 @@ void treeview_translate_node(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
 
     if(node->childs) {
         TGuiTreeViewNode *child = node->childs->next;
-        while(!clink_list_end(child, node->childs)) {
+        while(!tgui_clink_list_end(child, node->childs)) {
             treeview_translate_node(treeview, child);
             child = child->next;
         }
@@ -1308,10 +1307,10 @@ void treeview_update_node(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeVi
     
     TGuiWindow *window = widget->parent;
 
-    Rectangle fake_node_dim = treeview_node_get_fake_dim(node, window);
+    TGuiRectangle fake_node_dim = treeview_node_get_fake_dim(node, window);
 
     u64 id = widget->id;
-    b32 mouse_in_node = rect_point_overlaps(fake_node_dim, input.mouse_x, input.mouse_y);
+    b32 mouse_in_node = tgui_rect_point_overlaps(fake_node_dim, input.mouse_x, input.mouse_y);
 
     if(state.hot == id) {
         if(mouse_in_node && input.mouse_button_is_down && !input.mouse_button_was_down) {
@@ -1319,8 +1318,8 @@ void treeview_update_node(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeVi
         }
     }
     
-    Rectangle cruz_rect = treeview_calculate_node_cruz_rect(treeview, node);
-    b32 on_cruz = rect_point_overlaps(cruz_rect, input.mouse_x, input.mouse_y);
+    TGuiRectangle cruz_rect = treeview_calculate_node_cruz_rect(treeview, node);
+    b32 on_cruz = tgui_rect_point_overlaps(cruz_rect, input.mouse_x, input.mouse_y);
     
     if(state.active == id) {
         
@@ -1359,14 +1358,14 @@ void treeview_update_node(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeVi
 
     if(node->childs) {
         TGuiTreeViewNode *child = node->childs->next;
-        while(!clink_list_end(child, node->childs)) {
+        while(!tgui_clink_list_end(child, node->childs)) {
             treeview_update_node(widget, treeview, child);
             child = child->next;
         }
     }
 }
 
-void _tgui_tree_view_internal(TGuiWidget *widget, Painter *painter) {
+void _tgui_tree_view_internal(TGuiWidget *widget, TGuiPainter *painter) {
 
     TGuiWindow *window = widget->parent;
     u64 id = widget->id;
@@ -1374,13 +1373,13 @@ void _tgui_tree_view_internal(TGuiWidget *widget, Painter *painter) {
     TGuiTreeView *treeview = tgui_widget_get_state(id, TGuiTreeView);
     treeview->dim = calculate_widget_rect(widget); 
     
-    Rectangle fake_treeview_dim = treeview_get_fake_dim(treeview, window);
+    TGuiRectangle fake_treeview_dim = treeview_get_fake_dim(treeview, window);
 
     tgui_calculate_hot_widget(window, fake_treeview_dim, id);
 
     u32 color = TGUI_TREEVIEW_COLOR0;
     TGuiTreeViewNode *node = treeview->root->childs->next;
-    while(!clink_list_end(node, treeview->root->childs)) {
+    while(!tgui_clink_list_end(node, treeview->root->childs)) {
         treeview_translate_node(treeview, node);
         treeview_update_node(widget, treeview, node);
         treeview_node_draw(widget, treeview, node, painter, &color);
@@ -1424,38 +1423,38 @@ void _tgui_dropdown_menu(TGuiWindowHandle handle, s32 x, s32 y, char **options, 
 
 }
 
-Rectangle calculate_option_rect(s32 x, s32 y, s32 option_index) {
-    return rect_from_wh(x, y + TGUI_DROPDOWN_MENU_DELFAUT_H*(option_index + 1), TGUI_DROPDOWN_MENU_DELFAUT_W, TGUI_DROPDOWN_MENU_DELFAUT_H);
+TGuiRectangle calculate_option_rect(s32 x, s32 y, s32 option_index) {
+    return tgui_rect_from_wh(x, y + TGUI_DROPDOWN_MENU_DELFAUT_H*(option_index + 1), TGUI_DROPDOWN_MENU_DELFAUT_W, TGUI_DROPDOWN_MENU_DELFAUT_H);
 }
 
 b32 mouse_in_window_scrollbar(TGuiWindow *window, s32 x, s32 y) {
     b32 result = false;
 
-    b32 v_scroll_valid = !rect_invalid(window->v_scroll_bar);
-    b32 h_scroll_valid = !rect_invalid(window->h_scroll_bar);
+    b32 v_scroll_valid = !tgui_rect_invalid(window->v_scroll_bar);
+    b32 h_scroll_valid = !tgui_rect_invalid(window->h_scroll_bar);
     
     if(v_scroll_valid) {
-        result = result || rect_point_overlaps(window->v_scroll_bar, x, y);
+        result = result || tgui_rect_point_overlaps(window->v_scroll_bar, x, y);
     }
 
     if(h_scroll_valid) {
-        result = result || rect_point_overlaps(window->h_scroll_bar, x, y);
+        result = result || tgui_rect_point_overlaps(window->h_scroll_bar, x, y);
     }
 
     return result;
 }
 
-void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter) {
+void _tgui_dropdown_menu_internal(TGuiWidget *widget, TGuiPainter *painter) {
     
     TGuiWindow *window = widget->parent;
     u64 id = widget->id;
     
-    Rectangle rect = calculate_widget_rect(widget);
+    TGuiRectangle rect = calculate_widget_rect(widget);
     TGuiDropDownMenu *dropdown = tgui_widget_get_state(id, TGuiDropDownMenu);
     
     tgui_calculate_hot_widget(window, rect, id);
     
-    b32 mouse_in_node = rect_point_overlaps(rect, input.mouse_x, input.mouse_y);
+    b32 mouse_in_node = tgui_rect_point_overlaps(rect, input.mouse_x, input.mouse_y);
 
     if(state.hot == id) {
         if(mouse_in_node && input.mouse_button_is_down && !input.mouse_button_was_down) {
@@ -1480,8 +1479,8 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter) {
         if(mouse_in_node && !input.mouse_button_is_down && input.mouse_button_was_down && state.hot == id) {
 
             for(u32 i = 0; i < dropdown->options_size; ++i) {
-                Rectangle option_rect = calculate_option_rect(rect.min_x, rect.min_y, i);
-                if(rect_point_overlaps(option_rect, input.mouse_x, input.mouse_y)) {
+                TGuiRectangle option_rect = calculate_option_rect(rect.min_x, rect.min_y, i);
+                if(tgui_rect_point_overlaps(option_rect, input.mouse_x, input.mouse_y)) {
                     dropdown->selected_option = i;
                     state.active = 0;
                     break;
@@ -1490,61 +1489,61 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter) {
         }
     }
 
-    Rectangle header_rect = rect_from_wh(rect.min_x, rect.min_y, TGUI_DROPDOWN_MENU_DELFAUT_W, TGUI_DROPDOWN_MENU_DELFAUT_H);
-    Rectangle saved_painter_clip = painter->clip;
-    painter->clip = rect_intersection(rect, painter->clip);
+    TGuiRectangle header_rect = tgui_rect_from_wh(rect.min_x, rect.min_y, TGUI_DROPDOWN_MENU_DELFAUT_W, TGUI_DROPDOWN_MENU_DELFAUT_H);
+    TGuiRectangle saved_painter_clip = painter->clip;
+    painter->clip = tgui_rect_intersection(rect, painter->clip);
     
     if(state.active == id) {
         for(u32 i = 0; i < dropdown->options_size; ++i) {
-            Rectangle option_rect = calculate_option_rect(rect.min_x, rect.min_y, i);
+            TGuiRectangle option_rect = calculate_option_rect(rect.min_x, rect.min_y, i);
 
             char *label = dropdown->options[i];
-            Rectangle label_rect = tgui_get_text_dim(0, 0, label);
+            TGuiRectangle label_rect = tgui_get_text_dim(0, 0, label);
             
-            s32 label_x = option_rect.min_x + (rect_width(option_rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2;
-            s32 label_y = option_rect.min_y + (rect_height(option_rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2;
+            s32 label_x = option_rect.min_x + (tgui_rect_width(option_rect) - 1) / 2 - (tgui_rect_width(label_rect) - 1) / 2;
+            s32 label_y = option_rect.min_y + (tgui_rect_height(option_rect) - 1) / 2 - (tgui_rect_height(label_rect) - 1) / 2;
 
             u32 color = 0x999999;
-            if(state.hot == id && rect_point_overlaps(option_rect, input.mouse_x, input.mouse_y)) {
+            if(state.hot == id && tgui_rect_point_overlaps(option_rect, input.mouse_x, input.mouse_y)) {
                 color = 0x777777;
             }
-            painter_draw_rectangle(painter, option_rect, color);
-            painter_draw_hline(painter, option_rect.max_y, option_rect.min_x, option_rect.max_x, 0x777777);
+            tgui_painter_draw_rectangle(painter, option_rect, color);
+            tgui_painter_draw_hline(painter, option_rect.max_y, option_rect.min_x, option_rect.max_x, 0x777777);
             tgui_font_draw_text(painter, label_x, label_y, label, strlen(label), 0x444444);
         }
     }
     
     u32 cruz_w = 8;
 
-    Rectangle option_rect = header_rect;
+    TGuiRectangle option_rect = header_rect;
     char *label = dropdown->options[dropdown->selected_option];
-    Rectangle label_rect = tgui_get_text_dim(0, 0, label);
+    TGuiRectangle label_rect = tgui_get_text_dim(0, 0, label);
 
-    s32 label_x = option_rect.min_x + (rect_width(option_rect) - 1) / 2 - (rect_width(label_rect) - 1) / 2 - cruz_w;
-    s32 label_y = option_rect.min_y + (rect_height(option_rect) - 1) / 2 - (rect_height(label_rect) - 1) / 2;
+    s32 label_x = option_rect.min_x + (tgui_rect_width(option_rect) - 1) / 2 - (tgui_rect_width(label_rect) - 1) / 2 - cruz_w;
+    s32 label_y = option_rect.min_y + (tgui_rect_height(option_rect) - 1) / 2 - (tgui_rect_height(label_rect) - 1) / 2;
 
-    painter_draw_rectangle(painter, header_rect, 0x444444);
-    painter_draw_rectangle_outline(painter, rect, 0x222222);
+    tgui_painter_draw_rectangle(painter, header_rect, 0x444444);
+    tgui_painter_draw_rectangle_outline(painter, rect, 0x222222);
     tgui_font_draw_text(painter, label_x, label_y, label, strlen(label), 0x999999);
 
     s32 cruz_x = rect.max_x - (cruz_w + 12);
-    s32 cruz_y = option_rect.min_y + (rect_height(option_rect) - 1) / 2 - (cruz_w - 1) / 2;
+    s32 cruz_y = option_rect.min_y + (tgui_rect_height(option_rect) - 1) / 2 - (cruz_w - 1) / 2;
 
-    Rectangle cruz_rect = rect_from_wh(cruz_x, cruz_y, cruz_w, cruz_w);
+    TGuiRectangle cruz_rect = tgui_rect_from_wh(cruz_x, cruz_y, cruz_w, cruz_w);
     if(state.active != id) {
-        Rectangle v_rect = cruz_rect;
+        TGuiRectangle v_rect = cruz_rect;
         v_rect.min_x += cruz_w / 4;
         v_rect.max_x -= cruz_w / 4;
-        painter_draw_rectangle(painter, v_rect, 0x999999);
-        Rectangle h_rect = cruz_rect;
+        tgui_painter_draw_rectangle(painter, v_rect, 0x999999);
+        TGuiRectangle h_rect = cruz_rect;
         h_rect.min_y += cruz_w / 4;
         h_rect.max_y -= cruz_w / 4;
-        painter_draw_rectangle(painter, h_rect, 0x999999);
+        tgui_painter_draw_rectangle(painter, h_rect, 0x999999);
     } else {
-        Rectangle h_rect = cruz_rect;
+        TGuiRectangle h_rect = cruz_rect;
         h_rect.min_y += cruz_w / 4;
         h_rect.max_y -= cruz_w / 4;
-        painter_draw_rectangle(painter, h_rect, 0x999999);
+        tgui_painter_draw_rectangle(painter, h_rect, 0x999999);
     }
 
     //printf("hot widget:%lld, widget id:%lld\n", state.hot, id);
@@ -1574,7 +1573,7 @@ void tgui_window_flag_clear(TGuiWindow *window, TGuiWindowFlags flag) {
 TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, TGuiWindowFlags flags, TGuiAllocatedWindow *list) {
 
     TGuiAllocatedWindow *allocated_window_node = tgui_allocated_window_node_alloc();
-    clink_list_insert_back(list, allocated_window_node);
+    tgui_clink_list_insert_back(list, allocated_window_node);
 
     TGuiWindow *window = &allocated_window_node->window;
     ASSERT(window);
@@ -1585,12 +1584,12 @@ TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, TGuiWindowFlag
     parent->active_window = window->id;
     
     window->widgets = tgui_widget_alloc();
-    clink_list_init(window->widgets);
+    tgui_clink_list_init(window->widgets);
 
     window->flags = flags;
 
-    window->h_scroll_bar = rect_set_invalid();
-    window->v_scroll_bar = rect_set_invalid();
+    window->h_scroll_bar = tgui_rect_set_invalid();
+    window->v_scroll_bar = tgui_rect_set_invalid();
     
     return window;
 }
@@ -1598,7 +1597,7 @@ TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, TGuiWindowFlag
 TGuiWindow *tgui_window_get_from_handle(TGuiWindowHandle handle) {
 
     TGuiAllocatedWindow *allocated_window = state.allocated_windows->next;
-    while(!clink_list_end(allocated_window, state.allocated_windows)) {
+    while(!tgui_clink_list_end(allocated_window, state.allocated_windows)) {
         TGuiWindow *window = &allocated_window->window;
         if(window->id == handle) return window;
         allocated_window = allocated_window->next;
@@ -1643,11 +1642,13 @@ void tgui_window_set_transparent(TGuiWindowHandle handle, b32 state) {
 /* ---------------------- */
 
 void tgui_initialize(s32 window_w, s32 window_h, TGuiGfxBackend *gfx) {
+
+    tgui_os_initialize();
     
     memset(&state, 0, sizeof(TGui));
 
-    arena_initialize(&state.arena, 0, ARENA_TYPE_VIRTUAL);
-    virtual_map_initialize(&state.registry);
+    tgui_arena_initialize(&state.arena, 0, TGUI_ARENA_TYPE_VIRTUAL);
+    tgui_virtual_map_initialize(&state.registry);
 
     input.window_resize = true;
     input.resize_w = window_w;
@@ -1660,13 +1661,13 @@ void tgui_initialize(s32 window_w, s32 window_h, TGuiGfxBackend *gfx) {
 
     state.free_windows = NULL;
     state.allocated_windows = tgui_allocated_window_node_alloc();
-    clink_list_init(state.allocated_windows);
+    tgui_clink_list_init(state.allocated_windows);
     
     /* ---------------------------------------------- */
 
     tgui_render_state_initialize(&state.render_state, gfx);
     
-    state.default_texture_atlas = arena_push_struct(&state.arena, TGuiTextureAtlas, 8);
+    state.default_texture_atlas = tgui_arena_push_struct(&state.arena, TGuiTextureAtlas, 8);
     tgui_texture_atlas_initialize(state.default_texture_atlas);
 
     state.default_program = gfx->create_program("./shaders/quad.vert", "./shaders/quad.frag");
@@ -1685,15 +1686,18 @@ void tgui_terminate(void) {
 
     tgui_render_state_terminate(&state.render_state);
 
-    virtual_map_terminate(&state.registry);
-    arena_terminate(&state.arena);
+    tgui_virtual_map_terminate(&state.registry);
+    tgui_arena_terminate(&state.arena);
+
+    tgui_os_terminate();
+
     memset(&state, 0, sizeof(TGui));
 }
 
 static u32 tgui_allocated_window_list_size(TGuiAllocatedWindow *list) {
     u32 result = 0;
     TGuiAllocatedWindow *allocated_window = list->next;
-    while(!clink_list_end(allocated_window, list)) {
+    while(!tgui_clink_list_end(allocated_window, list)) {
         result += 1;
         allocated_window = allocated_window->next;
     }
@@ -1723,12 +1727,12 @@ static b32 tgui_node_tree_valid(TGuiDockerNode *node, TGuiAllocatedWindow *alloc
     b32 window_found = false;
 
     TGuiAllocatedWindow *allocated_window = state.allocated_windows->next;
-    while(!clink_list_end(allocated_window, state.allocated_windows)) {
+    while(!tgui_clink_list_end(allocated_window, state.allocated_windows)) {
         
         window_found = false;
 
         TGuiAllocatedWindow *allocated_window_test = allocated_windows->next;
-        while(!clink_list_end(allocated_window_test, allocated_windows)) {
+        while(!tgui_clink_list_end(allocated_window_test, allocated_windows)) {
 
             if(tgui_allocated_window_equals(allocated_window, allocated_window_test)) {
                 window_found =  true;
@@ -1750,7 +1754,7 @@ static b32 tgui_node_tree_valid(TGuiDockerNode *node, TGuiAllocatedWindow *alloc
 
 void tgui_free_allocated_windows_list(TGuiAllocatedWindow *list) {
     TGuiAllocatedWindow *allocated_window = list->next;
-    while(!clink_list_end(allocated_window, list)) {
+    while(!tgui_clink_list_end(allocated_window, list)) {
         TGuiAllocatedWindow *to_free = allocated_window;
         allocated_window = allocated_window->next;
         tgui_allocated_window_node_free(to_free);
@@ -1758,7 +1762,7 @@ void tgui_free_allocated_windows_list(TGuiAllocatedWindow *list) {
 }
 
 void tgui_try_to_load_data_file(void) {
-    OsFile *file = os_file_read_entire("./tgui.dat");
+    TGuiOsFile *file = tgui_os_file_read_entire("./tgui.dat");
     if(file) {
         TGuiAllocatedWindow allocated_windows;
         TGuiDockerNode *saved_root;
@@ -1778,7 +1782,7 @@ void tgui_try_to_load_data_file(void) {
             printf("tgui.dat file old or corrupted\n");
         }
 
-        os_file_free(file);
+        tgui_os_file_free(file);
     }
 }
 
@@ -1791,22 +1795,22 @@ void tgui_begin(f32 dt) {
     tgui_docker_update();
 
     TGuiAllocatedWindow *allocated_window = state.allocated_windows->next;
-    while(!clink_list_end(allocated_window, state.allocated_windows)) {
+    while(!tgui_clink_list_end(allocated_window, state.allocated_windows)) {
         
         TGuiWindow *window = &allocated_window->window;
 
-        Rectangle window_dim = tgui_docker_get_client_rect(window->parent);
+        TGuiRectangle window_dim = tgui_docker_get_client_rect(window->parent);
         window->dim = window_dim;
         
         allocated_window = allocated_window->next;
     }
 }
 
-static inline Rectangle calculate_total_widget_rect(TGuiWindow *window) {
-    Rectangle result = window->dim;
+static inline TGuiRectangle calculate_total_widget_rect(TGuiWindow *window) {
+    TGuiRectangle result = window->dim;
     TGuiWidget *widget = window->widgets->next;
-    while(!clink_list_end(widget, window->widgets)) {
-        result = rect_union(result, calculate_widget_rect(widget));
+    while(!tgui_clink_list_end(widget, window->widgets)) {
+        result = tgui_rect_union(result, calculate_widget_rect(widget));
         widget = widget->next;
     }
     return result;
@@ -1817,28 +1821,28 @@ void tgui_scroll_window_recalculate_dim(TGuiWindow *window) {
     
     b32 h_bar_added = false;
     b32 v_bar_added = false;
-    Rectangle widget_rect;
+    TGuiRectangle widget_rect;
     
-    Rectangle last_scroll_rect = window->scroll_saved_rect;
+    TGuiRectangle last_scroll_rect = window->scroll_saved_rect;
 
     widget_rect = calculate_total_widget_rect(window);
     window->scroll_saved_rect = widget_rect;
     
-    if(rect_width(widget_rect) > rect_width(window->dim)) {
+    if(tgui_rect_width(widget_rect) > tgui_rect_width(window->dim)) {
         window->dim.max_y -= TGUI_SCROLL_BAR_SIZE;
         h_bar_added = true;
     }
 
     widget_rect = calculate_total_widget_rect(window);
 
-    if(rect_height(widget_rect) > rect_height(window->dim)) {
+    if(tgui_rect_height(widget_rect) > tgui_rect_height(window->dim)) {
         window->dim.max_x -= TGUI_SCROLL_BAR_SIZE;
         v_bar_added = true;
 
         if(!h_bar_added) {
             widget_rect = calculate_total_widget_rect(window);
             
-            if(rect_width(widget_rect) > rect_width(window->dim)) {
+            if(tgui_rect_width(widget_rect) > tgui_rect_width(window->dim)) {
                 window->dim.max_y -= TGUI_SCROLL_BAR_SIZE;
                 h_bar_added = true;
             }
@@ -1851,17 +1855,17 @@ void tgui_scroll_window_recalculate_dim(TGuiWindow *window) {
         window->h_scroll_bar.min_y = window->dim.max_y + 1;
         window->h_scroll_bar.max_y = window->h_scroll_bar.min_y + TGUI_SCROLL_BAR_SIZE - 1;
        
-        if(!rect_invalid(last_scroll_rect)) {
-            u32 last_scroll_w = rect_width(last_scroll_rect) - rect_width(window->dim);
-            u32 saved_scroll_w = rect_width(window->scroll_saved_rect) - rect_width(window->dim);
-            if(rect_width(last_scroll_rect) != rect_width(window->scroll_saved_rect)) {
+        if(!tgui_rect_invalid(last_scroll_rect)) {
+            u32 last_scroll_w = tgui_rect_width(last_scroll_rect) - tgui_rect_width(window->dim);
+            u32 saved_scroll_w = tgui_rect_width(window->scroll_saved_rect) - tgui_rect_width(window->dim);
+            if(tgui_rect_width(last_scroll_rect) != tgui_rect_width(window->scroll_saved_rect)) {
                 window->h_scroll_offset = CLAMP((f32)window->h_scroll_offset * (f32)last_scroll_w / (f32)saved_scroll_w, 0, 1);
             }
         }
 
     } else {
         window->h_scroll_offset = 0;
-        window->h_scroll_bar = rect_set_invalid();
+        window->h_scroll_bar = tgui_rect_set_invalid();
     }
 
     if(v_bar_added) {
@@ -1870,33 +1874,33 @@ void tgui_scroll_window_recalculate_dim(TGuiWindow *window) {
         window->v_scroll_bar.min_x = window->dim.max_x + 1;
         window->v_scroll_bar.max_x = window->v_scroll_bar.min_x + TGUI_SCROLL_BAR_SIZE - 1;
     
-        if(!rect_invalid(last_scroll_rect)) {
-            u32 last_scroll_h = rect_height(last_scroll_rect) - rect_height(window->dim);
-            u32 saved_scroll_h = rect_height(window->scroll_saved_rect) - rect_height(window->dim);
-            if(rect_height(last_scroll_rect) != rect_height(window->scroll_saved_rect)) {
+        if(!tgui_rect_invalid(last_scroll_rect)) {
+            u32 last_scroll_h = tgui_rect_height(last_scroll_rect) - tgui_rect_height(window->dim);
+            u32 saved_scroll_h = tgui_rect_height(window->scroll_saved_rect) - tgui_rect_height(window->dim);
+            if(tgui_rect_height(last_scroll_rect) != tgui_rect_height(window->scroll_saved_rect)) {
                 window->v_scroll_offset = CLAMP((f32)window->v_scroll_offset * (f32)last_scroll_h / (f32)saved_scroll_h, 0, 1);
             }
         }
 
     } else {
         window->v_scroll_offset = 0;
-        window->v_scroll_bar = rect_set_invalid();
+        window->v_scroll_bar = tgui_rect_set_invalid();
     }
 
 }
 
-void tgui_process_scroll_window(TGuiWindow *window, Painter *painter) {
+void tgui_process_scroll_window(TGuiWindow *window, TGuiPainter *painter) {
     if(!tgui_window_flag_is_set(window, TGUI_WINDOW_SCROLLING)) return;
     
-    Rectangle saved_painter_clip = painter->clip;
-    painter->clip = rect_intersection(painter->clip, tgui_docker_get_client_rect(window->parent));
+    TGuiRectangle saved_painter_clip = painter->clip;
+    painter->clip = tgui_rect_intersection(painter->clip, tgui_docker_get_client_rect(window->parent));
 
-    b32 v_scroll_valid = !rect_invalid(window->v_scroll_bar);
-    b32 h_scroll_valid = !rect_invalid(window->h_scroll_bar);
+    b32 v_scroll_valid = !tgui_rect_invalid(window->v_scroll_bar);
+    b32 h_scroll_valid = !tgui_rect_invalid(window->h_scroll_bar);
 
     if(v_scroll_valid) {
         
-        b32 mouse_over_bar = rect_point_overlaps(window->v_scroll_bar, input.mouse_x, input.mouse_y);
+        b32 mouse_over_bar = tgui_rect_point_overlaps(window->v_scroll_bar, input.mouse_x, input.mouse_y);
         if(mouse_over_bar && input.mouse_button_is_down && !input.mouse_button_was_down) {
             window->v_scroll_active = true;
         }
@@ -1906,26 +1910,26 @@ void tgui_process_scroll_window(TGuiWindow *window, Painter *painter) {
         }
         
         if(window->v_scroll_active) {
-            f32 mouse_offset = (f32)(input.mouse_y - window->v_scroll_bar.min_y)/(f32)rect_height(window->v_scroll_bar);
+            f32 mouse_offset = (f32)(input.mouse_y - window->v_scroll_bar.min_y)/(f32)tgui_rect_height(window->v_scroll_bar);
             window->v_scroll_offset = CLAMP(mouse_offset, 0, 1);
         }
         
-        u32 handle_h = (u32)(((f32)rect_height(window->dim) / (f32)rect_height(window->scroll_saved_rect)) * rect_height(window->v_scroll_bar)); 
+        u32 handle_h = (u32)(((f32)tgui_rect_height(window->dim) / (f32)tgui_rect_height(window->scroll_saved_rect)) * tgui_rect_height(window->v_scroll_bar)); 
 
-        Rectangle handle = window->v_scroll_bar; 
-        handle.min_y += window->v_scroll_offset * (rect_height(window->v_scroll_bar) - handle_h);
+        TGuiRectangle handle = window->v_scroll_bar; 
+        handle.min_y += window->v_scroll_offset * (tgui_rect_height(window->v_scroll_bar) - handle_h);
         handle.max_y = handle.min_y + handle_h - 1;
 
-        painter_draw_rectangle(painter, window->v_scroll_bar, 0x333333);
-        painter_draw_vline(painter, window->v_scroll_bar.min_x, window->v_scroll_bar.min_y, window->v_scroll_bar.max_y, 0x444444);
-        
-        painter_draw_rectangle(painter, handle, 0x555555);
-        painter_draw_rectangle_outline(painter, handle, 0x888888);
+        tgui_painter_draw_rectangle(painter, window->v_scroll_bar, 0x333333);
+        tgui_painter_draw_vline(painter, window->v_scroll_bar.min_x, window->v_scroll_bar.min_y, window->v_scroll_bar.max_y, 0x444444);
+
+        tgui_painter_draw_rectangle(painter, handle, 0x555555);
+        tgui_painter_draw_rectangle_outline(painter, handle, 0x888888);
     }
 
     if(h_scroll_valid) {
 
-        b32 mouse_over_bar = rect_point_overlaps(window->h_scroll_bar, input.mouse_x, input.mouse_y);
+        b32 mouse_over_bar = tgui_rect_point_overlaps(window->h_scroll_bar, input.mouse_x, input.mouse_y);
         if(mouse_over_bar && input.mouse_button_is_down && !input.mouse_button_was_down) {
             window->h_scroll_active = true;
         }
@@ -1935,27 +1939,27 @@ void tgui_process_scroll_window(TGuiWindow *window, Painter *painter) {
         }
         
         if(window->h_scroll_active) {
-            f32 mouse_offset = (f32)(input.mouse_x - window->h_scroll_bar.min_x)/(f32)rect_width(window->h_scroll_bar);
+            f32 mouse_offset = (f32)(input.mouse_x - window->h_scroll_bar.min_x)/(f32)tgui_rect_width(window->h_scroll_bar);
             window->h_scroll_offset = CLAMP(mouse_offset, 0, 1);
         }
         
-        u32 handle_w = (u32)(((f32)rect_width(window->dim) / (f32)rect_width(window->scroll_saved_rect)) * rect_width(window->h_scroll_bar)); 
+        u32 handle_w = (u32)(((f32)tgui_rect_width(window->dim) / (f32)tgui_rect_width(window->scroll_saved_rect)) * tgui_rect_width(window->h_scroll_bar)); 
 
-        Rectangle handle = window->h_scroll_bar; 
-        handle.min_x += window->h_scroll_offset * (rect_width(window->h_scroll_bar) - handle_w);
+        TGuiRectangle handle = window->h_scroll_bar; 
+        handle.min_x += window->h_scroll_offset * (tgui_rect_width(window->h_scroll_bar) - handle_w);
         handle.max_x = handle.min_x + handle_w - 1;
 
-        painter_draw_rectangle(painter, window->h_scroll_bar, 0x333333);
-        painter_draw_hline(painter, window->h_scroll_bar.min_y, window->h_scroll_bar.min_x, window->h_scroll_bar.max_x, 0x444444);
-        
-        painter_draw_rectangle(painter, handle, 0x555555);
-        painter_draw_rectangle_outline(painter, handle, 0x888888);
+        tgui_painter_draw_rectangle(painter, window->h_scroll_bar, 0x333333);
+        tgui_painter_draw_hline(painter, window->h_scroll_bar.min_y, window->h_scroll_bar.min_x, window->h_scroll_bar.max_x, 0x444444);
+
+        tgui_painter_draw_rectangle(painter, handle, 0x555555);
+        tgui_painter_draw_rectangle_outline(painter, handle, 0x888888);
     }
 
     if(v_scroll_valid && h_scroll_valid) {
-        Rectangle window_rect = tgui_docker_get_client_rect(window->parent);
-        Rectangle inner_rect = (Rectangle){window->dim.max_x+1, window->dim.max_y+1, window_rect.max_x, window_rect.max_y};
-        painter_draw_rectangle(painter, inner_rect, 0x444444);
+        TGuiRectangle window_rect = tgui_docker_get_client_rect(window->parent);
+        TGuiRectangle inner_rect = (TGuiRectangle){window->dim.max_x+1, window->dim.max_y+1, window_rect.max_x, window_rect.max_y};
+        tgui_painter_draw_rectangle(painter, inner_rect, 0x444444);
     }
 
     painter->clip = saved_painter_clip;
@@ -1975,13 +1979,13 @@ void tgui_end(void) {
     tgui_render_buffer_set_texture_atlas(render_buffer_tgui_on_top, state.default_texture_atlas);
     
     if(docker.root != NULL) {
-        Painter painter;
-        painter_start(&painter, PAINTER_TYPE_HARDWARE, docker.root->dim, 0, NULL, render_buffer_tgui);
+        TGuiPainter painter;
+        tgui_painter_start(&painter, TGUI_PAINTER_TYPE_HARDWARE, docker.root->dim, 0, NULL, render_buffer_tgui);
 
         tgui_docker_root_node_draw(&painter);
 
         TGuiAllocatedWindow *allocated_window = state.allocated_windows->next;
-        while(!clink_list_end(allocated_window, state.allocated_windows)) { 
+        while(!tgui_clink_list_end(allocated_window, state.allocated_windows)) { 
 
             TGuiWindow *window = &allocated_window->window;
 
@@ -1995,15 +1999,18 @@ void tgui_end(void) {
         }
 
         tgui_docker_draw_preview(&painter);
-        
-        u32 width = rect_width(docker.root->dim);
-        u32 height = rect_height(docker.root->dim);
-
-        state.render_state.gfx->set_program_width_and_height(state.default_program, width, height);
-        tgui_render_state_draw_buffers(&state.render_state);
-
     }
 
+    input.mouse_button_was_down = input.mouse_button_is_down;
+}
+
+void tgui_draw_buffers(void) {
+    u32 width = tgui_rect_width(docker.root->dim);
+    u32 height = tgui_rect_height(docker.root->dim);
+
+    state.render_state.gfx->set_program_width_and_height(state.default_program, width, height);
+    tgui_render_state_draw_buffers(&state.render_state);
     tgui_render_state_clear_render_buffers(&state.render_state);
+
 }
 

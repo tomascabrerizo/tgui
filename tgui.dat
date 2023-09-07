@@ -15,12 +15,12 @@ root_node: {
     }
   }
   split_node: {
-    split_position: 306
+    split_position: 248
   }
   root_node: {
     dir: 1
     window_node: {
-      active_window: 2
+      active_window: 0
       window_count: 2
       window: {
         id: 2
@@ -34,7 +34,7 @@ root_node: {
       }
     }
     split_node: {
-      split_position: 425
+      split_position: 350
     }
     window_node: {
       active_window: 1

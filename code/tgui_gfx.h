@@ -1,8 +1,8 @@
 #ifndef _TGUI_GFX_H_
 #define _TGUI_GFX_H_
 
-#include "geometry.h"
-#include "memory.h"
+#include "tgui_geometry.h"
+#include "tgui_memory.h"
 
 /* ----------------------- */
 /*       TGui Bitmap       */
@@ -14,16 +14,16 @@ typedef struct TGuiBitmap {
     struct TGuiTexture *texture;
 } TGuiBitmap;
 
-TGuiBitmap tgui_bitmap_alloc_empty(Arena *arena, u32 w, u32 h);
+TGuiBitmap tgui_bitmap_alloc_empty(TGuiArena *arena, u32 w, u32 h);
 
-TGuiBitmap tgui_bitmap_copy(Arena *arena, TGuiBitmap *bitmap);
+TGuiBitmap tgui_bitmap_copy(TGuiArena *arena, TGuiBitmap *bitmap);
 
 /* ------------------------ */
 /*       TGui Texture       */
 /* ------------------------ */
 
 typedef struct TGuiTexture {
-    Rectangle dim;
+    TGuiRectangle dim;
     TGuiBitmap *bitmap;
 } TGuiTexture;
 
@@ -48,7 +48,7 @@ typedef struct TGuiTextureAtlas {
     u32 current_y;
     u32 last_row_added_height;
 
-    Arena arena;
+    TGuiArena arena;
     TGuiTextureArray textures;
     
 } TGuiTextureAtlas;

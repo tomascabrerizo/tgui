@@ -1,8 +1,7 @@
 #include "tgui_docker.h"
+
 #include "common.h"
-#include "geometry.h"
-#include "memory.h"
-#include "painter.h"
+#include "tgui_painter.h"
 #include "tgui.h"
 #include <stdio.h>
 
@@ -21,7 +20,7 @@ TGuiDockerNode *node_alloc(void) {
         node = docker.first_free_node;
         docker.first_free_node = docker.first_free_node->next;
     } else {
-        node = arena_push_struct(&state.arena, TGuiDockerNode, 8);
+        node = tgui_arena_push_struct(&state.arena, TGuiDockerNode, 8);
     }
 
     ASSERT(node != NULL);
@@ -36,7 +35,7 @@ TGuiDockerNode *root_node_alloc(TGuiDockerNode *parent) {
     TGuiDockerNode *node  = node_alloc();
     TGuiDockerNode *dummy = node_alloc();
     
-    clink_list_init(dummy);
+    tgui_clink_list_init(dummy);
      
     node->type = TGUI_DOCKER_NODE_ROOT;
     node->childs = dummy;
@@ -55,7 +54,7 @@ TGuiDockerNode *window_node_alloc(TGuiDockerNode *parent) {
 
     node->dummy_allocated_window = tgui_allocated_window_node_alloc();
     node->windows = &node->dummy_allocated_window->window;
-    clink_list_init(node->windows);
+    tgui_clink_list_init(node->windows);
     node->windows_count = 0;
 
     return node;
@@ -79,7 +78,7 @@ void node_free(TGuiDockerNode *node) {
         TGuiDockerNode *dummy = node->childs;
 
         TGuiDockerNode *child = node->childs->next;
-        while(!clink_list_end(child, node->childs)) {
+        while(!tgui_clink_list_end(child, node->childs)) {
             TGuiDockerNode *to_free = child;
             child = child->next;
             node_free(to_free);
@@ -97,8 +96,8 @@ void node_free(TGuiDockerNode *node) {
 }
 
 static inline b32 position_overlap_node(TGuiDockerNode *node, s32 x, s32 y) {
-    Rectangle dim = node->dim;
-    return rect_point_overlaps(dim, x, y);
+    TGuiRectangle dim = node->dim;
+    return tgui_rect_point_overlaps(dim, x, y);
 }
 
 static TGuiDockerNode *get_node_in_position(TGuiDockerNode *node, s32 x, s32 y) {
@@ -108,7 +107,7 @@ static TGuiDockerNode *get_node_in_position(TGuiDockerNode *node, s32 x, s32 y) 
         
         case TGUI_DOCKER_NODE_ROOT: {
             TGuiDockerNode *child = node->childs->next;
-            while(!clink_list_end(child, node->childs)) {
+            while(!tgui_clink_list_end(child, node->childs)) {
                 TGuiDockerNode *result = get_node_in_position(child, x, y);
                 child = child->next; 
                 if(result) return result;
@@ -161,16 +160,16 @@ static inline void calculate_mouse_rel_x_y(TGuiDockerNode *split, TGuiDockerNode
     clamp_max -= epsilon;
     clamp_min += epsilon;
 
-    Rectangle parent_dim = parent->dim;
-    *x = CLAMP((f32)(input.mouse_x - parent_dim.min_x) / (f32)rect_width(parent_dim) , clamp_min, clamp_max);
-    *y = CLAMP((f32)(input.mouse_y - parent_dim.min_y) / (f32)rect_height(parent_dim), clamp_min, clamp_max);
+    TGuiRectangle parent_dim = parent->dim;
+    *x = CLAMP((f32)(input.mouse_x - parent_dim.min_x) / (f32)tgui_rect_width(parent_dim) , clamp_min, clamp_max);
+    *y = CLAMP((f32)(input.mouse_y - parent_dim.min_y) / (f32)tgui_rect_height(parent_dim), clamp_min, clamp_max);
 
 }
 
-static Rectangle calculate_menu_bar_rect(TGuiDockerNode *window) {
+static TGuiRectangle calculate_menu_bar_rect(TGuiDockerNode *window) {
     ASSERT(window->type == TGUI_DOCKER_NODE_WINDOW);
 
-    Rectangle menu_bar_rect = window->dim;
+    TGuiRectangle menu_bar_rect = window->dim;
     menu_bar_rect.min_x += 1;
     menu_bar_rect.max_x -= 1;
     menu_bar_rect.min_y += 1;
@@ -190,13 +189,13 @@ static inline u32 get_widow_index(TGuiWindow *window) {
     return window_index;
 }
 
-static Rectangle calculate_window_tab_rect(TGuiWindow *window) {
+static TGuiRectangle calculate_window_tab_rect(TGuiWindow *window) {
     TGuiDockerNode *window_node = window->parent;
     
-    Rectangle result = calculate_menu_bar_rect(window_node);
+    TGuiRectangle result = calculate_menu_bar_rect(window_node);
     u32 window_index = get_widow_index(window);
     
-    s32 width = rect_width(result) / window_node->windows_count;
+    s32 width = tgui_rect_width(result) / window_node->windows_count;
     result.min_x += window_index * width;
     result.max_x = result.min_x + width - 1;
 
@@ -208,7 +207,7 @@ static b32 mouse_in_menu_bar(TGuiDockerNode *window) {
 
     s32 x = input.mouse_x;
     s32 y = input.mouse_y;
-    Rectangle dim = calculate_menu_bar_rect(window);
+    TGuiRectangle dim = calculate_menu_bar_rect(window);
 
     return (dim.min_x <= x && x <= dim.max_x && dim.min_y <= y && y <= dim.max_y);
 }
@@ -238,7 +237,7 @@ static void split_node_move(TGuiDockerNode *node) {
 }
 
 static void calculate_drop_split_dir_and_pos(TGuiDockerNode *mouse_over_node, TGuiSplitDirection *dir, TGuiPosition *pos) {
-    Rectangle dim = mouse_over_node->dim;
+    TGuiRectangle dim = mouse_over_node->dim;
 
     u32 l_distance = input.mouse_x - dim.min_x;
     u32 r_distance = dim.max_x - input.mouse_x;
@@ -306,7 +305,7 @@ static void calculate_preview_split(TGuiDockerNode *mouse_over_node) {
         TGuiDockerNode *node = mouse_over_node;
 
         if(mouse_over_node->type == TGUI_DOCKER_NODE_WINDOW && mouse_in_menu_bar(mouse_over_node)) {
-            Rectangle menu_bar_rect = calculate_menu_bar_rect(mouse_over_node);
+            TGuiRectangle menu_bar_rect = calculate_menu_bar_rect(mouse_over_node);
             docker.preview_window = menu_bar_rect;
             return; 
         }
@@ -344,14 +343,14 @@ static void calculate_preview_split(TGuiDockerNode *mouse_over_node) {
 
 }
 
-Rectangle tgui_docker_get_client_rect(TGuiDockerNode *window) {
+TGuiRectangle tgui_docker_get_client_rect(TGuiDockerNode *window) {
     ASSERT(window->type == TGUI_DOCKER_NODE_WINDOW);
     
-    if(rect_invalid(window->dim)) {
+    if(tgui_rect_invalid(window->dim)) {
         return window->dim;
     }
 
-    Rectangle client_rect = window->dim;
+    TGuiRectangle client_rect = window->dim;
     client_rect.min_x += 1;
     client_rect.min_y += (MENU_BAR_HEIGHT + 1);
     client_rect.max_x -= 1;
@@ -360,14 +359,14 @@ Rectangle tgui_docker_get_client_rect(TGuiDockerNode *window) {
 }
 
 static TGuiWindow *get_window_from_tab(TGuiDockerNode *window_node, u32 pos_x) {
-    Rectangle menu_bar_rect = calculate_menu_bar_rect(window_node);
-    u32 width = rect_width(menu_bar_rect) / window_node->windows_count;
+    TGuiRectangle menu_bar_rect = calculate_menu_bar_rect(window_node);
+    u32 width = tgui_rect_width(menu_bar_rect) / window_node->windows_count;
 
     u32 index = CLAMP((s32)((pos_x - menu_bar_rect.min_x) / width), (s32)0, (s32)window_node->windows_count - 1);
     
     u32 current_index = 0;
     TGuiWindow *window = window_node->windows->next;
-    while(!clink_list_end(window, window_node->windows) && (current_index < index)) {
+    while(!tgui_clink_list_end(window, window_node->windows) && (current_index < index)) {
         window = window->next;
         current_index += 1;
     }
@@ -376,7 +375,7 @@ static TGuiWindow *get_window_from_tab(TGuiDockerNode *window_node, u32 pos_x) {
 }
 
 void tgui_docker_window_node_add_window(TGuiDockerNode *window_node, struct TGuiWindow *window) { 
-    clink_list_insert_back(window_node->windows, window)
+    tgui_clink_list_insert_back(window_node->windows, window)
     window_node->windows_count += 1;
 
     window->parent = window_node;
@@ -385,7 +384,7 @@ void tgui_docker_window_node_add_window(TGuiDockerNode *window_node, struct TGui
 
 void tgui_docker_window_node_add_window_at_mouse_pos(TGuiDockerNode *window_node, struct TGuiWindow *window) { 
     TGuiWindow *window_at_mouse = get_window_from_tab(window_node, input.mouse_x);
-    clink_list_insert_back(window_at_mouse, window)
+    tgui_clink_list_insert_back(window_at_mouse, window)
     window_node->windows_count += 1;
 
     window->parent = window_node;
@@ -395,7 +394,7 @@ void tgui_docker_window_node_remove_window(struct TGuiWindow *window) {
     TGuiDockerNode *window_node = window->parent;
     ASSERT(window_node);
     window_node->windows_count -= 1;
-    clink_list_remove(window);
+    tgui_clink_list_remove(window);
     window->parent = NULL;
 }
 
@@ -446,28 +445,28 @@ static void window_grabbing_start(TGuiDockerNode *window) {
 
         TGuiDockerNode *split = NULL;
 
-        if(clink_list_first(window, parent->childs) && clink_list_last(window, parent->childs)) {
+        if(tgui_clink_list_first(window, parent->childs) && tgui_clink_list_last(window, parent->childs)) {
             ASSERT(!"Root nodes cannot have only one child");
-        } else if(clink_list_first(window, parent->childs)) {
+        } else if(tgui_clink_list_first(window, parent->childs)) {
             split = window->next;
-        } else if(clink_list_last(window, parent->childs)) {
+        } else if(tgui_clink_list_last(window, parent->childs)) {
             split = window->prev;
         } else {
             split = window->next;
         }
 
         ASSERT(split != NULL && split->type == TGUI_DOCKER_NODE_SPLIT);
-        clink_list_remove(window);
-        clink_list_remove(split);
+        tgui_clink_list_remove(window);
+        tgui_clink_list_remove(split);
         node_free(split);
         
         docker.active_node = window;
 
         /* NOTE: If the parent is left with just one child, we need to replace the parent node with the only child */
         TGuiDockerNode *child = parent->childs->next;
-        if(clink_list_first(child, parent->childs) && clink_list_last(child, parent->childs)) {
+        if(tgui_clink_list_first(child, parent->childs) && tgui_clink_list_last(child, parent->childs)) {
             
-            clink_list_remove(child);
+            tgui_clink_list_remove(child);
             
             if(parent == docker.root) {
                 tgui_docker_set_root_node(child);
@@ -476,8 +475,8 @@ static void window_grabbing_start(TGuiDockerNode *window) {
             } else {
                 child->parent = parent->parent;
 
-                clink_list_insert_front(parent, child);
-                clink_list_remove(parent);
+                tgui_clink_list_insert_front(parent, child);
+                tgui_clink_list_remove(parent);
                 node_free(parent);
                 parent = child->parent;
             }
@@ -487,7 +486,7 @@ static void window_grabbing_start(TGuiDockerNode *window) {
     }
     
     ASSERT(docker.active_node->type == TGUI_DOCKER_NODE_WINDOW);
-    docker.active_node->dim = rect_set_invalid();
+    docker.active_node->dim = tgui_rect_set_invalid();
 
 }
 
@@ -500,7 +499,7 @@ static void window_grabbing_end(TGuiDockerNode *node) {
         if(mouse_over_node->type == TGUI_DOCKER_NODE_WINDOW && mouse_in_menu_bar(mouse_over_node)) {
             
             TGuiWindow *window = node->windows->next;
-            while(!clink_list_end(window, node->windows)) {
+            while(!tgui_clink_list_end(window, node->windows)) {
                 TGuiWindow *to_move = window;
                 window = window->next;
                 tgui_docker_window_node_add_window_at_mouse_pos(mouse_over_node, to_move);
@@ -527,7 +526,7 @@ static void window_grabbing_end(TGuiDockerNode *node) {
 
     docker.active_node = NULL;
     docker.grabbing_window = false;
-    docker.preview_window = (Rectangle){0};
+    docker.preview_window = (TGuiRectangle){0};
 }
 
 static void set_cursor_state(TGuiDockerNode *mouse_over) {
@@ -577,18 +576,18 @@ static void split_recalculate_dim(TGuiDockerNode *split) {
     TGuiDockerNode *parent = split->parent;
     ASSERT(parent->dir == TGUI_SPLIT_DIR_HORIZONTAL || parent->dir == TGUI_SPLIT_DIR_VERTICAL);
     
-    Rectangle dim = parent->dim;
+    TGuiRectangle dim = parent->dim;
     split->dim = dim;
     
     if(parent->dir == TGUI_SPLIT_DIR_VERTICAL) {
         
-        s32 abs_split_position = dim.min_x + (split->split_position * rect_width(dim));
+        s32 abs_split_position = dim.min_x + (split->split_position * tgui_rect_width(dim));
         split->dim.min_x =  abs_split_position - SPLIT_HALF_SIZE;
         split->dim.max_x =  abs_split_position + SPLIT_HALF_SIZE;
     
     } else if(parent->dir == TGUI_SPLIT_DIR_HORIZONTAL) {
 
-        s32 abs_split_position = dim.min_y + (split->split_position * rect_height(dim));
+        s32 abs_split_position = dim.min_y + (split->split_position * tgui_rect_height(dim));
         split->dim.min_y =  abs_split_position - SPLIT_HALF_SIZE;
         split->dim.max_y =  abs_split_position + SPLIT_HALF_SIZE;
     }
@@ -599,7 +598,7 @@ static void split_recalculate_dim(TGuiDockerNode *split) {
         Termporal drawing methods
    ------------------------------------ */
 
-void node_draw(Painter *painter, TGuiDockerNode *node) {
+void node_draw(TGuiPainter *painter, TGuiDockerNode *node) {
     if(!node) return;
 
     switch (node->type) {
@@ -607,50 +606,50 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
     case TGUI_DOCKER_NODE_WINDOW: {
         TGuiWindow *window = tgui_window_get_from_handle(node->active_window);
         if(!tgui_window_flag_is_set(window, TGUI_WINDOW_TRANSPARENT)) {
-            painter_draw_rectangle(painter, node->dim, 0x777777);
+            tgui_painter_draw_rectangle(painter, node->dim, 0x777777);
         }
         
         u32 border_color = 0x333333;
-        painter_draw_rectangle_outline(painter, node->dim, border_color);
+        tgui_painter_draw_rectangle_outline(painter, node->dim, border_color);
 
         u32 menu_bar_color = 0x333333;
-        Rectangle menu_bar_rect = calculate_menu_bar_rect(node);
-        painter_draw_rectangle(painter, menu_bar_rect, menu_bar_color);
+        TGuiRectangle menu_bar_rect = calculate_menu_bar_rect(node);
+        tgui_painter_draw_rectangle(painter, menu_bar_rect, menu_bar_color);
         
 
-        Rectangle saved_clip = painter->clip;
-        painter->clip = rect_intersection(painter->clip, menu_bar_rect);
+        TGuiRectangle saved_clip = painter->clip;
+        painter->clip = tgui_rect_intersection(painter->clip, menu_bar_rect);
         
         if(!tgui_docker_window_has_tabs(node)) {
             
             TGuiWindow *window = node->windows->next;
 
             char *label = window->name;
-            Rectangle label_rect = tgui_get_text_dim(0, 0, label);
+            TGuiRectangle label_rect = tgui_get_text_dim(0, 0, label);
             
-            s32 label_x = menu_bar_rect.min_x + rect_width(menu_bar_rect) / 2 - rect_width(label_rect) / 2;
-            s32 label_y = menu_bar_rect.min_y + rect_height(menu_bar_rect) / 2 - rect_height(label_rect) / 2;
+            s32 label_x = menu_bar_rect.min_x + tgui_rect_width(menu_bar_rect) / 2 - tgui_rect_width(label_rect) / 2;
+            s32 label_y = menu_bar_rect.min_y + tgui_rect_height(menu_bar_rect) / 2 - tgui_rect_height(label_rect) / 2;
             tgui_font_draw_text(painter, label_x, label_y, label, strlen(label), 0xffffff);
 
         } else {
             TGuiWindow *window = node->windows->next;
-            while(!clink_list_end(window, node->windows)) {
+            while(!tgui_clink_list_end(window, node->windows)) {
                 
-                Rectangle tab_rect = calculate_window_tab_rect(window);
-                painter_draw_rectangle_outline(painter, tab_rect, 0x444444);
+                TGuiRectangle tab_rect = calculate_window_tab_rect(window);
+                tgui_painter_draw_rectangle_outline(painter, tab_rect, 0x444444);
                 
-                Rectangle saved_clip2 = painter->clip;
-                painter->clip = rect_intersection(painter->clip, tab_rect);
+                TGuiRectangle saved_clip2 = painter->clip;
+                painter->clip = tgui_rect_intersection(painter->clip, tab_rect);
 
                 char * label = window->name;
-                Rectangle label_rect = tgui_get_text_dim(0, 0, label);
-                s32 label_x = tab_rect.min_x + rect_width(tab_rect) / 2 - rect_width(label_rect) / 2;
-                s32 label_y = tab_rect.min_y + rect_height(tab_rect) / 2 - rect_height(label_rect) / 2;
+                TGuiRectangle label_rect = tgui_get_text_dim(0, 0, label);
+                s32 label_x = tab_rect.min_x + tgui_rect_width(tab_rect) / 2 - tgui_rect_width(label_rect) / 2;
+                s32 label_y = tab_rect.min_y + tgui_rect_height(tab_rect) / 2 - tgui_rect_height(label_rect) / 2;
                 tgui_font_draw_text(painter, label_x, label_y, label, strlen(label), 0xffffff);
                 
                 if(window->id == node->active_window) {
                     TGuiWindow *active_window = tgui_window_node_get_active_window(node);
-                    painter_draw_rectangle_outline(painter, calculate_window_tab_rect(active_window), 0xaaaaff);
+                    tgui_painter_draw_rectangle_outline(painter, calculate_window_tab_rect(active_window), 0xaaaaff);
                 }
                 
                 painter->clip = saved_clip2;
@@ -664,12 +663,12 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
     } break;
 
     case TGUI_DOCKER_NODE_SPLIT: {
-        painter_draw_rectangle(painter, node->dim, 0x444444);
+        tgui_painter_draw_rectangle(painter, node->dim, 0x444444);
     } break;
 
     case TGUI_DOCKER_NODE_ROOT: {
         TGuiDockerNode * child = node->childs->next;
-        while (!clink_list_end(child, node->childs)) { 
+        while (!tgui_clink_list_end(child, node->childs)) { 
             node_draw(painter, child);
             child = child->next;
         }
@@ -678,14 +677,14 @@ void node_draw(Painter *painter, TGuiDockerNode *node) {
     }
 }
 
-void tgui_docker_root_node_draw(Painter *painter) {
+void tgui_docker_root_node_draw(TGuiPainter *painter) {
     node_draw(painter, docker.root);
 }
 
-void tgui_docker_draw_preview(Painter *painter) {
+void tgui_docker_draw_preview(TGuiPainter *painter) {
     if(docker.grabbing_window) {
         u32 border_color = 0xaaaaff;
-        painter_draw_rectangle_outline(painter, docker.preview_window, border_color);
+        tgui_painter_draw_rectangle_outline(painter, docker.preview_window, border_color);
     }
 }
 
@@ -699,7 +698,7 @@ void tgui_docker_initialize(void) {
     docker.root = NULL;
     docker.first_free_node = NULL;
     docker.grabbing_window = false;
-    docker.preview_window = (Rectangle){0};
+    docker.preview_window = (TGuiRectangle){0};
 }
 
 void tgui_docker_terminate(void) {
@@ -811,10 +810,10 @@ void tgui_docker_root_set_child(TGuiDockerNode *root, TGuiDockerNode *node) {
     ASSERT(root->type == TGUI_DOCKER_NODE_ROOT);
     ASSERT(node->type == TGUI_DOCKER_NODE_WINDOW || node->type == TGUI_DOCKER_NODE_ROOT);
     
-    ASSERT(clink_list_is_empty(root->childs));
-    if(clink_list_is_empty(root->childs)) {
+    ASSERT(tgui_clink_list_is_empty(root->childs));
+    if(tgui_clink_list_is_empty(root->childs)) {
         node->parent = root;
-        clink_list_insert_front(root->childs, node);
+        tgui_clink_list_insert_front(root->childs, node);
     }
 
 }
@@ -853,8 +852,8 @@ void tgui_docker_node_split(TGuiDockerNode *node, TGuiSplitDirection dir, TGuiPo
         
         TGuiDockerNode *root = root_node_alloc(parent);
         root->dir = dir;
-        clink_list_insert_back(node, root);
-        clink_list_remove(node);
+        tgui_clink_list_insert_back(node, root);
+        tgui_clink_list_remove(node);
         tgui_docker_root_set_child(root, node);
         parent = root;
     
@@ -864,15 +863,15 @@ void tgui_docker_node_split(TGuiDockerNode *node, TGuiSplitDirection dir, TGuiPo
 
     f32 split_position = 0.0f;
     
-    if(clink_list_first(node, parent->childs) && clink_list_last(node, parent->childs)) {
+    if(tgui_clink_list_first(node, parent->childs) && tgui_clink_list_last(node, parent->childs)) {
         split_position = 0.5f;
-    } else if(clink_list_first(node, parent->childs)) {
+    } else if(tgui_clink_list_first(node, parent->childs)) {
     
         TGuiDockerNode *split_next = node->next;
         ASSERT(split_next->type == TGUI_DOCKER_NODE_SPLIT);
         split_position = split_next->split_position * 0.5f;
     
-    } else if(clink_list_last(node, parent->childs)) {
+    } else if(tgui_clink_list_last(node, parent->childs)) {
     
         TGuiDockerNode *split_prev = node->prev;
         ASSERT(split_prev->type == TGUI_DOCKER_NODE_SPLIT);
@@ -892,11 +891,11 @@ void tgui_docker_node_split(TGuiDockerNode *node, TGuiSplitDirection dir, TGuiPo
 
     TGuiDockerNode *split = split_node_alloc(node->parent, split_position);
     if(pos == TGUI_POS_FRONT) {
-        clink_list_insert_front(node, split);
-        clink_list_insert_front(split, node1);
+        tgui_clink_list_insert_front(node, split);
+        tgui_clink_list_insert_front(split, node1);
     } else {
-        clink_list_insert_back(node, split);
-        clink_list_insert_back(split, node1);
+        tgui_clink_list_insert_back(node, split);
+        tgui_clink_list_insert_back(split, node1);
     }
     
 
@@ -914,11 +913,11 @@ void tgui_docker_node_recalculate_dim(TGuiDockerNode *node) {
 
         ASSERT(parent->type == TGUI_DOCKER_NODE_ROOT);
 
-        if(clink_list_first(node, parent->childs) && clink_list_last(node, parent->childs)) {
+        if(tgui_clink_list_first(node, parent->childs) && tgui_clink_list_last(node, parent->childs)) {
             
             ASSERT(!"Root nodes cannot hace only one child");
          
-        } else if(clink_list_first(node, parent->childs)) {
+        } else if(tgui_clink_list_first(node, parent->childs)) {
             ASSERT(parent->dir == TGUI_SPLIT_DIR_HORIZONTAL || parent->dir == TGUI_SPLIT_DIR_VERTICAL);
             
             TGuiDockerNode *split_next = node->next;
@@ -936,7 +935,7 @@ void tgui_docker_node_recalculate_dim(TGuiDockerNode *node) {
                 node->dim.max_y = split_next->dim.min_y - 1;
             }
 
-        } else if(clink_list_last(node, parent->childs)) {
+        } else if(tgui_clink_list_last(node, parent->childs)) {
             ASSERT(parent->dir == TGUI_SPLIT_DIR_HORIZONTAL || parent->dir == TGUI_SPLIT_DIR_VERTICAL);
 
             TGuiDockerNode *split_prev = node->prev;
@@ -976,13 +975,13 @@ void tgui_docker_node_recalculate_dim(TGuiDockerNode *node) {
             }
         }
     } else {
-        node->dim = (Rectangle){0, 0, (s32)input.resize_w - 1, (s32)input.resize_h - 1};
+        node->dim = (TGuiRectangle){0, 0, (s32)input.resize_w - 1, (s32)input.resize_h - 1};
     }
 
     if(node->type == TGUI_DOCKER_NODE_ROOT) {
        
         TGuiDockerNode *child = node->childs->next;
-        while (!clink_list_end(child, node->childs)) { 
+        while (!tgui_clink_list_end(child, node->childs)) { 
 
             /* NOTE: For now split node dim are calculated online when needed */
             /* TODO: Maybe add dirty flag to actually use the cashed dimension */

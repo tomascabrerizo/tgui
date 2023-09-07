@@ -2,15 +2,15 @@
 #define _TGUI_SERIALIZER_ 
 
 #include "common.h"
-#include "os.h"
+#include "tgui_os.h"
 #include "tgui_docker.h"
 
-struct OsFile;
+struct TGuiOsFile;
 struct TGuiDockerNode;
 
 void tgui_serializer_write_docker_tree(TGuiDockerNode *node, char *filename);
 
-void tgui_serializer_read_docker_tree(OsFile *file, struct TGuiDockerNode **node, TGuiAllocatedWindow *list);
+void tgui_serializer_read_docker_tree(TGuiOsFile *file, struct TGuiDockerNode **node, struct TGuiAllocatedWindow *list);
 
 typedef enum TGuiTokenType {
     TGUI_TOKEN_NODE_ROOT,
@@ -52,7 +52,7 @@ typedef struct TGuiTokenizer {
 
 #define TGUI_START_LINE_AND_COL 1
 
-void tgui_tokenizer_start(TGuiTokenizer *tokenizer, struct OsFile *file);
+void tgui_tokenizer_start(TGuiTokenizer *tokenizer, struct TGuiOsFile *file);
 
 b32 tgui_tokenizer_next_token(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error);
 

@@ -1,13 +1,8 @@
-#include "painter.h"
-#include "common.h"
-#include "geometry.h"
-#include "memory.h"
-#include "os.h"
-#include "tgui.h"
+#include "tgui_painter.h"
+
 #include "tgui_gfx.h"
 
-
-static inline void clip_rectangle(Rectangle *rect, Rectangle clip, s32 *offset_x, s32 *offset_y) {
+static inline void clip_rectangle(TGuiRectangle *rect, TGuiRectangle clip, s32 *offset_x, s32 *offset_y) {
     
     if(rect->max_x > clip.max_x) rect->max_x = clip.max_x;
     if(rect->max_y > clip.max_y) rect->max_y = clip.max_y;
@@ -43,17 +38,17 @@ static void setup_vertex(TGuiVertex *vertex, s32 x, s32 y, f32 u, f32 v, u32 col
     vertex->b = ((color >>  0) & 0xff) * inv_255;
 }
 
-void painter_draw_pixel(Painter *painter, s32 x, s32 y, u32 color) {
+void tgui_painter_draw_pixel(TGuiPainter *painter, s32 x, s32 y, u32 color) {
     if(x >= painter->clip.min_x && x <= painter->clip.max_x &&
        y >= painter->clip.min_y && y <= painter->clip.max_y) {
-        u32 painter_w = rect_width(painter->clip);
+        u32 painter_w = tgui_rect_width(painter->clip);
         u32 *pixel = painter->pixels + (y * painter_w) + x;
         *pixel = color;
     }
 }
 
 
-void painter_start(Painter *painter, PainterType type, Rectangle dim, Rectangle *clip, u32 *pixels, TGuiRenderBuffer *render_buffer) {
+void tgui_painter_start(TGuiPainter *painter, TGuiPainterType type, TGuiRectangle dim, TGuiRectangle *clip, u32 *pixels, TGuiRenderBuffer *render_buffer) {
     painter->type = type;
 
     painter->pixels = pixels;
@@ -65,20 +60,20 @@ void painter_start(Painter *painter, PainterType type, Rectangle dim, Rectangle 
         painter->clip = dim;
     }
     
-    if(painter->type == PAINTER_TYPE_HARDWARE) {
+    if(painter->type == TGUI_PAINTER_TYPE_HARDWARE) {
         painter->render_buffer = render_buffer;
     }
 
 }
 
-void painter_draw_rectangle(Painter *painter, Rectangle rectangle, u32 color) {
+void tgui_painter_draw_rectangle(TGuiPainter *painter, TGuiRectangle rectangle, u32 color) {
     
     clip_rectangle(&rectangle, painter->clip, 0, 0);
 
     switch (painter->type) {
-    case PAINTER_TYPE_HARDWARE: {
+    case TGUI_PAINTER_TYPE_HARDWARE: {
         
-        if(rect_invalid(rectangle)) return;
+        if(tgui_rect_invalid(rectangle)) return;
 
         TGuiVertexArray *vertex_buffer = &painter->render_buffer->vertex_buffer;
         TGuiU32Array *index_buffer = &painter->render_buffer->index_buffer;
@@ -115,9 +110,9 @@ void painter_draw_rectangle(Painter *painter, Rectangle rectangle, u32 color) {
         *index5 = start_vertex_index + 0;
     
     } break;
-    case PAINTER_TYPE_SOFTWARE: {
+    case TGUI_PAINTER_TYPE_SOFTWARE: {
 
-        u32 painter_w = rect_width(painter->dim);
+        u32 painter_w = tgui_rect_width(painter->dim);
         u32 *row = painter->pixels + (rectangle.min_y * painter_w) + rectangle.min_x;
 
         for(s32 y = rectangle.min_y; y <= rectangle.max_y; ++y) {
@@ -134,42 +129,42 @@ void painter_draw_rectangle(Painter *painter, Rectangle rectangle, u32 color) {
 
 }
 
-void painter_clear(Painter *painter, u32 color) {
-    painter_draw_rectangle(painter, painter->clip, color);
+void tgui_painter_clear(TGuiPainter *painter, u32 color) {
+    tgui_painter_draw_rectangle(painter, painter->clip, color);
 }
 
-void painter_draw_rect(Painter *painter, s32 x, s32 y, s32 w, s32 h, u32 color) {
-    Rectangle rectangle = rect_from_wh(x, y, w, h);
-    painter_draw_rectangle(painter, rectangle, color);
+void tgui_painter_draw_rect(TGuiPainter *painter, s32 x, s32 y, s32 w, s32 h, u32 color) {
+    TGuiRectangle rectangle = tgui_rect_from_wh(x, y, w, h);
+    tgui_painter_draw_rectangle(painter, rectangle, color);
 }
 
-void painter_draw_rectangle_outline(Painter *painter, Rectangle rectangle, u32 color) {
+void tgui_painter_draw_rectangle_outline(TGuiPainter *painter, TGuiRectangle rectangle, u32 color) {
 
     switch (painter->type) {
     
-    case PAINTER_TYPE_HARDWARE: {
+    case TGUI_PAINTER_TYPE_HARDWARE: {
 
-        Rectangle l = rectangle;
+        TGuiRectangle l = rectangle;
         l.max_x = l.min_x;
-        Rectangle r = rectangle;
+        TGuiRectangle r = rectangle;
         r.min_x = r.max_x;
-        painter_draw_rectangle(painter, l, color);
-        painter_draw_rectangle(painter, r, color);
+        tgui_painter_draw_rectangle(painter, l, color);
+        tgui_painter_draw_rectangle(painter, r, color);
         
-        Rectangle b = rectangle;
+        TGuiRectangle b = rectangle;
         b.min_y = b.max_y;
-        Rectangle t = rectangle;
+        TGuiRectangle t = rectangle;
         t.max_y = t.min_y;
-        painter_draw_rectangle(painter, t, color);
-        painter_draw_rectangle(painter, b, color);
+        tgui_painter_draw_rectangle(painter, t, color);
+        tgui_painter_draw_rectangle(painter, b, color);
 
     } break;
-    case PAINTER_TYPE_SOFTWARE: {
+    case TGUI_PAINTER_TYPE_SOFTWARE: {
 
-        painter_draw_hline(painter, rectangle.min_y, rectangle.min_x, rectangle.max_x, color);
-        painter_draw_hline(painter, rectangle.max_y, rectangle.min_x, rectangle.max_x, color);
-        painter_draw_vline(painter, rectangle.min_x, rectangle.min_y, rectangle.max_y, color);
-        painter_draw_vline(painter, rectangle.max_x, rectangle.min_y, rectangle.max_y, color);
+        tgui_painter_draw_hline(painter, rectangle.min_y, rectangle.min_x, rectangle.max_x, color);
+        tgui_painter_draw_hline(painter, rectangle.max_y, rectangle.min_x, rectangle.max_x, color);
+        tgui_painter_draw_vline(painter, rectangle.min_x, rectangle.min_y, rectangle.max_y, color);
+        tgui_painter_draw_vline(painter, rectangle.max_x, rectangle.min_y, rectangle.max_y, color);
 
     } break;
     
@@ -177,16 +172,16 @@ void painter_draw_rectangle_outline(Painter *painter, Rectangle rectangle, u32 c
 
 }
 
-void painter_draw_bitmap_no_alpha(Painter *painter, s32 x, s32 y, struct TGuiBitmap *bitmap) {
+void tgui_painter_draw_bitmap_no_alpha(TGuiPainter *painter, s32 x, s32 y, struct TGuiBitmap *bitmap) {
 
     switch (painter->type) {
 
-    case PAINTER_TYPE_HARDWARE: {
-        painter_draw_bitmap(painter, x, y, bitmap, 0xffffff);
+    case TGUI_PAINTER_TYPE_HARDWARE: {
+        tgui_painter_draw_bitmap(painter, x, y, bitmap, 0xffffff);
     } break;
-    case PAINTER_TYPE_SOFTWARE: {
+    case TGUI_PAINTER_TYPE_SOFTWARE: {
 
-        Rectangle rect;
+        TGuiRectangle rect;
         rect.min_x = x;
         rect.min_y = y;
         rect.max_x = x + bitmap->width  - 1;
@@ -196,7 +191,7 @@ void painter_draw_bitmap_no_alpha(Painter *painter, s32 x, s32 y, struct TGuiBit
         s32 offset_y;
         clip_rectangle(&rect, painter->clip, &offset_x, &offset_y);
 
-        u32 painter_w = rect_width(painter->dim);
+        u32 painter_w = tgui_rect_width(painter->dim);
         u32 *row = painter->pixels + (rect.min_y * painter_w) + rect.min_x;
         u32 *src_row = bitmap->pixels + (offset_y * bitmap->width) + offset_x;
 
@@ -215,15 +210,15 @@ void painter_draw_bitmap_no_alpha(Painter *painter, s32 x, s32 y, struct TGuiBit
     }
 }
 
-void painter_draw_bitmap(Painter *painter, s32 x, s32 y, TGuiBitmap *bitmap, u32 tint) {
+void tgui_painter_draw_bitmap(TGuiPainter *painter, s32 x, s32 y, TGuiBitmap *bitmap, u32 tint) {
 
-    Rectangle rectangle;
+    TGuiRectangle rectangle;
     rectangle.min_x = x;
     rectangle.min_y = y;
     rectangle.max_x = x + bitmap->width  - 1;
     rectangle.max_y = y + bitmap->height - 1;
 
-    Rectangle unclip_rectangle = rectangle;
+    TGuiRectangle unclip_rectangle = rectangle;
     
     s32 offset_x;
     s32 offset_y;
@@ -231,9 +226,9 @@ void painter_draw_bitmap(Painter *painter, s32 x, s32 y, TGuiBitmap *bitmap, u32
 
     switch (painter->type) {
 
-    case PAINTER_TYPE_HARDWARE: {
+    case TGUI_PAINTER_TYPE_HARDWARE: {
         
-        if(rect_invalid(rectangle)) return;
+        if(tgui_rect_invalid(rectangle)) return;
 
         TGuiVertexArray *vertex_buffer = &painter->render_buffer->vertex_buffer;
         TGuiU32Array *index_buffer = &painter->render_buffer->index_buffer;
@@ -261,7 +256,7 @@ void painter_draw_bitmap(Painter *painter, s32 x, s32 y, TGuiBitmap *bitmap, u32
         u32 max_offset_y = unclip_rectangle.max_y - rectangle.max_y;
 
         TGuiTexture *texture = bitmap->texture;
-        Rectangle texture_rectangle = texture->dim;
+        TGuiRectangle texture_rectangle = texture->dim;
         texture_rectangle.max_x += 1;
         texture_rectangle.max_y += 1;
         
@@ -299,9 +294,9 @@ void painter_draw_bitmap(Painter *painter, s32 x, s32 y, TGuiBitmap *bitmap, u32
         
     
     } break;
-    case PAINTER_TYPE_SOFTWARE: {
+    case TGUI_PAINTER_TYPE_SOFTWARE: {
 
-        u32 painter_w = rect_width(painter->dim);
+        u32 painter_w = tgui_rect_width(painter->dim);
         u32 *row = painter->pixels + (rectangle.min_y * painter_w) + rectangle.min_x;
         u32 *src_row = bitmap->pixels + (offset_y * bitmap->width) + offset_x;
 
@@ -343,20 +338,20 @@ void painter_draw_bitmap(Painter *painter, s32 x, s32 y, TGuiBitmap *bitmap, u32
     }
 }
 
-void painter_draw_vline(Painter *painter, s32 x, s32 y0, s32 y1, u32 color) {
+void tgui_painter_draw_vline(TGuiPainter *painter, s32 x, s32 y0, s32 y1, u32 color) {
 
     switch (painter->type) {
-    case PAINTER_TYPE_HARDWARE: {
+    case TGUI_PAINTER_TYPE_HARDWARE: {
 
-        Rectangle vline;
+        TGuiRectangle vline;
         vline.min_x = x;
         vline.max_x = x;
         vline.min_y = y0;
         vline.max_y = y1;
-        painter_draw_rectangle(painter, vline, color);
+        tgui_painter_draw_rectangle(painter, vline, color);
 
     } break;
-    case PAINTER_TYPE_SOFTWARE: {
+    case TGUI_PAINTER_TYPE_SOFTWARE: {
 
         if(x < painter->clip.min_x)  return;
         if(x > painter->clip.max_x) return; 
@@ -364,7 +359,7 @@ void painter_draw_vline(Painter *painter, s32 x, s32 y0, s32 y1, u32 color) {
         if(y0 < painter->clip.min_y)  y0 = painter->clip.min_y; 
         if(y1 > painter->clip.max_y)  y1 = painter->clip.max_y; 
         
-        u32 painter_w = rect_width(painter->dim);
+        u32 painter_w = tgui_rect_width(painter->dim);
         u32 *pixel = painter->pixels + (y0 * painter_w) + x;
         
         for(s32 y = y0; y <= y1; ++y) {
@@ -378,20 +373,20 @@ void painter_draw_vline(Painter *painter, s32 x, s32 y0, s32 y1, u32 color) {
 
 }
 
-void painter_draw_hline(Painter *painter, s32 y, s32 x0, s32 x1, u32 color) {
+void tgui_painter_draw_hline(TGuiPainter *painter, s32 y, s32 x0, s32 x1, u32 color) {
 
     switch (painter->type) {
-    case PAINTER_TYPE_HARDWARE: {
+    case TGUI_PAINTER_TYPE_HARDWARE: {
 
-        Rectangle hline;
+        TGuiRectangle hline;
         hline.min_y = y;
         hline.max_y = y;
         hline.min_x = x0;
         hline.max_x = x1;
-        painter_draw_rectangle(painter, hline, color);
+        tgui_painter_draw_rectangle(painter, hline, color);
 
     } break;
-    case PAINTER_TYPE_SOFTWARE: {
+    case TGUI_PAINTER_TYPE_SOFTWARE: {
 
         if(y < painter->clip.min_y)  return; 
         if(y > painter->clip.max_y)  return; 
@@ -399,7 +394,7 @@ void painter_draw_hline(Painter *painter, s32 y, s32 x0, s32 x1, u32 color) {
         if(x0 < painter->clip.min_x) x0 = painter->clip.min_x; 
         if(x1 > painter->clip.max_x) x1 = painter->clip.max_x; 
         
-        u32 painter_w = rect_width(painter->dim);
+        u32 painter_w = tgui_rect_width(painter->dim);
         u32 *pixel = painter->pixels + (y * painter_w) + x0;
         
         for(s32 x = x0; x <= x1; ++x) {
@@ -412,17 +407,17 @@ void painter_draw_hline(Painter *painter, s32 y, s32 x0, s32 x1, u32 color) {
 
 }
 
-void painter_draw_render_buffer_texture(Painter *painter, Rectangle dim) {
+void tgui_painter_draw_render_buffer_texture(TGuiPainter *painter, TGuiRectangle dim) {
 
-    Rectangle rectangle = dim;
+    TGuiRectangle rectangle = dim;
 
     clip_rectangle(&rectangle, painter->clip, 0, 0);
 
     switch (painter->type) {
 
-    case PAINTER_TYPE_HARDWARE: {
+    case TGUI_PAINTER_TYPE_HARDWARE: {
         
-        if(rect_invalid(rectangle)) return;
+        if(tgui_rect_invalid(rectangle)) return;
 
         TGuiVertexArray *vertex_buffer = &painter->render_buffer->vertex_buffer;
         TGuiU32Array *index_buffer = &painter->render_buffer->index_buffer;
@@ -467,7 +462,7 @@ void painter_draw_render_buffer_texture(Painter *painter, Rectangle dim) {
         
     
     } break;
-    case PAINTER_TYPE_SOFTWARE: {
+    case TGUI_PAINTER_TYPE_SOFTWARE: {
         ASSERT(!"Invalid code path");
     } break;
 
@@ -476,7 +471,7 @@ void painter_draw_render_buffer_texture(Painter *painter, Rectangle dim) {
 }
 
 #if 0
-void painter_draw_line(Painter *painter, s32 x0, s32 y0, s32 x1, s32 y1, u32 color) {
+void painter_draw_line(TGuiPainter *painter, s32 x0, s32 y0, s32 x1, s32 y1, u32 color) {
    
     // TODO: Do actual clipping with painter clip rectange
 

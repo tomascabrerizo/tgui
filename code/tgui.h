@@ -2,9 +2,7 @@
 #define _TGUI_H_
 
 #include "common.h"
-#include "geometry.h"
-#include "memory.h"
-#include "painter.h"
+
 #include "tgui_docker.h"
 #include "tgui_gfx.h"
 
@@ -12,7 +10,6 @@
 #define TGUI_ID2(a, b) TGUI_ID3(a, b)
 #define TGUI_ID TGUI_ID2(__FILE__, __LINE__)
 
-/* TODO: Create actual TGuiWindow instead of using the TGuiDockerNode */
 struct TGuiDockerNode;
 
 typedef enum TGuiCursor {
@@ -71,15 +68,15 @@ typedef enum TGuiWindowFlags {
 typedef struct TGuiWindow {
     
     u32 id;
-    Rectangle dim;
+    TGuiRectangle dim;
     char *name;
     
     struct TGuiWidget *widgets;
     
     TGuiWindowFlags flags;
 
-    Rectangle h_scroll_bar;
-    Rectangle v_scroll_bar;
+    TGuiRectangle h_scroll_bar;
+    TGuiRectangle v_scroll_bar;
     
     f32 v_scroll_offset;
     f32 h_scroll_offset;
@@ -87,7 +84,7 @@ typedef struct TGuiWindow {
     b32 v_scroll_active;
     b32 h_scroll_active;
     
-    Rectangle scroll_saved_rect;
+    TGuiRectangle scroll_saved_rect;
 
     struct TGuiDockerNode *parent;
     struct TGuiWindow *next;
@@ -113,7 +110,7 @@ void tgui_window_flag_set(TGuiWindow *window, TGuiWindowFlags flag);
 
 void tgui_window_flag_clear(TGuiWindow *window, TGuiWindowFlags flag);
 
-typedef void (*TGuiWidgetInternalFunc) (struct TGuiWidget *widget, Painter *painter);
+typedef void (*TGuiWidgetInternalFunc) (struct TGuiWidget *widget, TGuiPainter *painter);
 
 typedef struct TGuiWidget {
     u64 id;
@@ -143,8 +140,8 @@ typedef struct TGui {
 
     TGuiCursor cursor;
     
-    Arena arena;
-    VirtualMap registry;
+    TGuiArena arena;
+    TGuiVirtualMap registry;
     
     u32 window_id_generator;
 
@@ -176,6 +173,8 @@ void tgui_terminate(void);
 void tgui_begin(f32 dt);
 
 void tgui_end(void);
+
+void tgui_draw_buffers(void);
 
 void tgui_try_to_load_data_file(void);
 
@@ -211,6 +210,8 @@ void tgui_texture(TGuiWindowHandle window, void *texture);
 
 #define tgui_color_picker(window, x, y, w, h, color) _tgui_color_picker((window), (x), (y), (w), (h), (color), TGUI_ID)
 
+#define tgui_dropdown_menu(window, x, y, options, options_size, options_ptr) _tgui_dropdown_menu((window), (x), (y), (options), (options_size), (options_ptr), TGUI_ID)
+
 typedef struct TGuiButton {
     char *label;
     b32 result;
@@ -218,7 +219,7 @@ typedef struct TGuiButton {
 
 b32 _tgui_button(TGuiWindowHandle window, char *label, s32 x, s32 y, char *tgui_id);
 
-void _tgui_button_internal(TGuiWidget *widget, Painter *painter);
+void _tgui_button_internal(TGuiWidget *widget, TGuiPainter *painter);
 
 #define TGUI_TEXT_INPUT_MAX_CHARACTERS 124 
 typedef struct TGuiTextInput {
@@ -245,7 +246,7 @@ typedef struct TGuiTextInput {
 
 TGuiTextInput *_tgui_text_input(TGuiWindowHandle window, s32 x, s32 y, char *tgui_id);
 
-void _tgui_text_input_internal(TGuiWidget *widget, Painter *painter);
+void _tgui_text_input_internal(TGuiWidget *widget, TGuiPainter *painter);
 
 typedef struct TGuiColorPicker {
     
@@ -271,14 +272,14 @@ void tgui_u32_color_to_hsv_color(u32 color, f32 *h, f32 *s, f32 *v);
 
 void _tgui_color_picker(TGuiWindowHandle window, s32 x, s32 y, s32 w, s32 h, u32 *color, char *tgui_id);
 
-void _tgui_color_picker_internal(TGuiWidget *widget, Painter *painter);
+void _tgui_color_picker_internal(TGuiWidget *widget, TGuiPainter *painter);
 
 typedef struct TGuiTreeViewNode {
         
     char *label;
     u32 label_depth;
     
-    Rectangle dim;
+    TGuiRectangle dim;
     
     u32 state_index;
     b32 visible;
@@ -313,7 +314,7 @@ typedef struct TGuiTreeView {
     
     TGuiTreeViewNode *first_free_node;
     
-    Rectangle dim;
+    TGuiRectangle dim;
     
     /* TODO: Make this two arrays dynamic or use hash table or link list */
 #if 0
@@ -349,7 +350,7 @@ void _tgui_tree_view_root_node_end(void);
 
 void _tgui_tree_view_node(char *label, void *user_data);
 
-void _tgui_tree_view_internal(TGuiWidget *widget, Painter *painter);
+void _tgui_tree_view_internal(TGuiWidget *widget, TGuiPainter *painter);
 
 #define TGUI_DROPDOWN_MENU_DELFAUT_W 140
 #define TGUI_DROPDOWN_MENU_DELFAUT_H 26 
@@ -368,7 +369,7 @@ typedef struct TGuiDropDownMenu {
 
 void _tgui_dropdown_menu(TGuiWindowHandle window, s32 x, s32 y, char **options, u32 options_size, s32 *selected_option_index, char *tgui_id);
 
-void _tgui_dropdown_menu_internal(TGuiWidget *widget, Painter *painter);
+void _tgui_dropdown_menu_internal(TGuiWidget *widget, TGuiPainter *painter);
 
 /* ---------------------- */
 /*       TGui Font        */
@@ -398,19 +399,19 @@ typedef struct TGuiFont {
     u32 max_glyph_height;
     u32 max_glyph_width;
     
-    struct OsFont *font;
+    struct TGuiOsFont *font;
 } TGuiFont;
 
-void tgui_font_initilize(Arena *arena);
+void tgui_font_initilize(TGuiArena *arena);
 
 void tgui_font_terminate(void);
 
 TGuiGlyph *tgui_font_get_codepoint_glyph(u32 codepoint);
 
-Rectangle tgui_get_size_text_dim(s32 x, s32 y, char *text, u32 size);
+TGuiRectangle tgui_get_size_text_dim(s32 x, s32 y, char *text, u32 size);
 
-Rectangle tgui_get_text_dim(s32 x, s32 y, char *text);
+TGuiRectangle tgui_get_text_dim(s32 x, s32 y, char *text);
 
-void tgui_font_draw_text(Painter *painter, s32 x, s32 y, char *text, u32 size, u32 color);
+void tgui_font_draw_text(TGuiPainter *painter, s32 x, s32 y, char *text, u32 size, u32 color);
 
 #endif /* _TGUI_H_ */
