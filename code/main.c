@@ -12,8 +12,8 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include "common.h"
 #include "os_gl.h"
+
 #include "tgui.h"
 
 #define ASSERT(expr) assert((expr))
@@ -28,7 +28,7 @@ static int g_x11_screen = 0;
 
 typedef struct OsFile {
     void *data;
-    u64 size;
+    tgui_u64 size;
 } OsFile;
 
 OsFile *os_file_read_entire(const char *path) {
@@ -42,7 +42,7 @@ OsFile *os_file_read_entire(const char *path) {
     }
     
     fseek(file, 0, SEEK_END);
-    u64 file_size = (u64)ftell(file);
+    tgui_u64 file_size = (tgui_u64)ftell(file);
     fseek(file, 0, SEEK_SET);
 
     result = (OsFile *)malloc(sizeof(OsFile) + file_size+1);
@@ -50,9 +50,9 @@ OsFile *os_file_read_entire(const char *path) {
     result->data = result + 1;
     result->size = file_size;
 
-    ASSERT(((u64)result->data % 8) == 0);
+    ASSERT(((tgui_u64)result->data % 8) == 0);
     fread(result->data, file_size+1, 1, file);
-    ((u8 *)result->data)[file_size] = '\0';
+    ((tgui_u8 *)result->data)[file_size] = '\0';
     
     fclose(file);
 
@@ -63,17 +63,17 @@ void os_file_free(OsFile *file) {
     free(file);
 }
 
-u64 os_get_ticks(void) {
+tgui_u64 os_get_ticks(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    u64 result = (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
+    tgui_u64 result = (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
     return result;
 }
 
-void os_sleep(u64 milliseconds) {
+void os_sleep(tgui_u64 milliseconds) {
     
-    u64 seconds = milliseconds / 1000; 
-    u64 nanoseconds = (milliseconds - (seconds * 1000)) * 1000000;
+    tgui_u64 seconds = milliseconds / 1000; 
+    tgui_u64 nanoseconds = (milliseconds - (seconds * 1000)) * 1000000;
 
     struct timespec req;
     req.tv_sec = seconds; 
@@ -82,10 +82,10 @@ void os_sleep(u64 milliseconds) {
 }
 
 typedef struct OsWindow {
-    s32 width;
-    s32 height;
-    b32 resize;
-    b32 should_close;
+    tgui_s32 width;
+    tgui_s32 height;
+    tgui_b32 resize;
+    tgui_b32 should_close;
 
     Window os_window;
     Atom delete_message;
@@ -111,7 +111,7 @@ void os_terminate(void) {
     XCloseDisplay(g_x11_display);
 }
 
-struct OsWindow *os_window_create(char *title, u32 x, u32 y, u32 w, u32 h) {
+struct OsWindow *os_window_create(char *title, tgui_u32 x, tgui_u32 y, tgui_u32 w, tgui_u32 h) {
 
     OsWindow *window = (OsWindow *)malloc(sizeof(OsWindow));
     memset(window, 0, sizeof(OsWindow));
@@ -402,7 +402,7 @@ void *tgui_opengl_create_program(char *vert, char *frag) {
         printf("[FRAGMENT SHADER ERROR]: %s\n", infoLog);
     }
     
-    u32 program = glCreateProgram();
+    tgui_u32 program = glCreateProgram();
     glAttachShader(program, v_shader);
     glAttachShader(program, f_shader);
     glLinkProgram(program);
@@ -418,16 +418,16 @@ void *tgui_opengl_create_program(char *vert, char *frag) {
     os_file_free(file_vert);
     os_file_free(file_frag);
 
-    return (void *)(u64)program;
+    return (void *)(tgui_u64)program;
 }
 
 void tgui_opengl_destroy_program(void *program) {
-    glDeleteProgram((u64)program);
+    glDeleteProgram((tgui_u64)program);
 }
 
-void *tgui_opengl_create_texture(u32 *data, u32 width, u32 height) {
+void *tgui_opengl_create_texture(tgui_u32 *data, tgui_u32 width, tgui_u32 height) {
     
-    u32 texture;
+    tgui_u32 texture;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
 
@@ -441,22 +441,22 @@ void *tgui_opengl_create_texture(u32 *data, u32 width, u32 height) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    return (void *)(u64)texture;
+    return (void *)(tgui_u64)texture;
 }
 
 void tgui_opengl_destroy_texture(void *texture) {
-    u32 id = (u64)texture;
+    tgui_u32 id = (tgui_u64)texture;
     glDeleteTextures(1, &id);
 }
 
-void tgui_opengl_set_program_width_and_height(void *program, u32 width, u32 height) {
-    u32 id = (u64)program;
+void tgui_opengl_set_program_width_and_height(void *program, tgui_u32 width, tgui_u32 height) {
+    tgui_u32 id = (tgui_u64)program;
     glUseProgram(id);
     glUniform1i(glGetUniformLocation(id, "res_x"), width);
     glUniform1i(glGetUniformLocation(id, "res_y"), height);
 }
 
-u32 vao, vbo, ebo, rbo, fbo;
+tgui_u32 vao, vbo, ebo, rbo, fbo;
 void *custom_program;
 void *custom_texture;
 #define MAX_QUAD_PER_BATCH 1024
@@ -475,19 +475,18 @@ void tgui_opengl_initialize_buffers(void) {
     glBufferData(GL_ARRAY_BUFFER, MAX_QUAD_PER_BATCH*(sizeof(TGuiVertex) * 4), 0, GL_DYNAMIC_DRAW); 
     
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(TGuiVertex), OFFSET_OF(TGuiVertex, x)); 
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(TGuiVertex), TGUI_OFFSET_OF(TGuiVertex, x)); 
 
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(TGuiVertex), OFFSET_OF(TGuiVertex, u)); 
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(TGuiVertex), TGUI_OFFSET_OF(TGuiVertex, u)); 
 
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(TGuiVertex), OFFSET_OF(TGuiVertex, r)); 
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(TGuiVertex), TGUI_OFFSET_OF(TGuiVertex, r)); 
 
     glGenBuffers(1, &ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_QUAD_PER_BATCH*(sizeof(u32) * 6), 0, GL_DYNAMIC_DRAW); 
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_QUAD_PER_BATCH*(sizeof(tgui_u32) * 6), 0, GL_DYNAMIC_DRAW); 
     
-
     /* ------------------------------------------------ */
     /*       FrameBuffer test                           */
 
@@ -501,7 +500,7 @@ void tgui_opengl_initialize_buffers(void) {
 
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, (u64)custom_texture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, (tgui_u64)custom_texture, 0);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -514,20 +513,20 @@ void tgui_opengl_draw_buffers(void *program, void *texture, TGuiVertexArray *ver
         ASSERT(tgui_array_size(vertex_buffer) <= MAX_QUAD_PER_BATCH*4);
         ASSERT(tgui_array_size(index_buffer)  <= MAX_QUAD_PER_BATCH*6);
         
-        u32 program_id = (u64)program;
+        tgui_u32 program_id = (tgui_u64)program;
         glUseProgram(program_id);
 
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferSubData(GL_ARRAY_BUFFER, 0, tgui_array_size(vertex_buffer)*sizeof(TGuiVertex), tgui_array_data(vertex_buffer));
         
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, tgui_array_size(index_buffer)*sizeof(u32), tgui_array_data(index_buffer));
+        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, tgui_array_size(index_buffer)*sizeof(tgui_u32), tgui_array_data(index_buffer));
 
         glBindVertexArray(vao);
         
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 
-        u32 texture_id = (u64)texture;
+        tgui_u32 texture_id = (tgui_u64)texture;
         glBindTexture(GL_TEXTURE_2D, texture_id);
 
         glDrawElements(GL_TRIANGLES, tgui_array_size(index_buffer), GL_UNSIGNED_INT, 0);
@@ -587,9 +586,9 @@ int main(void) {
     gfx.draw_buffers                 = tgui_opengl_draw_buffers;
     
     
-    u64 miliseconds_per_frame = 16;
-    f32 seconds_per_frame = (f32)miliseconds_per_frame / 1000.0f; (void)seconds_per_frame;
-    u64 last_time = os_get_ticks();
+    tgui_u64 miliseconds_per_frame = 16;
+    tgui_f32 seconds_per_frame = (tgui_f32)miliseconds_per_frame / 1000.0f; (void)seconds_per_frame;
+    tgui_u64 last_time = os_get_ticks();
     
     tgui_initialize(1280, 720, &gfx);
     
@@ -602,7 +601,7 @@ int main(void) {
     TGuiWindowHandle window2 = tgui_split_window(window0, TGUI_SPLIT_DIR_VERTICAL,   "Window 2", TGUI_WINDOW_SCROLLING);
     TGuiWindowHandle window3 = tgui_split_window(window1, TGUI_SPLIT_DIR_HORIZONTAL, "Window 3", TGUI_WINDOW_SCROLLING);
     TGuiWindowHandle window4 = tgui_split_window(window3, TGUI_SPLIT_DIR_VERTICAL,   "Window 4", TGUI_WINDOW_SCROLLING);
-    UNUSED(window4);
+    TGUI_UNUSED(window4);
     
     tgui_try_to_load_data_file();
 
@@ -618,7 +617,7 @@ int main(void) {
         "option 8",
         "option 9",
     };
-    s32 option_index;
+    tgui_s32 option_index;
 
     while(!window->should_close) {
     
@@ -689,7 +688,7 @@ int main(void) {
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
         glViewport(0, 0, 1024, 1024);
 
-        glUseProgram((u64)custom_program);
+        glUseProgram((tgui_u64)custom_program);
         
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -715,8 +714,8 @@ int main(void) {
 
         /* ------------------------------------------------ */
 
-        u64 current_time = os_get_ticks();
-        u64 delta_time = current_time - last_time; (void)delta_time;
+        tgui_u64 current_time = os_get_ticks();
+        tgui_u64 delta_time = current_time - last_time; (void)delta_time;
         if(delta_time < miliseconds_per_frame) {
             os_sleep(miliseconds_per_frame - delta_time);
             current_time = os_get_ticks(); 

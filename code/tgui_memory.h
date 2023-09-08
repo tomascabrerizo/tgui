@@ -1,7 +1,7 @@
 #ifndef _TGUI_MEMORY_H_
 #define _TGUI_MEMORY_H_
 
-#include "common.h"
+#include "tgui_common.h"
 
 #define KB(value) ((value)*1024ll)
 #define MB(value) (KB(value)*1024ll)
@@ -17,17 +17,17 @@ typedef enum TGuiArenaType {
 } TGuiArenaType;
 
 typedef struct TGuiArena {
-    void *(*alloc)(struct TGuiArena *arena, u64 size, u32 align);
+    void *(*alloc)(struct TGuiArena *arena, tgui_u64 size, tgui_u32 align);
     void (*free)(struct TGuiArena *arena);
 
-    u8 *buffer;
-    u64 used;
-    u64 size; 
+    tgui_u8 *buffer;
+    tgui_u64 used;
+    tgui_u64 size; 
 
     TGuiArenaType type;
 } TGuiArena;
 
-void tgui_arena_initialize(TGuiArena *arena, u64 size, TGuiArenaType type);
+void tgui_arena_initialize(TGuiArena *arena, tgui_u64 size, TGuiArenaType type);
 
 void tgui_arena_terminate(TGuiArena *arena);
 
@@ -47,11 +47,11 @@ void tgui_arena_terminate(TGuiArena *arena);
       StaticArena 
    ------------------- */
 
-void tgui_static_arena_initialize(TGuiArena *arena, u64 size);
+void tgui_static_arena_initialize(TGuiArena *arena, tgui_u64 size);
 
 void tgui_static_arena_terminate(TGuiArena *arena);
 
-void *tgui_static_arena_alloc(TGuiArena *arena, u64 size, u32 align);
+void *tgui_static_arena_alloc(TGuiArena *arena, tgui_u64 size, tgui_u32 align);
 
 void tgui_static_arena_free(TGuiArena *arena);
 
@@ -66,7 +66,7 @@ void tgui_virtual_arena_initialize(TGuiArena *arena);
 
 void tgui_virtual_arena_terminate(TGuiArena *arena);
 
-void *tgui_virtual_arena_alloc(TGuiArena *arena, u64 size, u32 align);
+void *tgui_virtual_arena_alloc(TGuiArena *arena, tgui_u64 size, tgui_u32 align);
 
 void tgui_virtual_arena_free(TGuiArena *arena);
 
@@ -109,22 +109,22 @@ void tgui_virtual_arena_free(TGuiArena *arena);
    ------------------- */
 
 typedef struct TGuiVirtualMapBucket {
-    u64 key;
+    tgui_u64 key;
     void *data;
 } TGuiVirtualMapBucket; 
 
 typedef struct TGuiVirtualMap {
-    u64 size;
-    u64 used;
-    u64 size_in_bytes;
+    tgui_u64 size;
+    tgui_u64 used;
+    tgui_u64 size_in_bytes;
 
-    b32 memory_buffer_index;
+    tgui_b32 memory_buffer_index;
     TGuiVirtualMapBucket *memory_buffer[2];
 
 } TGuiVirtualMap;
 
-#define TGUI_VIRTUAL_MAP_BUCKET_FREE ((u64)(0ll - 1ll))
-#define TGUI_VIRTUAL_MAP_BUCKET_TUMBSTONE ((u64)(0ll - 2ll))
+#define TGUI_VIRTUAL_MAP_BUCKET_FREE ((tgui_u64)(0ll - 1ll))
+#define TGUI_VIRTUAL_MAP_BUCKET_TUMBSTONE ((tgui_u64)(0ll - 2ll))
 
 #define TGUI_DEFAULT_VIRTUAL_MAP_SIZE 256 
 
@@ -132,13 +132,13 @@ void tgui_virtual_map_initialize(TGuiVirtualMap *map);
 
 void tgui_virtual_map_terminate(TGuiVirtualMap *map);
 
-void tgui_virtual_map_insert(TGuiVirtualMap *map, u64 key, void *data);
+void tgui_virtual_map_insert(TGuiVirtualMap *map, tgui_u64 key, void *data);
 
-void tgui_virtual_map_remove(TGuiVirtualMap *map, u64 key);
+void tgui_virtual_map_remove(TGuiVirtualMap *map, tgui_u64 key);
 
-void *tgui_virtual_map_find(TGuiVirtualMap *map, u64 key);
+void *tgui_virtual_map_find(TGuiVirtualMap *map, tgui_u64 key);
 
-b32 tgui_virtual_map_contains(TGuiVirtualMap *map, u64 key);
+tgui_b32 tgui_virtual_map_contains(TGuiVirtualMap *map, tgui_u64 key);
 
 /* ------------------------
         Virtual Array 
@@ -146,8 +146,8 @@ b32 tgui_virtual_map_contains(TGuiVirtualMap *map, u64 key);
 
 #define  TGuiTypeArrayData(T) \
         T     *buffer;        \
-        u64    size;          \
-        u64    capacity;      \
+        tgui_u64    size;          \
+        tgui_u64    capacity;      \
         TGuiArena arena
 
 typedef struct TGuiVoidArray {
@@ -168,7 +168,7 @@ typedef struct TGuiVoidArray {
 
 #define TGUI_ARRAY_DEFAULT_CAPACITY 2 
 
-void _tgui_array_initialize(TGuiVoidArray *array, u64 element_size);
+void _tgui_array_initialize(TGuiVoidArray *array, tgui_u64 element_size);
 #define tgui_array_initialize(array) \
     _tgui_array_initialize(&((array)->void_array), sizeof(*((array)->type_array.buffer)))
 
@@ -176,12 +176,12 @@ void _tgui_array_terminate(TGuiVoidArray *array);
 #define tgui_array_terminate(array) \
     _tgui_array_terminate(&((array)->void_array))
 
-void _tgui_array_push(TGuiVoidArray *array, u64 element_size);
+void _tgui_array_push(TGuiVoidArray *array, tgui_u64 element_size);
 #define tgui_array_push(array) \
     (_tgui_array_push(&((array)->void_array), sizeof(*((array)->type_array.buffer))), \
      &((array)->type_array.buffer[(array)->type_array.size-1]))
 
-void _tgui_array_reserve(TGuiVoidArray *array, u32 count, u64 element_size);
+void _tgui_array_reserve(TGuiVoidArray *array, tgui_u32 count, tgui_u64 element_size);
 #define tgui_array_reserve(array, count) \
     (_tgui_array_reserve(&((array)->void_array), (count), sizeof(*((array)->type_array.buffer))))
 

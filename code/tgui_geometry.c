@@ -1,6 +1,6 @@
 #include "tgui_geometry.h"
 
-TGuiRectangle tgui_rect_from_wh(u32 x, u32 y, u32 w, u32 h) {
+TGuiRectangle tgui_rect_from_wh(tgui_u32 x, tgui_u32 y, tgui_u32 w, tgui_u32 h) {
     TGuiRectangle result;
     result.min_x = x;
     result.max_x = x + w - 1;
@@ -9,55 +9,55 @@ TGuiRectangle tgui_rect_from_wh(u32 x, u32 y, u32 w, u32 h) {
     return result;
 }
 
-s32 tgui_rect_width(TGuiRectangle a) {
+tgui_s32 tgui_rect_width(TGuiRectangle a) {
     return (a.max_x - a.min_x) + 1;
 }
 
-s32 tgui_rect_height(TGuiRectangle a) {
+tgui_s32 tgui_rect_height(TGuiRectangle a) {
     return (a.max_y - a.min_y) + 1;
 }
 
-b32 tgui_rect_inside(TGuiRectangle a, TGuiRectangle b) {
+tgui_b32 tgui_rect_inside(TGuiRectangle a, TGuiRectangle b) {
     return ((a.min_x >= b.min_x) && (a.min_y >= b.min_y) && (a.max_x <= b.max_x) && (a.max_y <= b.max_y));
 }
 
-b32 tgui_rect_equals(TGuiRectangle a, TGuiRectangle b) {
+tgui_b32 tgui_rect_equals(TGuiRectangle a, TGuiRectangle b) {
     return ((a.min_x == b.min_x) &&  (a.max_x == b.max_x) && (a.min_y == b.min_y) && (a.max_y == b.max_y));
 }
 
-b32 tgui_rect_invalid(TGuiRectangle a) {
+tgui_b32 tgui_rect_invalid(TGuiRectangle a) {
     return ((a.max_x < a.min_x) || (a.max_y < a.min_y));
 }
 
 TGuiRectangle tgui_rect_intersection(TGuiRectangle a, TGuiRectangle b) {
     TGuiRectangle result;
-    result.min_x = MAX(a.min_x, b.min_x);
-    result.min_y = MAX(a.min_y, b.min_y);
-    result.max_x = MIN(a.max_x, b.max_x);
-    result.max_y = MIN(a.max_y, b.max_y);
+    result.min_x = TGUI_MAX(a.min_x, b.min_x);
+    result.min_y = TGUI_MAX(a.min_y, b.min_y);
+    result.max_x = TGUI_MIN(a.max_x, b.max_x);
+    result.max_y = TGUI_MIN(a.max_y, b.max_y);
     return result; 
 }
 
 TGuiRectangle tgui_rect_union(TGuiRectangle a, TGuiRectangle b) {
     TGuiRectangle result;
-    result.min_x = MIN(a.min_x, b.min_x);
-    result.min_y = MIN(a.min_y, b.min_y);
-    result.max_x = MAX(a.max_x, b.max_x);
-    result.max_y = MAX(a.max_y, b.max_y);
+    result.min_x = TGUI_MIN(a.min_x, b.min_x);
+    result.min_y = TGUI_MIN(a.min_y, b.min_y);
+    result.max_x = TGUI_MAX(a.max_x, b.max_x);
+    result.max_y = TGUI_MAX(a.max_y, b.max_y);
     return result; 
 }
 
-b32 tgui_rect_point_overlaps(TGuiRectangle a, s32 x, s32 y) {
+tgui_b32 tgui_rect_point_overlaps(TGuiRectangle a, tgui_s32 x, tgui_s32 y) {
     return (a.min_x <= x && x <= a.max_x && a.min_y <= y && y <= a.max_y); 
 }
 
 TGuiRectangle tgui_rect_set_invalid(void) {
     TGuiRectangle result = (TGuiRectangle){1, 1, -1, -1};
-    ASSERT(tgui_rect_invalid(result));
+    TGUI_ASSERT(tgui_rect_invalid(result));
     return result;
 }
 
-TGuiRectangle tgui_rect_translate(TGuiRectangle rect, s32 x, s32 y) {
+TGuiRectangle tgui_rect_translate(TGuiRectangle rect, tgui_s32 x, tgui_s32 y) {
     TGuiRectangle result;
     result.min_x = x;
     result.min_y = y;

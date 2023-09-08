@@ -1,4 +1,3 @@
-#include "common.h"
 #include "tgui_painter.h"
 #include "tgui_docker.h"
 
@@ -12,16 +11,16 @@
 /* -------------------------- */
 /*       Hash Function     */
 /* -------------------------- */
- static u64 murmur_hash64A(const void * key, int len, u64 seed) {
-        const u64 m = 0xc6a4a7935bd1e995ull;
+ static tgui_u64 murmur_hash64A(const void * key, int len, tgui_u64 seed) {
+        const tgui_u64 m = 0xc6a4a7935bd1e995ull;
         const int r = 47;
-        u64 h = seed ^ (len * m);
+        tgui_u64 h = seed ^ (len * m);
         
-        const u64 * data = (const u64 *)key;
-        const u64 * end = data + (len/8);
+        const tgui_u64 * data = (const tgui_u64 *)key;
+        const tgui_u64 * end = data + (len/8);
         
         while(data != end) {
-            u64 k = *data++;
+            tgui_u64 k = *data++;
 
             k *= m; 
             k ^= k >> r; 
@@ -34,13 +33,13 @@
         const unsigned char * data2 = (const unsigned char*)data;
 
         switch(len & 7) {
-            case 7: h ^= (u64)(data2[6]) << 48; 
-            case 6: h ^= (u64)(data2[5]) << 40;
-            case 5: h ^= (u64)(data2[4]) << 32;
-            case 4: h ^= (u64)(data2[3]) << 24;
-            case 3: h ^= (u64)(data2[2]) << 16;
-            case 2: h ^= (u64)(data2[1]) << 8;
-            case 1: h ^= (u64)(data2[0]);
+            case 7: h ^= (tgui_u64)(data2[6]) << 48; 
+            case 6: h ^= (tgui_u64)(data2[5]) << 40;
+            case 5: h ^= (tgui_u64)(data2[4]) << 32;
+            case 4: h ^= (tgui_u64)(data2[3]) << 24;
+            case 3: h ^= (tgui_u64)(data2[2]) << 16;
+            case 2: h ^= (tgui_u64)(data2[1]) << 8;
+            case 1: h ^= (tgui_u64)(data2[0]);
             h *= m;
         };
         
@@ -51,7 +50,7 @@
         return h;
 } 
 
-u64 murmur_hash64A(const void * key, int len, u64 seed);
+tgui_u64 murmur_hash64A(const void * key, int len, tgui_u64 seed);
 
 /* TODO: This global variables should be static */
 
@@ -69,7 +68,7 @@ TGuiCursor tgui_get_cursor_state(void) {
     return state.cursor;
 }
 
-u64 tgui_hash(void *bytes, u64 size) {
+tgui_u64 tgui_hash(void *bytes, tgui_u64 size) {
     return murmur_hash64A(bytes, size, 123);
 }
 
@@ -77,13 +76,13 @@ u64 tgui_hash(void *bytes, u64 size) {
 /*       TGui Font        */
 /* ---------------------- */
 
-static u32 get_codepoint_index(u32 codepoint) {
+static tgui_u32 get_codepoint_index(tgui_u32 codepoint) {
     
     if((codepoint < font.glyph_rage_start) || (codepoint > font.glyph_rage_end)) {
-        codepoint = (u32)'?';
+        codepoint = (tgui_u32)'?';
     }
 
-    u32 index = (codepoint - font.glyph_rage_start);
+    tgui_u32 index = (codepoint - font.glyph_rage_start);
     return index;
 }
 
@@ -100,24 +99,24 @@ void tgui_font_initilize(TGuiArena *arena) {
 
     void *temp_buffer = tgui_arena_alloc(arena, 512*512, 8);
 
-    for(u32 glyph_index = font.glyph_rage_start; glyph_index <= font.glyph_rage_end; ++glyph_index) {
+    for(tgui_u32 glyph_index = font.glyph_rage_start; glyph_index <= font.glyph_rage_end; ++glyph_index) {
         
-        s32 w, h, bpp;
+        tgui_s32 w, h, bpp;
         tgui_os_font_rasterize_glyph(os_font, glyph_index, &temp_buffer, &w, &h, &bpp);
     
         TGuiGlyph *glyph = font.glyphs + (glyph_index - font.glyph_rage_start);
-        glyph->bitmap.pixels = tgui_arena_alloc(arena, sizeof(u32)*w*h, 8);
+        glyph->bitmap.pixels = tgui_arena_alloc(arena, sizeof(tgui_u32)*w*h, 8);
         glyph->bitmap.width  = w;
         glyph->bitmap.height = h;
         
-        memset(glyph->bitmap.pixels, 0, sizeof(u32)*w*h);
+        memset(glyph->bitmap.pixels, 0, sizeof(tgui_u32)*w*h);
         
-        u8 *src_row  = temp_buffer;
-        u32 *des_row = glyph->bitmap.pixels;
-        for(u32 y = 0; y < (u32)h; ++y) {
-            u8 *src  = src_row;
-            u32 *des = des_row;
-            for(u32 x = 0; x < (u32)w; ++x) { 
+        tgui_u8 *src_row  = temp_buffer;
+        tgui_u32 *des_row = glyph->bitmap.pixels;
+        for(tgui_u32 y = 0; y < (tgui_u32)h; ++y) {
+            tgui_u8 *src  = src_row;
+            tgui_u32 *des = des_row;
+            for(tgui_u32 x = 0; x < (tgui_u32)w; ++x) { 
                 *des++ = 0x00ffffff | (*src++ << 24); 
             }
             src_row += w;
@@ -141,18 +140,18 @@ void tgui_font_terminate(void) {
     tgui_os_font_destroy(font.font);
 }
 
-TGuiGlyph *tgui_font_get_codepoint_glyph(u32 codepoint) {
+TGuiGlyph *tgui_font_get_codepoint_glyph(tgui_u32 codepoint) {
     return font.glyphs + get_codepoint_index(codepoint);
 }
 
-TGuiRectangle tgui_get_size_text_dim(s32 x, s32 y, char *text, u32 size) {
+TGuiRectangle tgui_get_size_text_dim(tgui_s32 x, tgui_s32 y, char *text, tgui_u32 size) {
     TGuiRectangle result;
     
-    s32 w = 0;
-    s32 h = font.max_glyph_height;
+    tgui_s32 w = 0;
+    tgui_s32 h = font.max_glyph_height;
 
-    u32 text_len = size;
-    for(u32 i = 0; i < text_len; ++i) {
+    tgui_u32 text_len = size;
+    for(tgui_u32 i = 0; i < text_len; ++i) {
         TGuiGlyph *glyph = font.glyphs + get_codepoint_index(text[i]);
         w += glyph->adv_width;
     }
@@ -165,20 +164,20 @@ TGuiRectangle tgui_get_size_text_dim(s32 x, s32 y, char *text, u32 size) {
     return result;
 }
 
-TGuiRectangle tgui_get_text_dim(s32 x, s32 y, char *text) {
+TGuiRectangle tgui_get_text_dim(tgui_s32 x, tgui_s32 y, char *text) {
     return tgui_get_size_text_dim(x, y, text, strlen(text));
 }
 
-void tgui_font_draw_text(TGuiPainter *painter, s32 x, s32 y, char *text, u32 size, u32 color) {
-    s32 cursor = x;
-    s32 base   = y + font.ascent;
+void tgui_font_draw_text(TGuiPainter *painter, tgui_s32 x, tgui_s32 y, char *text, tgui_u32 size, tgui_u32 color) {
+    tgui_s32 cursor = x;
+    tgui_s32 base   = y + font.ascent;
 
-    u32 text_len = size;
+    tgui_u32 text_len = size;
     
-    u32 last_index = 0; UNUSED(last_index);
-    for(u32 i = 0; i < text_len; ++i) {
+    tgui_u32 last_index = 0; TGUI_UNUSED(last_index);
+    for(tgui_u32 i = 0; i < text_len; ++i) {
         
-        u32 index = get_codepoint_index(text[i]);
+        tgui_u32 index = get_codepoint_index(text[i]);
 
         TGuiGlyph *glyph = font.glyphs + index;
         tgui_painter_draw_bitmap(painter, cursor + glyph->left_bearing, base - glyph->top_bearing, &glyph->bitmap, color);
@@ -214,7 +213,7 @@ TGuiAllocatedWindow *tgui_allocated_window_node_alloc(void) {
     } else {
         result = tgui_arena_push_struct(&state.arena, TGuiAllocatedWindow, 8);
     }
-    ASSERT(result);
+    TGUI_ASSERT(result);
     memset(result, 0, sizeof(TGuiAllocatedWindow));
 
     return result;
@@ -234,7 +233,7 @@ TGuiWidget *tgui_widget_alloc(void) {
         widget = tgui_arena_push_struct(&state.arena, TGuiWidget, 8);
     }
     memset(widget, 0, sizeof(TGuiWidget));
-    ASSERT(widget);
+    TGUI_ASSERT(widget);
     return widget;
 }
 
@@ -271,7 +270,7 @@ void tgui_window_free_widgets(TGuiWindow *window) {
     }
 }
 
-void *_tgui_widget_get_state(u64 id, u64 size) {
+void *_tgui_widget_get_state(tgui_u64 id, tgui_u64 size) {
     void *result = NULL;
 
     result = tgui_virtual_map_find(&state.registry, id);
@@ -281,21 +280,21 @@ void *_tgui_widget_get_state(u64 id, u64 size) {
         tgui_virtual_map_insert(&state.registry, id, (void *)result);
     }
 
-    ASSERT(result != NULL);
+    TGUI_ASSERT(result != NULL);
     return result;
 }
 
-b32 tgui_window_update_widget(TGuiWindow *window) {
+tgui_b32 tgui_window_update_widget(TGuiWindow *window) {
     return tgui_docker_window_is_visible(window->parent, window);
 }
 
 static TGuiRectangle calculate_widget_rect(TGuiWidget *widget) {
 
     TGuiWindow *window = widget->parent;
-    s32 x = widget->x;
-    s32 y = widget->y;
-    s32 w = widget->w;
-    s32 h = widget->h;
+    tgui_s32 x = widget->x;
+    tgui_s32 y = widget->y;
+    tgui_s32 w = widget->w;
+    tgui_s32 h = widget->h;
     
     TGuiRectangle window_rect = window->dim;
     TGuiRectangle rect = {
@@ -308,15 +307,15 @@ static TGuiRectangle calculate_widget_rect(TGuiWidget *widget) {
     return rect;
 }
 
-u64 tgui_get_widget_id(char *tgui_id) {
-    u64 id = tgui_hash(tgui_id, strlen(tgui_id));
+tgui_u64 tgui_get_widget_id(char *tgui_id) {
+    tgui_u64 id = tgui_hash(tgui_id, strlen(tgui_id));
     return id;
 }
 
-void tgui_calculate_hot_widget(TGuiWindow *window, TGuiRectangle rect, u64 id) {
+void tgui_calculate_hot_widget(TGuiWindow *window, TGuiRectangle rect, tgui_u64 id) {
 
     TGuiRectangle visible_rect = tgui_rect_intersection(rect, window->dim);
-    b32 mouse_is_over = tgui_rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
+    tgui_b32 mouse_is_over = tgui_rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
     
     if(mouse_is_over && (!state.active || state.active == id)) {
         state.hot = id;
@@ -331,7 +330,7 @@ void tgui_calculate_hot_widget(TGuiWindow *window, TGuiRectangle rect, u64 id) {
     }
 }
 
-void tgui_widget_alloc_into_window(u64 id, TGuiWidgetInternalFunc internal, TGuiWindow *window, u32 x, u32 y, u32 w, u32 h) {
+void tgui_widget_alloc_into_window(tgui_u64 id, TGuiWidgetInternalFunc internal, TGuiWindow *window, tgui_u32 x, tgui_u32 y, tgui_u32 w, tgui_u32 h) {
     
     TGuiWidget *widget = tgui_widget_alloc();
     
@@ -349,7 +348,7 @@ void tgui_widget_alloc_into_window(u64 id, TGuiWidgetInternalFunc internal, TGui
     tgui_clink_list_insert_back(window->widgets, widget);
 }
 
-b32 _tgui_button(TGuiWindowHandle handle, char *label, s32 x, s32 y, char *tgui_id) {
+tgui_b32 _tgui_button(TGuiWindowHandle handle, char *label, tgui_s32 x, tgui_s32 y, char *tgui_id) {
 
     TGuiWindow *window = tgui_window_get_from_handle(handle);
 
@@ -357,7 +356,7 @@ b32 _tgui_button(TGuiWindowHandle handle, char *label, s32 x, s32 y, char *tgui_
         return false;
     }
 
-    u64 id = tgui_get_widget_id(tgui_id);
+    tgui_u64 id = tgui_get_widget_id(tgui_id);
 
     TGuiButton *button_state = tgui_widget_get_state(id, TGuiButton);
     button_state->label = label;
@@ -370,12 +369,12 @@ b32 _tgui_button(TGuiWindowHandle handle, char *label, s32 x, s32 y, char *tgui_
 void _tgui_button_internal(TGuiWidget *widget, TGuiPainter *painter) {
 
     TGuiWindow *window = widget->parent;
-    u64 id = widget->id;
+    tgui_u64 id = widget->id;
     
     TGuiRectangle rect = calculate_widget_rect(widget); 
     tgui_calculate_hot_widget(window, rect, id);
 
-    b32 result = false;
+    tgui_b32 result = false;
     
     if(state.active == id) {
         if(!input.mouse_button_is_down && input.mouse_button_was_down) {
@@ -390,8 +389,8 @@ void _tgui_button_internal(TGuiWidget *widget, TGuiPainter *painter) {
 
     /* TODO: Desing a command interface to render the complete UI independently */
     
-    u32 button_color = 0x999999;
-    u32 decoration_color = 0x444444;
+    tgui_u32 button_color = 0x999999;
+    tgui_u32 decoration_color = 0x444444;
     
     if(state.hot == id) {
         button_color = 0x888888;
@@ -413,8 +412,8 @@ void _tgui_button_internal(TGuiWidget *widget, TGuiPainter *painter) {
     char *label = button_state->label;
     TGuiRectangle label_rect = tgui_get_text_dim(0, 0, label);
     
-    s32 label_x = rect.min_x + (tgui_rect_width(rect) - 1) / 2 - (tgui_rect_width(label_rect) - 1) / 2;
-    s32 label_y = rect.min_y + (tgui_rect_height(rect) - 1) / 2 - (tgui_rect_height(label_rect) - 1) / 2;
+    tgui_s32 label_x = rect.min_x + (tgui_rect_width(rect) - 1) / 2 - (tgui_rect_width(label_rect) - 1) / 2;
+    tgui_s32 label_y = rect.min_y + (tgui_rect_height(rect) - 1) / 2 - (tgui_rect_height(label_rect) - 1) / 2;
     tgui_font_draw_text(painter, label_x, label_y, label,  strlen(label), decoration_color);
     tgui_painter_draw_rectangle_outline(painter, rect, decoration_color);
 
@@ -423,14 +422,14 @@ void _tgui_button_internal(TGuiWidget *widget, TGuiPainter *painter) {
     button_state->result = result;
 }
 
-static TGuiRectangle calculate_selection_rect(TGuiTextInput *text_input, s32 x, s32 y, u32 start, u32 end) {
+static TGuiRectangle calculate_selection_rect(TGuiTextInput *text_input, tgui_s32 x, tgui_s32 y, tgui_u32 start, tgui_u32 end) {
 
     if(start > end) {
-        u32 temp = start;
+        tgui_u32 temp = start;
         start = end;
         end = temp;
     }
-    ASSERT(start <= end);
+    TGUI_ASSERT(start <= end);
 
     TGuiRectangle result = {
         x + (start - text_input->offset) * font.max_glyph_width,
@@ -444,22 +443,22 @@ static TGuiRectangle calculate_selection_rect(TGuiTextInput *text_input, s32 x, 
 
 static void delete_selection(TGuiTextInput *text_input) {
     
-    u32 start = text_input->selection_start;
-    u32 end = text_input->selection_end;
+    tgui_u32 start = text_input->selection_start;
+    tgui_u32 end = text_input->selection_end;
 
     if(start > end) {
-        u32 temp = start;
+        tgui_u32 temp = start;
         start = end;
         end = temp;
     }
-    ASSERT(start <= end);
+    TGUI_ASSERT(start <= end);
 
-    ASSERT(text_input->selection == true);
+    TGUI_ASSERT(text_input->selection == true);
     memmove(text_input->buffer + start,
             text_input->buffer + end,
             text_input->used - end);
     
-    ASSERT((end - start) <= text_input->used);
+    TGUI_ASSERT((end - start) <= text_input->used);
     
     text_input->used -= (end - start);
     text_input->selection = false;
@@ -469,11 +468,11 @@ static void delete_selection(TGuiTextInput *text_input) {
     }
 }
 
-TGuiTextInput *_tgui_text_input(TGuiWindowHandle handle, s32 x, s32 y, char *tgui_id) {
+TGuiTextInput *_tgui_text_input(TGuiWindowHandle handle, tgui_s32 x, tgui_s32 y, char *tgui_id) {
     
     TGuiWindow *window = tgui_window_get_from_handle(handle);
 
-    u64 id = tgui_get_widget_id(tgui_id);
+    tgui_u64 id = tgui_get_widget_id(tgui_id);
 
     TGuiTextInput *text_input = tgui_widget_get_state(id, TGuiTextInput);
 
@@ -492,7 +491,7 @@ TGuiTextInput *_tgui_text_input(TGuiWindowHandle handle, s32 x, s32 y, char *tgu
 void _tgui_text_input_internal(TGuiWidget *widget, TGuiPainter *painter) {
 
     TGuiWindow *window = widget->parent;
-    u64 id = widget->id;
+    tgui_u64 id = widget->id;
     
     TGuiKeyboard *keyboard = &input.keyboard;
 
@@ -531,8 +530,8 @@ void _tgui_text_input_internal(TGuiWidget *widget, TGuiPainter *painter) {
     }
 
     TGuiRectangle visible_rect = tgui_rect_intersection(rect, window->dim);
-    u32 padding_x = 8;
-    u32 visible_glyphs = MAX((s32)((tgui_rect_width(visible_rect) - padding_x*2)/font.max_glyph_width), (s32)0);
+    tgui_u32 padding_x = 8;
+    tgui_u32 visible_glyphs = TGUI_MAX((tgui_s32)((tgui_rect_width(visible_rect) - padding_x*2)/font.max_glyph_width), (tgui_s32)0);
 
     if(state.active == id) {
         
@@ -551,12 +550,12 @@ void _tgui_text_input_internal(TGuiWidget *widget, TGuiPainter *painter) {
                 text_input->selection_start = text_input->cursor;
             }
 
-            text_input->cursor = MIN(text_input->cursor + 1, text_input->used);
+            text_input->cursor = TGUI_MIN(text_input->cursor + 1, text_input->used);
 
             /* NOTE: End selection */
             if(text_input->selection) {
                 text_input->selection_end = text_input->cursor;
-                ASSERT(ABS((s32)text_input->selection_end - (s32)text_input->selection_start) <= (s32)text_input->used);
+                TGUI_ASSERT(TGUI_ABS((tgui_s32)text_input->selection_end - (tgui_s32)text_input->selection_start) <= (tgui_s32)text_input->used);
             }
   
         } else if(keyboard->k_l_arrow_down) {
@@ -574,12 +573,12 @@ void _tgui_text_input_internal(TGuiWidget *widget, TGuiPainter *painter) {
                 text_input->selection_start = text_input->cursor;
             }
             
-            text_input->cursor = MAX((s32)text_input->cursor - 1, 0);
+            text_input->cursor = TGUI_MAX((tgui_s32)text_input->cursor - 1, 0);
 
             /* NOTE: End selection */
             if(text_input->selection) {
                 text_input->selection_end = text_input->cursor;
-                ASSERT(ABS((s32)text_input->selection_end - (s32)text_input->selection_start) <= (s32)text_input->used);
+                TGUI_ASSERT(TGUI_ABS((tgui_s32)text_input->selection_end - (tgui_s32)text_input->selection_start) <= (tgui_s32)text_input->used);
             }
         
         } else if(keyboard->k_backspace) {
@@ -628,7 +627,7 @@ void _tgui_text_input_internal(TGuiWidget *widget, TGuiPainter *painter) {
 
             if((text_input->used + input.text_size) > TGUI_TEXT_INPUT_MAX_CHARACTERS) {
                 input.text_size = (TGUI_TEXT_INPUT_MAX_CHARACTERS - text_input->used);
-                ASSERT((text_input->used + input.text_size) == TGUI_TEXT_INPUT_MAX_CHARACTERS);
+                TGUI_ASSERT((text_input->used + input.text_size) == TGUI_TEXT_INPUT_MAX_CHARACTERS);
             }
 
             memmove(text_input->buffer + text_input->cursor + input.text_size, 
@@ -655,7 +654,7 @@ void _tgui_text_input_internal(TGuiWidget *widget, TGuiPainter *painter) {
         }    
     }
 
-    b32 mouse_is_over = tgui_rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
+    tgui_b32 mouse_is_over = tgui_rect_point_overlaps(visible_rect, input.mouse_x, input.mouse_y);
     if(state.active == id && !mouse_is_over && input.mouse_button_was_down && !input.mouse_button_is_down) {
         state.active = 0;
     }
@@ -663,9 +662,9 @@ void _tgui_text_input_internal(TGuiWidget *widget, TGuiPainter *painter) {
     TGuiRectangle saved_painter_clip = painter->clip;
     painter->clip = window->dim; 
     
-    u32 color = 0x888888;
-    u32 decoration_color = 0x333333;
-    u32 cursor_color = 0x00ff00;
+    tgui_u32 color = 0x888888;
+    tgui_u32 decoration_color = 0x333333;
+    tgui_u32 cursor_color = 0x00ff00;
     
     if(state.hot == id) {
         color = 0x888888;
@@ -684,8 +683,8 @@ void _tgui_text_input_internal(TGuiWidget *widget, TGuiPainter *painter) {
     clipping_rect.max_x -= padding_x;
     painter->clip = tgui_rect_intersection(clipping_rect, painter->clip);
     
-    s32 text_x = rect.min_x + padding_x;
-    s32 text_y = rect.min_y + ((tgui_rect_height(rect) - 1) / 2) - ((font.max_glyph_height - 1) / 2);
+    tgui_s32 text_x = rect.min_x + padding_x;
+    tgui_s32 text_y = rect.min_y + ((tgui_rect_height(rect) - 1) / 2) - ((font.max_glyph_height - 1) / 2);
     
 
     if(text_input->selection) {
@@ -710,57 +709,57 @@ void _tgui_text_input_internal(TGuiWidget *widget, TGuiPainter *painter) {
 
 }
 
-static u32 u32_color_mix(u32 color0, f32 t, u32 color1) {
+static tgui_u32 tgui_u32_color_mix(tgui_u32 color0, tgui_f32 t, tgui_u32 color1) {
 
-    u32 r0 = ((color0 >> 16) & 0xff);
-    u32 g0 = ((color0 >>  8) & 0xff);
-    u32 b0 = ((color0 >>  0) & 0xff);
+    tgui_u32 r0 = ((color0 >> 16) & 0xff);
+    tgui_u32 g0 = ((color0 >>  8) & 0xff);
+    tgui_u32 b0 = ((color0 >>  0) & 0xff);
 
-    u32 r1 = ((color1 >> 16) & 0xff);
-    u32 g1 = ((color1 >>  8) & 0xff);
-    u32 b1 = ((color1 >>  0) & 0xff);
+    tgui_u32 r1 = ((color1 >> 16) & 0xff);
+    tgui_u32 g1 = ((color1 >>  8) & 0xff);
+    tgui_u32 b1 = ((color1 >>  0) & 0xff);
 
-    u32 cr = (r0 * (1.0f - t) + r1 * t);
-    u32 cg = (g0 * (1.0f - t) + g1 * t);
-    u32 cb = (b0 * (1.0f - t) + b1 * t);
+    tgui_u32 cr = (r0 * (1.0f - t) + r1 * t);
+    tgui_u32 cg = (g0 * (1.0f - t) + g1 * t);
+    tgui_u32 cb = (b0 * (1.0f - t) + b1 * t);
     
     return (0xff << 24) | (cr << 16) | (cg << 8) | (cb << 0);
 }
 
-void colorpicker_calculate_radiant(TGuiBitmap *bitmap, u32 color) {
+void colorpicker_calculate_radiant(TGuiBitmap *bitmap, tgui_u32 color) {
     
-    u32 w = (bitmap->width - 1) != 0 ? (bitmap->width - 1) : 1;
-    f32 inv_w = 1.0f / w;
+    tgui_u32 w = (bitmap->width - 1) != 0 ? (bitmap->width - 1) : 1;
+    tgui_f32 inv_w = 1.0f / w;
 
-    u32 *pixel = bitmap->pixels;
-    for(u32 x = 0; x < bitmap->width; ++x) { 
-        f32 t = (f32)x * inv_w;
-        *pixel++ = u32_color_mix(0xffffff, t, color);
+    tgui_u32 *pixel = bitmap->pixels;
+    for(tgui_u32 x = 0; x < bitmap->width; ++x) { 
+        tgui_f32 t = (tgui_f32)x * inv_w;
+        *pixel++ = tgui_u32_color_mix(0xffffff, t, color);
     }
     
-    u32 h = (bitmap->height - 1) != 0 ? (bitmap->height - 1) : 1;
-    f32 inv_h = 1.0f / h;
+    tgui_u32 h = (bitmap->height - 1) != 0 ? (bitmap->height - 1) : 1;
+    tgui_f32 inv_h = 1.0f / h;
     
-    for(u32 x = 0; x < bitmap->width; ++x) {
-        u32 color = bitmap->pixels[x];
-        for(u32 y = 1; y < bitmap->height; ++y) {
-            f32 t = (f32)y * inv_h;
-            bitmap->pixels[y*bitmap->width+x] = u32_color_mix(color, t, 0x000000);
+    for(tgui_u32 x = 0; x < bitmap->width; ++x) {
+        tgui_u32 color = bitmap->pixels[x];
+        for(tgui_u32 y = 1; y < bitmap->height; ++y) {
+            tgui_f32 t = (tgui_f32)y * inv_h;
+            bitmap->pixels[y*bitmap->width+x] = tgui_u32_color_mix(color, t, 0x000000);
         }
     } 
 
 
 }
 
-static void colorpicker_claculate_section(TGuiBitmap *bitmap, u32 *cursor_x, u32 advance, u32 color0, u32 color1) {
+static void colorpicker_claculate_section(TGuiBitmap *bitmap, tgui_u32 *cursor_x, tgui_u32 advance, tgui_u32 color0, tgui_u32 color1) {
 
-    f32 inv_advance = advance != 0 ? (1.0f / advance) : 1.0f;
+    tgui_f32 inv_advance = advance != 0 ? (1.0f / advance) : 1.0f;
 
-    for(u32 y = 0; y < bitmap->height; ++y) {
-        u32 xx = *cursor_x;
-        for(u32 x = 0; x < advance; ++x) {
-            f32 t = x * inv_advance;
-            bitmap->pixels[y*bitmap->width+xx++] = u32_color_mix(color0, t, color1);
+    for(tgui_u32 y = 0; y < bitmap->height; ++y) {
+        tgui_u32 xx = *cursor_x;
+        for(tgui_u32 x = 0; x < advance; ++x) {
+            tgui_f32 t = x * inv_advance;
+            bitmap->pixels[y*bitmap->width+xx++] = tgui_u32_color_mix(color0, t, color1);
         }
     }
 
@@ -769,11 +768,11 @@ static void colorpicker_claculate_section(TGuiBitmap *bitmap, u32 *cursor_x, u32
 
 void colorpicker_calculate_mini_radiant(TGuiBitmap *bitmap) {
     
-    u32 advance = 0;
-    u32 cursor_x = 0;
+    tgui_u32 advance = 0;
+    tgui_u32 cursor_x = 0;
     
-    u32 color0 = 0xff0000;
-    u32 color1 = 0xffff00;
+    tgui_u32 color0 = 0xff0000;
+    tgui_u32 color1 = 0xffff00;
     advance = (bitmap->width * 1.0f/6.0f);
     colorpicker_claculate_section(bitmap, &cursor_x, advance - cursor_x, color0, color1);
     
@@ -804,17 +803,17 @@ void colorpicker_calculate_mini_radiant(TGuiBitmap *bitmap) {
 
 }
 
-void tgui_u32_color_to_hsv_color(u32 color, f32 *h, f32 *s, f32 *v) {
+void tgui_tgui_u32_color_to_hsv_color(tgui_u32 color, tgui_f32 *h, tgui_f32 *s, tgui_f32 *v) {
     
-    s32 r = ((color >> 16) & 0xff);// / 255.0f;
-    s32 g = ((color >>  8) & 0xff);// / 255.0f;
-    s32 b = ((color >>  0) & 0xff);// / 255.0f;
+    tgui_s32 r = ((color >> 16) & 0xff);// / 255.0f;
+    tgui_s32 g = ((color >>  8) & 0xff);// / 255.0f;
+    tgui_s32 b = ((color >>  0) & 0xff);// / 255.0f;
 
-    s32 M = MAX3(r, g, b);
-    s32 m = MIN3(r, g, b);
-    f32 chroma = M - m;
+    tgui_s32 M = TGUI_MAX3(r, g, b);
+    tgui_s32 m = TGUI_MIN3(r, g, b);
+    tgui_f32 chroma = M - m;
     
-    f32 hue = 0;
+    tgui_f32 hue = 0;
     if(chroma > 0.00001f) {
         if(M <= r) {
             hue = fmod((g-b)/chroma, 6);
@@ -827,29 +826,29 @@ void tgui_u32_color_to_hsv_color(u32 color, f32 *h, f32 *s, f32 *v) {
     hue *= 60;
     if(hue < 0) hue += 360;
 
-    f32 saturation = 0;
+    tgui_f32 saturation = 0;
     if(M != 0) {
-        saturation = chroma / (f32)M;
+        saturation = chroma / (tgui_f32)M;
     }
-    f32 value = M / 255.0f;
+    tgui_f32 value = M / 255.0f;
 
     *h = hue / 360.0f;
     *s = saturation;
     *v = value;
 }
 
-static u32 colorpicker_get_color_hue(TGuiColorPicker *colorpicker) {
-    return colorpicker->mini_radiant.pixels[(u32)(colorpicker->hue * (colorpicker->mini_radiant.width - 0))];
+static tgui_u32 colorpicker_get_color_hue(TGuiColorPicker *colorpicker) {
+    return colorpicker->mini_radiant.pixels[(tgui_u32)(colorpicker->hue * (colorpicker->mini_radiant.width - 0))];
 }
 
-void _tgui_color_picker(TGuiWindowHandle handle, s32 x, s32 y, s32 w, s32 h, u32 *color, char *tgui_id) {
+void _tgui_color_picker(TGuiWindowHandle handle, tgui_s32 x, tgui_s32 y, tgui_s32 w, tgui_s32 h, tgui_u32 *color, char *tgui_id) {
 
     TGuiWindow *window = tgui_window_get_from_handle(handle);
 
     if(!tgui_window_update_widget(window)) {
         return;
     }
-    u64 id = tgui_get_widget_id(tgui_id);
+    tgui_u64 id = tgui_get_widget_id(tgui_id);
     
     TGuiColorPicker *colorpicker = tgui_widget_get_state(id, TGuiColorPicker);
     colorpicker->color_ptr = color;
@@ -861,9 +860,9 @@ void _tgui_color_picker(TGuiWindowHandle handle, s32 x, s32 y, s32 w, s32 h, u32
 void _tgui_color_picker_internal(TGuiWidget *widget, TGuiPainter *painter) {
     
     TGuiWindow *window = widget->parent;
-    u64 id = widget->id;
-    u32 w = widget->w;
-    u32 h = widget->h;
+    tgui_u64 id = widget->id;
+    tgui_u32 w = widget->w;
+    tgui_u32 h = widget->h;
     
     TGuiRectangle rect = calculate_widget_rect(widget);
     tgui_calculate_hot_widget(window, rect, id);
@@ -872,12 +871,12 @@ void _tgui_color_picker_internal(TGuiWidget *widget, TGuiPainter *painter) {
 
     /* TODO: Actually use hue saturation and value from the color */
     if(colorpicker->color_ptr) {
-        f32 hue, saturation, value;
-        tgui_u32_color_to_hsv_color(*colorpicker->color_ptr, &hue, &saturation, &value);
+        tgui_f32 hue, saturation, value;
+        tgui_tgui_u32_color_to_hsv_color(*colorpicker->color_ptr, &hue, &saturation, &value);
     }
 
-    f32 radiant_h = h * 0.75f; 
-    f32 mini_radiant_h = h * 0.2f;
+    tgui_f32 radiant_h = h * 0.75f; 
+    tgui_f32 mini_radiant_h = h * 0.2f;
     
     if(!colorpicker->initialize) {
          
@@ -898,7 +897,7 @@ void _tgui_color_picker_internal(TGuiWidget *widget, TGuiPainter *painter) {
     TGuiRectangle mini_radiant_rect = tgui_rect_from_wh(rect.min_x, rect.max_y - mini_radiant_h, colorpicker->mini_radiant.width, colorpicker->mini_radiant.height);
 
     if(state.hot == id) {
-        b32 mouse_is_over = tgui_rect_point_overlaps(mini_radiant_rect, input.mouse_x, input.mouse_y); 
+        tgui_b32 mouse_is_over = tgui_rect_point_overlaps(mini_radiant_rect, input.mouse_x, input.mouse_y); 
         if(mouse_is_over && input.mouse_button_is_down && !input.mouse_button_was_down) {
             state.active = id;
             colorpicker->hue_cursor_active = true;
@@ -918,21 +917,21 @@ void _tgui_color_picker_internal(TGuiWidget *widget, TGuiPainter *painter) {
     }
 
     if(colorpicker->hue_cursor_active) {
-        colorpicker->hue = CLAMP((input.mouse_x - mini_radiant_rect.min_x) / (f32)colorpicker->mini_radiant.width, 0, 1);
+        colorpicker->hue = TGUI_CLAMP((input.mouse_x - mini_radiant_rect.min_x) / (tgui_f32)colorpicker->mini_radiant.width, 0, 1);
     }
 
     if(colorpicker->sv_cursor_active) {
-        colorpicker->saturation =  CLAMP((input.mouse_x - radiant_rect.min_x) / (f32)colorpicker->radiant.width, 0, 1);
-        colorpicker->value      =  CLAMP((input.mouse_y - radiant_rect.min_y) / (f32)colorpicker->radiant.height, 0, 1);
+        colorpicker->saturation =  TGUI_CLAMP((input.mouse_x - radiant_rect.min_x) / (tgui_f32)colorpicker->radiant.width, 0, 1);
+        colorpicker->value      =  TGUI_CLAMP((input.mouse_y - radiant_rect.min_y) / (tgui_f32)colorpicker->radiant.height, 0, 1);
     }
 
-    u32 cursor_w = 6;
+    tgui_u32 cursor_w = 6;
     TGuiRectangle hue_cursor = mini_radiant_rect;
 
     hue_cursor.min_x += (colorpicker->hue * (colorpicker->mini_radiant.width - cursor_w)); 
     hue_cursor.max_x = hue_cursor.min_x + cursor_w - 1;  
 
-    u32 radiant_color = colorpicker_get_color_hue(colorpicker);
+    tgui_u32 radiant_color = colorpicker_get_color_hue(colorpicker);
     if(colorpicker->saved_radiant_color != radiant_color) {
         colorpicker_calculate_radiant(&colorpicker->radiant, radiant_color);
         colorpicker->saved_radiant_color = radiant_color;
@@ -941,8 +940,8 @@ void _tgui_color_picker_internal(TGuiWidget *widget, TGuiPainter *painter) {
     TGuiRectangle saved_clip = painter->clip;
     painter->clip = tgui_rect_intersection(painter->clip, window->dim);
 
-    u32 color_x = colorpicker->saturation * (colorpicker->radiant.width -  1);
-    u32 color_y = colorpicker->value * (colorpicker->radiant.height - 1);
+    tgui_u32 color_x = colorpicker->saturation * (colorpicker->radiant.width -  1);
+    tgui_u32 color_y = colorpicker->value * (colorpicker->radiant.height - 1);
    
 #if 0 
     painter_draw_bitmap_no_alpha(painter, radiant_rect.min_x, radiant_rect.min_y, &colorpicker->radiant);
@@ -977,7 +976,7 @@ TGuiTreeViewNode *treeview_alloc_node(TGuiTreeView *treeview, void *user_data) {
     } else {
         node = tgui_arena_push_struct(&state.arena, TGuiTreeViewNode, 8);
     }
-    ASSERT(node);
+    TGUI_ASSERT(node);
     memset(node, 0, sizeof(TGuiTreeViewNode));
     node->user_data = user_data;
     return node;
@@ -1021,7 +1020,7 @@ void _tgui_tree_view_begin(TGuiWindowHandle handle, char *tgui_id) {
 
     TGuiWindow *window = tgui_window_get_from_handle(handle);
 
-    u32 id = tgui_get_widget_id(tgui_id);
+    tgui_u32 id = tgui_get_widget_id(tgui_id);
 
     state.active_id = id;
     state.active_window = window;
@@ -1048,8 +1047,8 @@ void _tgui_tree_view_begin(TGuiWindowHandle handle, char *tgui_id) {
 
         tgui_array_reserve(&treeview->root_node_state,    256);
         tgui_array_reserve(&treeview->selected_node_data, 256);
-        for(u32 i = 0; i < tgui_array_size(&treeview->root_node_state); ++i) {
-            b32 *root_state = tgui_array_get_ptr(&treeview->root_node_state, i);
+        for(tgui_u32 i = 0; i < tgui_array_size(&treeview->root_node_state); ++i) {
+            tgui_b32 *root_state = tgui_array_get_ptr(&treeview->root_node_state, i);
             *root_state = true;
         }
 
@@ -1076,10 +1075,10 @@ void _tgui_tree_view_end(void **selected_data) {
     }
 
     TGuiTreeView *treeview = tgui_widget_get_state(state.active_id, TGuiTreeView);
-    s32 x = treeview->dim.min_x;
-    s32 y = treeview->dim.min_y;
-    s32 w = tgui_rect_width(treeview->dim);
-    s32 h = tgui_rect_height(treeview->dim);
+    tgui_s32 x = treeview->dim.min_x;
+    tgui_s32 y = treeview->dim.min_y;
+    tgui_s32 w = tgui_rect_width(treeview->dim);
+    tgui_s32 h = tgui_rect_height(treeview->dim);
 
     tgui_widget_alloc_into_window(state.active_id, _tgui_tree_view_internal, state.active_window, x, y, w, h);
 
@@ -1093,8 +1092,8 @@ void _tgui_tree_view_end(void **selected_data) {
     }
 }
 
-void treeview_node_setup(TGuiTreeView *treeview, TGuiTreeViewNode *node, char *label, s32 depth) {
-    UNUSED(treeview);
+void treeview_node_setup(TGuiTreeView *treeview, TGuiTreeViewNode *node, char *label, tgui_s32 depth) {
+    TGUI_UNUSED(treeview);
 
     node->label = label;
 
@@ -1102,22 +1101,22 @@ void treeview_node_setup(TGuiTreeView *treeview, TGuiTreeViewNode *node, char *l
     if(node->selected_state_index >= tgui_array_size(&treeview->selected_node_data)) {
         tgui_array_push(&treeview->selected_node_data);
     }
-    ASSERT(treeview->selected_node_data_head <= tgui_array_size(&treeview->selected_node_data));
+    TGUI_ASSERT(treeview->selected_node_data_head <= tgui_array_size(&treeview->selected_node_data));
 
     if(node->childs) {
         node->state_index = treeview->root_node_state_head++;
         if(node->state_index >= tgui_array_size(&treeview->root_node_state)) {
             tgui_array_push(&treeview->root_node_state);
         }
-        ASSERT(treeview->root_node_state_head <= tgui_array_size(&treeview->root_node_state));
+        TGUI_ASSERT(treeview->root_node_state_head <= tgui_array_size(&treeview->root_node_state));
     }
 
     node->label_depth = depth;
     
     if((node->parent && node->parent == treeview->root) || (node->parent && tgui_array_get(&treeview->root_node_state, node->parent->state_index) && node->parent->visible)){
         
-        u32 depth_in_pixels = depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH;
-        u32 x = treeview->padding*2 + treeview->rect_w + depth_in_pixels;
+        tgui_u32 depth_in_pixels = depth*TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH;
+        tgui_u32 x = treeview->padding*2 + treeview->rect_w + depth_in_pixels;
         
         TGuiRectangle text_label = tgui_get_text_dim(x, treeview->dim.max_y+1, label);
         treeview->dim = tgui_rect_union(treeview->dim, text_label);
@@ -1174,10 +1173,10 @@ void _tgui_tree_view_node(char *label, void *user_data) {
 
 void tree_view_translate_node_dim(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
 
-    s32 x = node->dim.min_x;
-    s32 y = node->dim.min_y;
-    s32 w = tgui_rect_width(node->dim);
-    s32 h = tgui_rect_height(node->dim);
+    tgui_s32 x = node->dim.min_x;
+    tgui_s32 y = node->dim.min_y;
+    tgui_s32 w = tgui_rect_width(node->dim);
+    tgui_s32 h = tgui_rect_height(node->dim);
     
     TGuiRectangle treeview_rect = treeview->dim; 
     TGuiRectangle result = {
@@ -1205,13 +1204,13 @@ TGuiRectangle treeview_node_get_fake_dim(TGuiTreeViewNode *node, TGuiWindow *win
 }
 
 TGuiRectangle treeview_calculate_node_cruz_rect(TGuiTreeView *treeview, TGuiTreeViewNode *node) {
-    s32 x = node->dim.min_x + treeview->rect_w/2;
-    s32 y = node->dim.min_y + treeview->rect_w/2;
+    tgui_s32 x = node->dim.min_x + treeview->rect_w/2;
+    tgui_s32 y = node->dim.min_y + treeview->rect_w/2;
     TGuiRectangle result = tgui_rect_from_wh(x, y, treeview->rect_w, treeview->rect_w);
     return result;
 }
 
-void treeview_node_draw(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeViewNode *node, TGuiPainter *painter, u32 *color) {
+void treeview_node_draw(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeViewNode *node, TGuiPainter *painter, tgui_u32 *color) {
     if(!node->visible) return;
 
     if(*color == TGUI_TREEVIEW_COLOR0) {
@@ -1224,11 +1223,11 @@ void treeview_node_draw(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeView
 
     TGuiRectangle fake_node_dim = treeview_node_get_fake_dim(node, window);
     
-    u32 rect_w = treeview->rect_w;
-    u32 padding = treeview->padding;
+    tgui_u32 rect_w = treeview->rect_w;
+    tgui_u32 padding = treeview->padding;
 
-    b32 mouse_in_node = tgui_rect_point_overlaps(fake_node_dim, input.mouse_x, input.mouse_y);
-    u32 _color = *color;
+    tgui_b32 mouse_in_node = tgui_rect_point_overlaps(fake_node_dim, input.mouse_x, input.mouse_y);
+    tgui_u32 _color = *color;
     if(state.hot == widget->id && mouse_in_node) {
         _color = 0xaaaaff;
     }
@@ -1238,17 +1237,17 @@ void treeview_node_draw(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeView
 
     tgui_painter_draw_rectangle(painter, fake_node_dim, _color);
 
-    if((u32)treeview->selection_index == node->selected_state_index && tgui_array_get(&treeview->selected_node_data, treeview->selection_index)) {
+    if((tgui_u32)treeview->selection_index == node->selected_state_index && tgui_array_get(&treeview->selected_node_data, treeview->selection_index)) {
         _color = 0xaaaaff;
         tgui_painter_draw_rectangle_outline(painter, fake_node_dim, _color);
     }
 
 
-    s32 label_x = node->dim.min_x + treeview->rect_w/2;
+    tgui_s32 label_x = node->dim.min_x + treeview->rect_w/2;
     tgui_font_draw_text(painter, label_x+rect_w+padding, node->dim.min_y, node->label, strlen(node->label), 0x333333);
 
-    for(u32 i = 0; i < node->label_depth; ++i) {
-        u32 depth_in_pixel = TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH * ((node->label_depth-1) - i);
+    for(tgui_u32 i = 0; i < node->label_depth; ++i) {
+        tgui_u32 depth_in_pixel = TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH * ((node->label_depth-1) - i);
         tgui_painter_draw_vline(painter, node->dim.min_x - treeview->rect_w - depth_in_pixel, node->dim.min_y, node->dim.max_y, 0x333333);
     }
     
@@ -1309,8 +1308,8 @@ void treeview_update_node(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeVi
 
     TGuiRectangle fake_node_dim = treeview_node_get_fake_dim(node, window);
 
-    u64 id = widget->id;
-    b32 mouse_in_node = tgui_rect_point_overlaps(fake_node_dim, input.mouse_x, input.mouse_y);
+    tgui_u64 id = widget->id;
+    tgui_b32 mouse_in_node = tgui_rect_point_overlaps(fake_node_dim, input.mouse_x, input.mouse_y);
 
     if(state.hot == id) {
         if(mouse_in_node && input.mouse_button_is_down && !input.mouse_button_was_down) {
@@ -1319,14 +1318,14 @@ void treeview_update_node(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeVi
     }
     
     TGuiRectangle cruz_rect = treeview_calculate_node_cruz_rect(treeview, node);
-    b32 on_cruz = tgui_rect_point_overlaps(cruz_rect, input.mouse_x, input.mouse_y);
+    tgui_b32 on_cruz = tgui_rect_point_overlaps(cruz_rect, input.mouse_x, input.mouse_y);
     
     if(state.active == id) {
         
         if(on_cruz && node->childs) {
             
             if(!input.mouse_button_is_down) {
-                b32 *root_node_state = tgui_array_get_ptr(&treeview->root_node_state, node->state_index);
+                tgui_b32 *root_node_state = tgui_array_get_ptr(&treeview->root_node_state, node->state_index);
                 *root_node_state = !(*root_node_state);
                 state.active = 0;
             } 
@@ -1335,14 +1334,14 @@ void treeview_update_node(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeVi
             if(mouse_in_node && input.mouse_button_is_down) {
                 
                 if(treeview->selection_index >= 0) {
-                    b32 *selected_node_data = tgui_array_get_ptr(&treeview->selected_node_data, treeview->selection_index); 
+                    tgui_b32 *selected_node_data = tgui_array_get_ptr(&treeview->selected_node_data, treeview->selection_index); 
                     *selected_node_data = false;
                 }
 
                 treeview->selection_data = node->user_data;
                 treeview->selection_index = node->selected_state_index;
 
-                b32 *selected_node_data = tgui_array_get_ptr(&treeview->selected_node_data, treeview->selection_index); 
+                tgui_b32 *selected_node_data = tgui_array_get_ptr(&treeview->selected_node_data, treeview->selection_index); 
                 *selected_node_data = true;
                 state.active = 0;
             }
@@ -1368,7 +1367,7 @@ void treeview_update_node(TGuiWidget *widget, TGuiTreeView *treeview, TGuiTreeVi
 void _tgui_tree_view_internal(TGuiWidget *widget, TGuiPainter *painter) {
 
     TGuiWindow *window = widget->parent;
-    u64 id = widget->id;
+    tgui_u64 id = widget->id;
 
     TGuiTreeView *treeview = tgui_widget_get_state(id, TGuiTreeView);
     treeview->dim = calculate_widget_rect(widget); 
@@ -1377,7 +1376,7 @@ void _tgui_tree_view_internal(TGuiWidget *widget, TGuiPainter *painter) {
 
     tgui_calculate_hot_widget(window, fake_treeview_dim, id);
 
-    u32 color = TGUI_TREEVIEW_COLOR0;
+    tgui_u32 color = TGUI_TREEVIEW_COLOR0;
     TGuiTreeViewNode *node = treeview->root->childs->next;
     while(!tgui_clink_list_end(node, treeview->root->childs)) {
         treeview_translate_node(treeview, node);
@@ -1387,11 +1386,11 @@ void _tgui_tree_view_internal(TGuiWidget *widget, TGuiPainter *painter) {
     }
 }
 
-void _tgui_dropdown_menu(TGuiWindowHandle handle, s32 x, s32 y, char **options, u32 options_size, s32 *selected_option_index, char *tgui_id) {
+void _tgui_dropdown_menu(TGuiWindowHandle handle, tgui_s32 x, tgui_s32 y, char **options, tgui_u32 options_size, tgui_s32 *selected_option_index, char *tgui_id) {
 
     TGuiWindow *window = tgui_window_get_from_handle(handle);
     
-    u64 id = tgui_get_widget_id(tgui_id);
+    tgui_u64 id = tgui_get_widget_id(tgui_id);
 
     if(!tgui_window_update_widget(window)) {
         if(state.active == id) {
@@ -1410,8 +1409,8 @@ void _tgui_dropdown_menu(TGuiWindowHandle handle, s32 x, s32 y, char **options, 
     dropdown->options = options;
     dropdown->options_size = options_size;
     
-    u32 dropdown_w = TGUI_DROPDOWN_MENU_DELFAUT_W;
-    u32 dropdown_h = TGUI_DROPDOWN_MENU_DELFAUT_H;
+    tgui_u32 dropdown_w = TGUI_DROPDOWN_MENU_DELFAUT_W;
+    tgui_u32 dropdown_h = TGUI_DROPDOWN_MENU_DELFAUT_H;
 
     if(state.active == id) {
         dropdown_h += options_size * dropdown_h;
@@ -1423,15 +1422,15 @@ void _tgui_dropdown_menu(TGuiWindowHandle handle, s32 x, s32 y, char **options, 
 
 }
 
-TGuiRectangle calculate_option_rect(s32 x, s32 y, s32 option_index) {
+TGuiRectangle calculate_option_rect(tgui_s32 x, tgui_s32 y, tgui_s32 option_index) {
     return tgui_rect_from_wh(x, y + TGUI_DROPDOWN_MENU_DELFAUT_H*(option_index + 1), TGUI_DROPDOWN_MENU_DELFAUT_W, TGUI_DROPDOWN_MENU_DELFAUT_H);
 }
 
-b32 mouse_in_window_scrollbar(TGuiWindow *window, s32 x, s32 y) {
-    b32 result = false;
+tgui_b32 mouse_in_window_scrollbar(TGuiWindow *window, tgui_s32 x, tgui_s32 y) {
+    tgui_b32 result = false;
 
-    b32 v_scroll_valid = !tgui_rect_invalid(window->v_scroll_bar);
-    b32 h_scroll_valid = !tgui_rect_invalid(window->h_scroll_bar);
+    tgui_b32 v_scroll_valid = !tgui_rect_invalid(window->v_scroll_bar);
+    tgui_b32 h_scroll_valid = !tgui_rect_invalid(window->h_scroll_bar);
     
     if(v_scroll_valid) {
         result = result || tgui_rect_point_overlaps(window->v_scroll_bar, x, y);
@@ -1447,14 +1446,14 @@ b32 mouse_in_window_scrollbar(TGuiWindow *window, s32 x, s32 y) {
 void _tgui_dropdown_menu_internal(TGuiWidget *widget, TGuiPainter *painter) {
     
     TGuiWindow *window = widget->parent;
-    u64 id = widget->id;
+    tgui_u64 id = widget->id;
     
     TGuiRectangle rect = calculate_widget_rect(widget);
     TGuiDropDownMenu *dropdown = tgui_widget_get_state(id, TGuiDropDownMenu);
     
     tgui_calculate_hot_widget(window, rect, id);
     
-    b32 mouse_in_node = tgui_rect_point_overlaps(rect, input.mouse_x, input.mouse_y);
+    tgui_b32 mouse_in_node = tgui_rect_point_overlaps(rect, input.mouse_x, input.mouse_y);
 
     if(state.hot == id) {
         if(mouse_in_node && input.mouse_button_is_down && !input.mouse_button_was_down) {
@@ -1478,7 +1477,7 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, TGuiPainter *painter) {
 
         if(mouse_in_node && !input.mouse_button_is_down && input.mouse_button_was_down && state.hot == id) {
 
-            for(u32 i = 0; i < dropdown->options_size; ++i) {
+            for(tgui_u32 i = 0; i < dropdown->options_size; ++i) {
                 TGuiRectangle option_rect = calculate_option_rect(rect.min_x, rect.min_y, i);
                 if(tgui_rect_point_overlaps(option_rect, input.mouse_x, input.mouse_y)) {
                     dropdown->selected_option = i;
@@ -1494,16 +1493,16 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, TGuiPainter *painter) {
     painter->clip = tgui_rect_intersection(rect, painter->clip);
     
     if(state.active == id) {
-        for(u32 i = 0; i < dropdown->options_size; ++i) {
+        for(tgui_u32 i = 0; i < dropdown->options_size; ++i) {
             TGuiRectangle option_rect = calculate_option_rect(rect.min_x, rect.min_y, i);
 
             char *label = dropdown->options[i];
             TGuiRectangle label_rect = tgui_get_text_dim(0, 0, label);
             
-            s32 label_x = option_rect.min_x + (tgui_rect_width(option_rect) - 1) / 2 - (tgui_rect_width(label_rect) - 1) / 2;
-            s32 label_y = option_rect.min_y + (tgui_rect_height(option_rect) - 1) / 2 - (tgui_rect_height(label_rect) - 1) / 2;
+            tgui_s32 label_x = option_rect.min_x + (tgui_rect_width(option_rect) - 1) / 2 - (tgui_rect_width(label_rect) - 1) / 2;
+            tgui_s32 label_y = option_rect.min_y + (tgui_rect_height(option_rect) - 1) / 2 - (tgui_rect_height(label_rect) - 1) / 2;
 
-            u32 color = 0x999999;
+            tgui_u32 color = 0x999999;
             if(state.hot == id && tgui_rect_point_overlaps(option_rect, input.mouse_x, input.mouse_y)) {
                 color = 0x777777;
             }
@@ -1513,21 +1512,21 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, TGuiPainter *painter) {
         }
     }
     
-    u32 cruz_w = 8;
+    tgui_u32 cruz_w = 8;
 
     TGuiRectangle option_rect = header_rect;
     char *label = dropdown->options[dropdown->selected_option];
     TGuiRectangle label_rect = tgui_get_text_dim(0, 0, label);
 
-    s32 label_x = option_rect.min_x + (tgui_rect_width(option_rect) - 1) / 2 - (tgui_rect_width(label_rect) - 1) / 2 - cruz_w;
-    s32 label_y = option_rect.min_y + (tgui_rect_height(option_rect) - 1) / 2 - (tgui_rect_height(label_rect) - 1) / 2;
+    tgui_s32 label_x = option_rect.min_x + (tgui_rect_width(option_rect) - 1) / 2 - (tgui_rect_width(label_rect) - 1) / 2 - cruz_w;
+    tgui_s32 label_y = option_rect.min_y + (tgui_rect_height(option_rect) - 1) / 2 - (tgui_rect_height(label_rect) - 1) / 2;
 
     tgui_painter_draw_rectangle(painter, header_rect, 0x444444);
     tgui_painter_draw_rectangle_outline(painter, rect, 0x222222);
     tgui_font_draw_text(painter, label_x, label_y, label, strlen(label), 0x999999);
 
-    s32 cruz_x = rect.max_x - (cruz_w + 12);
-    s32 cruz_y = option_rect.min_y + (tgui_rect_height(option_rect) - 1) / 2 - (cruz_w - 1) / 2;
+    tgui_s32 cruz_x = rect.max_x - (cruz_w + 12);
+    tgui_s32 cruz_y = option_rect.min_y + (tgui_rect_height(option_rect) - 1) / 2 - (cruz_w - 1) / 2;
 
     TGuiRectangle cruz_rect = tgui_rect_from_wh(cruz_x, cruz_y, cruz_w, cruz_w);
     if(state.active != id) {
@@ -1558,7 +1557,7 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, TGuiPainter *painter) {
 /*       TGui Window      */
 /* ---------------------- */
 
-b32 tgui_window_flag_is_set(TGuiWindow *window, TGuiWindowFlags flags) {
+tgui_b32 tgui_window_flag_is_set(TGuiWindow *window, TGuiWindowFlags flags) {
     return window->flags & flags;
 }
 
@@ -1576,7 +1575,7 @@ TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, TGuiWindowFlag
     tgui_clink_list_insert_back(list, allocated_window_node);
 
     TGuiWindow *window = &allocated_window_node->window;
-    ASSERT(window);
+    TGUI_ASSERT(window);
 
     window->id = state.window_id_generator++;
     tgui_docker_window_node_add_window(parent, window);
@@ -1602,33 +1601,33 @@ TGuiWindow *tgui_window_get_from_handle(TGuiWindowHandle handle) {
         if(window->id == handle) return window;
         allocated_window = allocated_window->next;
     }
-    ASSERT(!"Invalid code path");
+    TGUI_ASSERT(!"Invalid code path");
     return NULL;
 }
 
-TGuiWindowHandle tgui_create_root_window(char *name, b32 scroll) {
+TGuiWindowHandle tgui_create_root_window(char *name, tgui_b32 scroll) {
     TGuiDockerNode *window_node = window_node_alloc(0);
     tgui_docker_set_root_node(window_node);
     TGuiWindow *window = tgui_window_alloc(window_node, name, scroll, state.allocated_windows);
-    ASSERT(window);
+    TGUI_ASSERT(window);
     return window->id;
 }
 
-TGuiWindowHandle tgui_split_window(TGuiWindowHandle handle, TGuiSplitDirection dir, char *name, b32 scroll) {
+TGuiWindowHandle tgui_split_window(TGuiWindowHandle handle, TGuiSplitDirection dir, char *name, tgui_b32 scroll) {
     TGuiWindow *window = tgui_window_get_from_handle(handle);
 
     TGuiDockerNode *window_node = window->parent; 
-    ASSERT(window_node->type == TGUI_DOCKER_NODE_WINDOW);
+    TGUI_ASSERT(window_node->type == TGUI_DOCKER_NODE_WINDOW);
 
     TGuiDockerNode *new_window_node = window_node_alloc(window_node->parent);
     tgui_docker_node_split(window_node, dir, TGUI_POS_FRONT, new_window_node);
     
     TGuiWindow *new_window = tgui_window_alloc(new_window_node, name, scroll, state.allocated_windows);
-    ASSERT(new_window);
+    TGUI_ASSERT(new_window);
     return new_window->id;
 }
 
-void tgui_window_set_transparent(TGuiWindowHandle handle, b32 state) {
+void tgui_window_set_transparent(TGuiWindowHandle handle, tgui_b32 state) {
     TGuiWindow *window = tgui_window_get_from_handle(handle);
     if(state == true) {
         tgui_window_flag_set(window, TGUI_WINDOW_TRANSPARENT);
@@ -1641,7 +1640,7 @@ void tgui_window_set_transparent(TGuiWindowHandle handle, b32 state) {
 /*       TGui Fuction     */
 /* ---------------------- */
 
-void tgui_initialize(s32 window_w, s32 window_h, TGuiGfxBackend *gfx) {
+void tgui_initialize(tgui_s32 window_w, tgui_s32 window_h, TGuiGfxBackend *gfx) {
 
     tgui_os_initialize();
     
@@ -1694,8 +1693,8 @@ void tgui_terminate(void) {
     memset(&state, 0, sizeof(TGui));
 }
 
-static u32 tgui_allocated_window_list_size(TGuiAllocatedWindow *list) {
-    u32 result = 0;
+static tgui_u32 tgui_allocated_window_list_size(TGuiAllocatedWindow *list) {
+    tgui_u32 result = 0;
     TGuiAllocatedWindow *allocated_window = list->next;
     while(!tgui_clink_list_end(allocated_window, list)) {
         result += 1;
@@ -1704,7 +1703,7 @@ static u32 tgui_allocated_window_list_size(TGuiAllocatedWindow *list) {
     return result;
 }
 
-static b32 tgui_allocated_window_equals(TGuiAllocatedWindow *allocated_window0, TGuiAllocatedWindow *allocated_window1) {
+static tgui_b32 tgui_allocated_window_equals(TGuiAllocatedWindow *allocated_window0, TGuiAllocatedWindow *allocated_window1) {
 
     if(allocated_window0->window.id != allocated_window1->window.id) {
         return false;
@@ -1717,14 +1716,14 @@ static b32 tgui_allocated_window_equals(TGuiAllocatedWindow *allocated_window0, 
     return true;
 }
 
-static b32 tgui_node_tree_valid(TGuiDockerNode *node, TGuiAllocatedWindow *allocated_windows) {
-    UNUSED(node);
+static tgui_b32 tgui_node_tree_valid(TGuiDockerNode *node, TGuiAllocatedWindow *allocated_windows) {
+    TGUI_UNUSED(node);
     
     if(tgui_allocated_window_list_size(state.allocated_windows) != tgui_allocated_window_list_size(allocated_windows)) {
         return false;
     }
 
-    b32 window_found = false;
+    tgui_b32 window_found = false;
 
     TGuiAllocatedWindow *allocated_window = state.allocated_windows->next;
     while(!tgui_clink_list_end(allocated_window, state.allocated_windows)) {
@@ -1786,11 +1785,11 @@ void tgui_try_to_load_data_file(void) {
     }
 }
 
-void tgui_begin(f32 dt) {
+void tgui_begin(tgui_f32 dt) {
     state.dt = dt;
 
-    input.mouse_x = CLAMP(input.mouse_x, 0, (input.resize_w-1));
-    input.mouse_y = CLAMP(input.mouse_y, 0, (input.resize_h-1));
+    input.mouse_x = TGUI_CLAMP(input.mouse_x, 0, (input.resize_w-1));
+    input.mouse_y = TGUI_CLAMP(input.mouse_y, 0, (input.resize_h-1));
 
     tgui_docker_update();
 
@@ -1819,8 +1818,8 @@ static inline TGuiRectangle calculate_total_widget_rect(TGuiWindow *window) {
 void tgui_scroll_window_recalculate_dim(TGuiWindow *window) {
     if(!tgui_window_flag_is_set(window, TGUI_WINDOW_SCROLLING)) return;
     
-    b32 h_bar_added = false;
-    b32 v_bar_added = false;
+    tgui_b32 h_bar_added = false;
+    tgui_b32 v_bar_added = false;
     TGuiRectangle widget_rect;
     
     TGuiRectangle last_scroll_rect = window->scroll_saved_rect;
@@ -1856,10 +1855,10 @@ void tgui_scroll_window_recalculate_dim(TGuiWindow *window) {
         window->h_scroll_bar.max_y = window->h_scroll_bar.min_y + TGUI_SCROLL_BAR_SIZE - 1;
        
         if(!tgui_rect_invalid(last_scroll_rect)) {
-            u32 last_scroll_w = tgui_rect_width(last_scroll_rect) - tgui_rect_width(window->dim);
-            u32 saved_scroll_w = tgui_rect_width(window->scroll_saved_rect) - tgui_rect_width(window->dim);
+            tgui_u32 last_scroll_w = tgui_rect_width(last_scroll_rect) - tgui_rect_width(window->dim);
+            tgui_u32 saved_scroll_w = tgui_rect_width(window->scroll_saved_rect) - tgui_rect_width(window->dim);
             if(tgui_rect_width(last_scroll_rect) != tgui_rect_width(window->scroll_saved_rect)) {
-                window->h_scroll_offset = CLAMP((f32)window->h_scroll_offset * (f32)last_scroll_w / (f32)saved_scroll_w, 0, 1);
+                window->h_scroll_offset = TGUI_CLAMP((tgui_f32)window->h_scroll_offset * (tgui_f32)last_scroll_w / (tgui_f32)saved_scroll_w, 0, 1);
             }
         }
 
@@ -1875,10 +1874,10 @@ void tgui_scroll_window_recalculate_dim(TGuiWindow *window) {
         window->v_scroll_bar.max_x = window->v_scroll_bar.min_x + TGUI_SCROLL_BAR_SIZE - 1;
     
         if(!tgui_rect_invalid(last_scroll_rect)) {
-            u32 last_scroll_h = tgui_rect_height(last_scroll_rect) - tgui_rect_height(window->dim);
-            u32 saved_scroll_h = tgui_rect_height(window->scroll_saved_rect) - tgui_rect_height(window->dim);
+            tgui_u32 last_scroll_h = tgui_rect_height(last_scroll_rect) - tgui_rect_height(window->dim);
+            tgui_u32 saved_scroll_h = tgui_rect_height(window->scroll_saved_rect) - tgui_rect_height(window->dim);
             if(tgui_rect_height(last_scroll_rect) != tgui_rect_height(window->scroll_saved_rect)) {
-                window->v_scroll_offset = CLAMP((f32)window->v_scroll_offset * (f32)last_scroll_h / (f32)saved_scroll_h, 0, 1);
+                window->v_scroll_offset = TGUI_CLAMP((tgui_f32)window->v_scroll_offset * (tgui_f32)last_scroll_h / (tgui_f32)saved_scroll_h, 0, 1);
             }
         }
 
@@ -1895,12 +1894,12 @@ void tgui_process_scroll_window(TGuiWindow *window, TGuiPainter *painter) {
     TGuiRectangle saved_painter_clip = painter->clip;
     painter->clip = tgui_rect_intersection(painter->clip, tgui_docker_get_client_rect(window->parent));
 
-    b32 v_scroll_valid = !tgui_rect_invalid(window->v_scroll_bar);
-    b32 h_scroll_valid = !tgui_rect_invalid(window->h_scroll_bar);
+    tgui_b32 v_scroll_valid = !tgui_rect_invalid(window->v_scroll_bar);
+    tgui_b32 h_scroll_valid = !tgui_rect_invalid(window->h_scroll_bar);
 
     if(v_scroll_valid) {
         
-        b32 mouse_over_bar = tgui_rect_point_overlaps(window->v_scroll_bar, input.mouse_x, input.mouse_y);
+        tgui_b32 mouse_over_bar = tgui_rect_point_overlaps(window->v_scroll_bar, input.mouse_x, input.mouse_y);
         if(mouse_over_bar && input.mouse_button_is_down && !input.mouse_button_was_down) {
             window->v_scroll_active = true;
         }
@@ -1910,11 +1909,11 @@ void tgui_process_scroll_window(TGuiWindow *window, TGuiPainter *painter) {
         }
         
         if(window->v_scroll_active) {
-            f32 mouse_offset = (f32)(input.mouse_y - window->v_scroll_bar.min_y)/(f32)tgui_rect_height(window->v_scroll_bar);
-            window->v_scroll_offset = CLAMP(mouse_offset, 0, 1);
+            tgui_f32 mouse_offset = (tgui_f32)(input.mouse_y - window->v_scroll_bar.min_y)/(tgui_f32)tgui_rect_height(window->v_scroll_bar);
+            window->v_scroll_offset = TGUI_CLAMP(mouse_offset, 0, 1);
         }
         
-        u32 handle_h = (u32)(((f32)tgui_rect_height(window->dim) / (f32)tgui_rect_height(window->scroll_saved_rect)) * tgui_rect_height(window->v_scroll_bar)); 
+        tgui_u32 handle_h = (tgui_u32)(((tgui_f32)tgui_rect_height(window->dim) / (tgui_f32)tgui_rect_height(window->scroll_saved_rect)) * tgui_rect_height(window->v_scroll_bar)); 
 
         TGuiRectangle handle = window->v_scroll_bar; 
         handle.min_y += window->v_scroll_offset * (tgui_rect_height(window->v_scroll_bar) - handle_h);
@@ -1929,7 +1928,7 @@ void tgui_process_scroll_window(TGuiWindow *window, TGuiPainter *painter) {
 
     if(h_scroll_valid) {
 
-        b32 mouse_over_bar = tgui_rect_point_overlaps(window->h_scroll_bar, input.mouse_x, input.mouse_y);
+        tgui_b32 mouse_over_bar = tgui_rect_point_overlaps(window->h_scroll_bar, input.mouse_x, input.mouse_y);
         if(mouse_over_bar && input.mouse_button_is_down && !input.mouse_button_was_down) {
             window->h_scroll_active = true;
         }
@@ -1939,11 +1938,11 @@ void tgui_process_scroll_window(TGuiWindow *window, TGuiPainter *painter) {
         }
         
         if(window->h_scroll_active) {
-            f32 mouse_offset = (f32)(input.mouse_x - window->h_scroll_bar.min_x)/(f32)tgui_rect_width(window->h_scroll_bar);
-            window->h_scroll_offset = CLAMP(mouse_offset, 0, 1);
+            tgui_f32 mouse_offset = (tgui_f32)(input.mouse_x - window->h_scroll_bar.min_x)/(tgui_f32)tgui_rect_width(window->h_scroll_bar);
+            window->h_scroll_offset = TGUI_CLAMP(mouse_offset, 0, 1);
         }
         
-        u32 handle_w = (u32)(((f32)tgui_rect_width(window->dim) / (f32)tgui_rect_width(window->scroll_saved_rect)) * tgui_rect_width(window->h_scroll_bar)); 
+        tgui_u32 handle_w = (tgui_u32)(((tgui_f32)tgui_rect_width(window->dim) / (tgui_f32)tgui_rect_width(window->scroll_saved_rect)) * tgui_rect_width(window->h_scroll_bar)); 
 
         TGuiRectangle handle = window->h_scroll_bar; 
         handle.min_x += window->h_scroll_offset * (tgui_rect_width(window->h_scroll_bar) - handle_w);
@@ -2005,8 +2004,8 @@ void tgui_end(void) {
 }
 
 void tgui_draw_buffers(void) {
-    u32 width = tgui_rect_width(docker.root->dim);
-    u32 height = tgui_rect_height(docker.root->dim);
+    tgui_u32 width = tgui_rect_width(docker.root->dim);
+    tgui_u32 height = tgui_rect_height(docker.root->dim);
 
     state.render_state.gfx->set_program_width_and_height(state.default_program, width, height);
     tgui_render_state_draw_buffers(&state.render_state);

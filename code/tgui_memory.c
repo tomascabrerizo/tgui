@@ -5,7 +5,7 @@
       Arena Interface
    ---------------------- */
 
-void tgui_arena_initialize(TGuiArena *arena, u64 size, TGuiArenaType type) {
+void tgui_arena_initialize(TGuiArena *arena, tgui_u64 size, TGuiArenaType type) {
 
     memset(arena, 0, sizeof(TGuiArena));
     arena->type = type;
@@ -39,13 +39,13 @@ void tgui_arena_terminate(TGuiArena *arena) {
       StaticArena 
    ------------------- */
 
-void tgui_static_arena_initialize(TGuiArena *arena, u64 size) {
-    u64 page_size = tgui_os_get_page_size(); 
-    ASSERT(IS_POWER_OF_TWO(page_size));
-    ASSERT(page_size > 0);
+void tgui_static_arena_initialize(TGuiArena *arena, tgui_u64 size) {
+    tgui_u64 page_size = tgui_os_get_page_size(); 
+    TGUI_ASSERT(TGUI_IS_POWER_OF_TWO(page_size));
+    TGUI_ASSERT(page_size > 0);
     
-    u64 page_number = (size + (page_size - 1)) / page_size;
-    u64 align_size = page_size * page_number;
+    tgui_u64 page_number = (size + (page_size - 1)) / page_size;
+    tgui_u64 align_size = page_size * page_number;
 
     arena->size = align_size;
     arena->used = 0;
@@ -54,17 +54,17 @@ void tgui_static_arena_initialize(TGuiArena *arena, u64 size) {
 }
 
 void tgui_static_arena_terminate(TGuiArena *arena) {
-    ASSERT(arena->buffer);
+    TGUI_ASSERT(arena->buffer);
     tgui_os_virtual_decommit(arena->buffer, arena->size);
     tgui_os_virtual_release(arena->buffer, arena->size);
 }
 
-void *tgui_static_arena_alloc(TGuiArena *arena, u64 size, u32 align) {
-    ASSERT(arena->buffer);
-    ASSERT(IS_POWER_OF_TWO(align));
+void *tgui_static_arena_alloc(TGuiArena *arena, tgui_u64 size, tgui_u32 align) {
+    TGUI_ASSERT(arena->buffer);
+    TGUI_ASSERT(TGUI_IS_POWER_OF_TWO(align));
     
-    u64 align_used = (arena->used + (align - 1)) & ~(align - 1);
-    ASSERT(align_used + size <= arena->size);
+    tgui_u64 align_used = (arena->used + (align - 1)) & ~(align - 1);
+    TGUI_ASSERT(align_used + size <= arena->size);
     
     void *result = arena->buffer + align_used;
     arena->used = align_used + size;
@@ -73,7 +73,7 @@ void *tgui_static_arena_alloc(TGuiArena *arena, u64 size, u32 align) {
 }
 
 void tgui_static_arena_free(TGuiArena *arena) {
-    ASSERT(arena->buffer);
+    TGUI_ASSERT(arena->buffer);
     arena->used = 0;
 }
 
@@ -81,33 +81,33 @@ void tgui_static_arena_free(TGuiArena *arena) {
        VirtualArena
    ------------------- */
 
-static void commit_more_pages(TGuiArena *arena, u64 size) {
+static void commit_more_pages(TGuiArena *arena, tgui_u64 size) {
     
-    u64 page_size = tgui_os_get_page_size(); 
-    ASSERT(page_size > 0);
+    tgui_u64 page_size = tgui_os_get_page_size(); 
+    TGUI_ASSERT(page_size > 0);
     
-    u64 page_number = (size + (page_size - 1)) / page_size;
-    u64 align_size = page_size * page_number;
+    tgui_u64 page_number = (size + (page_size - 1)) / page_size;
+    tgui_u64 align_size = page_size * page_number;
     
-    u64 commit_size = MAX(align_size, arena->size);
+    tgui_u64 commit_size = TGUI_MAX(align_size, arena->size);
     
-    ASSERT(arena->size + align_size <= TGUI_DEFAULT_VIRTUAL_SPACE_RANGE);
+    TGUI_ASSERT(arena->size + align_size <= TGUI_DEFAULT_VIRTUAL_SPACE_RANGE);
 
     tgui_os_virtual_commit((void *)(arena->buffer + arena->size), commit_size);
     arena->size = arena->size + commit_size;
     
-    ASSERT((arena->size & (page_size - 1)) == 0);
+    TGUI_ASSERT((arena->size & (page_size - 1)) == 0);
 }
 
 void tgui_virtual_arena_initialize(TGuiArena *arena) {
     
-    u64 page_size = tgui_os_get_page_size(); 
-    ASSERT(IS_POWER_OF_TWO(page_size));
-    ASSERT(page_size > 0);
+    tgui_u64 page_size = tgui_os_get_page_size(); 
+    TGUI_ASSERT(TGUI_IS_POWER_OF_TWO(page_size));
+    TGUI_ASSERT(page_size > 0);
     
-    u64 size = TGUI_DEFAULT_VIRTUAL_SPACE_RANGE;
-    u64 pages_number = (size + (page_size - 1)) / page_size;
-    u64 align_size = page_size * pages_number;
+    tgui_u64 size = TGUI_DEFAULT_VIRTUAL_SPACE_RANGE;
+    tgui_u64 pages_number = (size + (page_size - 1)) / page_size;
+    tgui_u64 align_size = page_size * pages_number;
 
     arena->size = 0;
     arena->used = 0;
@@ -115,21 +115,21 @@ void tgui_virtual_arena_initialize(TGuiArena *arena) {
 }
 
 void tgui_virtual_arena_terminate(TGuiArena *arena) {
-    ASSERT(arena->buffer) ;
+    TGUI_ASSERT(arena->buffer) ;
     tgui_os_virtual_decommit(arena->buffer, arena->size);
     tgui_os_virtual_release(arena->buffer, TGUI_DEFAULT_VIRTUAL_SPACE_RANGE);
 }
 
-void *tgui_virtual_arena_alloc(TGuiArena *arena, u64 size, u32 align) {
+void *tgui_virtual_arena_alloc(TGuiArena *arena, tgui_u64 size, tgui_u32 align) {
 
-    u64 align_used = (arena->used + (align - 1)) & ~(align - 1);
+    tgui_u64 align_used = (arena->used + (align - 1)) & ~(align - 1);
     
     if(align_used + size > arena->size) {
         commit_more_pages(arena, size);
         //printf("new pages commited\n");
     }
 
-    ASSERT(align_used + size <= arena->size);
+    TGUI_ASSERT(align_used + size <= arena->size);
     
     void *result = arena->buffer + align_used;
     arena->used = align_used + size;
@@ -140,7 +140,7 @@ void *tgui_virtual_arena_alloc(TGuiArena *arena, u64 size, u32 align) {
 }
 
 void tgui_virtual_arena_free(TGuiArena *arena) {
-    ASSERT(arena->buffer);
+    TGUI_ASSERT(arena->buffer);
     arena->used = 0;
 }
 
@@ -148,51 +148,51 @@ void tgui_virtual_arena_free(TGuiArena *arena) {
        VirtualMap
    ------------------- */
 
-static inline void set_all_buckets_as_free(TGuiVirtualMapBucket *buckets, u64 size) {
-    for(u64 bucket_index = 0; bucket_index < size; ++bucket_index) {
+static inline void set_all_buckets_as_free(TGuiVirtualMapBucket *buckets, tgui_u64 size) {
+    for(tgui_u64 bucket_index = 0; bucket_index < size; ++bucket_index) {
         TGuiVirtualMapBucket *bucket = buckets + bucket_index;
         bucket->key = TGUI_VIRTUAL_MAP_BUCKET_FREE;
         bucket->data = NULL;
     }
 }
 
-static inline TGuiVirtualMapBucket *find_free_bucket(TGuiVirtualMapBucket *buckets, u64 key, u64 size) {
-    u64 bucket_index = key % size;
+static inline TGuiVirtualMapBucket *find_free_bucket(TGuiVirtualMapBucket *buckets, tgui_u64 key, tgui_u64 size) {
+    tgui_u64 bucket_index = key % size;
     TGuiVirtualMapBucket *bucket = buckets + bucket_index;
     while(bucket->key != TGUI_VIRTUAL_MAP_BUCKET_FREE && bucket->key != TGUI_VIRTUAL_MAP_BUCKET_TUMBSTONE) {
         bucket_index = (bucket_index + 1) % size;
         bucket = buckets + bucket_index;
 
     }
-    ASSERT(bucket->key == TGUI_VIRTUAL_MAP_BUCKET_FREE || bucket->key == TGUI_VIRTUAL_MAP_BUCKET_TUMBSTONE);
+    TGUI_ASSERT(bucket->key == TGUI_VIRTUAL_MAP_BUCKET_FREE || bucket->key == TGUI_VIRTUAL_MAP_BUCKET_TUMBSTONE);
     return bucket;
 }
 
-static inline void copy_bucket_into_buckets(TGuiVirtualMapBucket *buckets, TGuiVirtualMapBucket *src_bucket, u64 size) {
+static inline void copy_bucket_into_buckets(TGuiVirtualMapBucket *buckets, TGuiVirtualMapBucket *src_bucket, tgui_u64 size) {
     TGuiVirtualMapBucket *dst_bucket = find_free_bucket(buckets, src_bucket->key, size);
     *dst_bucket = *src_bucket;
 }
 
 static void resize_and_rehash_virtual_map(TGuiVirtualMap *map) {
     
-    u64 page_size = tgui_os_get_page_size(); 
-    ASSERT(IS_POWER_OF_TWO(page_size));
+    tgui_u64 page_size = tgui_os_get_page_size(); 
+    TGUI_ASSERT(TGUI_IS_POWER_OF_TWO(page_size));
     
-    ASSERT(map->memory_buffer_index == 0 || map->memory_buffer_index == 1);
-    b32 new_memory_buffer_index = map->memory_buffer_index == 1 ? 0 : 1;
+    TGUI_ASSERT(map->memory_buffer_index == 0 || map->memory_buffer_index == 1);
+    tgui_b32 new_memory_buffer_index = map->memory_buffer_index == 1 ? 0 : 1;
 
     TGuiVirtualMapBucket *buckets = map->memory_buffer[map->memory_buffer_index];
     TGuiVirtualMapBucket *new_buckets = map->memory_buffer[new_memory_buffer_index];
     
-    u64 new_size = map->size * 2;
-    u64 new_size_in_bytes = sizeof(TGuiVirtualMapBucket) * new_size;
-    u64 pages_number = (new_size_in_bytes + (page_size - 1)) / page_size;
-    u64 new_size_align = pages_number * page_size;
+    tgui_u64 new_size = map->size * 2;
+    tgui_u64 new_size_in_bytes = sizeof(TGuiVirtualMapBucket) * new_size;
+    tgui_u64 pages_number = (new_size_in_bytes + (page_size - 1)) / page_size;
+    tgui_u64 new_size_align = pages_number * page_size;
     
     tgui_os_virtual_commit(new_buckets, new_size_align);
     set_all_buckets_as_free(new_buckets, new_size);
 
-    for(u64 bucket_index = 0; bucket_index < map->size; ++bucket_index) {
+    for(tgui_u64 bucket_index = 0; bucket_index < map->size; ++bucket_index) {
         TGuiVirtualMapBucket *bucket = buckets + bucket_index; 
         
         if(bucket->key == TGUI_VIRTUAL_MAP_BUCKET_TUMBSTONE) {
@@ -211,8 +211,8 @@ static void resize_and_rehash_virtual_map(TGuiVirtualMap *map) {
 
 void tgui_virtual_map_initialize(TGuiVirtualMap *map) {
 
-    u64 page_size = tgui_os_get_page_size(); 
-    ASSERT(IS_POWER_OF_TWO(page_size));
+    tgui_u64 page_size = tgui_os_get_page_size(); 
+    TGUI_ASSERT(TGUI_IS_POWER_OF_TWO(page_size));
 
     map->memory_buffer[0] = tgui_os_virtual_reserve(TGUI_DEFAULT_VIRTUAL_SPACE_RANGE);
     map->memory_buffer[1] = tgui_os_virtual_reserve(TGUI_DEFAULT_VIRTUAL_SPACE_RANGE);
@@ -220,9 +220,9 @@ void tgui_virtual_map_initialize(TGuiVirtualMap *map) {
 
     TGuiVirtualMapBucket *buckets = map->memory_buffer[map->memory_buffer_index];
 
-    u64 size = sizeof(TGuiVirtualMapBucket) * TGUI_DEFAULT_VIRTUAL_MAP_SIZE;
-    u64 pages_number = (size + (page_size - 1)) / page_size;
-    u64 size_align = pages_number * page_size;
+    tgui_u64 size = sizeof(TGuiVirtualMapBucket) * TGUI_DEFAULT_VIRTUAL_MAP_SIZE;
+    tgui_u64 pages_number = (size + (page_size - 1)) / page_size;
+    tgui_u64 size_align = pages_number * page_size;
 
     tgui_os_virtual_commit(buckets, size_align);
 
@@ -240,12 +240,12 @@ void tgui_virtual_map_terminate(TGuiVirtualMap *map) {
     tgui_os_virtual_release(map->memory_buffer[1], TGUI_DEFAULT_VIRTUAL_SPACE_RANGE);
 }
 
-void tgui_virtual_map_insert(TGuiVirtualMap *map, u64 key, void *data) {
+void tgui_virtual_map_insert(TGuiVirtualMap *map, tgui_u64 key, void *data) {
     
     if((map->used + 1) > (map->size * 0.7)) {
         resize_and_rehash_virtual_map(map);
     }
-    ASSERT((map->used + 1) <= (map->size * 0.7));
+    TGUI_ASSERT((map->used + 1) <= (map->size * 0.7));
     
     TGuiVirtualMapBucket *buckets = map->memory_buffer[map->memory_buffer_index];
     TGuiVirtualMapBucket *bucket = find_free_bucket(buckets, key, map->size);
@@ -258,11 +258,11 @@ void tgui_virtual_map_insert(TGuiVirtualMap *map, u64 key, void *data) {
     bucket->data = data;
 }
 
-void tgui_virtual_map_remove(TGuiVirtualMap *map, u64 key) {
+void tgui_virtual_map_remove(TGuiVirtualMap *map, tgui_u64 key) {
 
     TGuiVirtualMapBucket *buckets = map->memory_buffer[map->memory_buffer_index];
     
-    u64 bucket_index = key % map->size;
+    tgui_u64 bucket_index = key % map->size;
     TGuiVirtualMapBucket *bucket = buckets + bucket_index;
     
     while(bucket->key != key) {
@@ -271,16 +271,16 @@ void tgui_virtual_map_remove(TGuiVirtualMap *map, u64 key) {
 
     }
     
-    ASSERT(bucket->key == key);
+    TGUI_ASSERT(bucket->key == key);
     bucket->key = TGUI_VIRTUAL_MAP_BUCKET_TUMBSTONE;
     bucket->data = NULL;
 }
 
-void *tgui_virtual_map_find(TGuiVirtualMap *map, u64 key) {
+void *tgui_virtual_map_find(TGuiVirtualMap *map, tgui_u64 key) {
 
     TGuiVirtualMapBucket *buckets = map->memory_buffer[map->memory_buffer_index];
 
-    u64 bucket_index = key % map->size;
+    tgui_u64 bucket_index = key % map->size;
     TGuiVirtualMapBucket *bucket = buckets + bucket_index;
     while(bucket->key != TGUI_VIRTUAL_MAP_BUCKET_FREE && bucket->key != key) {
         bucket_index = (bucket_index + 1) % map->size;
@@ -295,7 +295,7 @@ void *tgui_virtual_map_find(TGuiVirtualMap *map, u64 key) {
     return bucket->data;
 }
 
-b32 tgui_virtual_map_contains(TGuiVirtualMap *map, u64 key) {
+tgui_b32 tgui_virtual_map_contains(TGuiVirtualMap *map, tgui_u64 key) {
     return tgui_virtual_map_find(map, key) != NULL;
 }
 
@@ -303,8 +303,8 @@ b32 tgui_virtual_map_contains(TGuiVirtualMap *map, u64 key) {
         Virtual Array 
    ------------------------ */
 
-void _tgui_array_initialize(TGuiVoidArray *array, u64 element_size) {
-    ASSERT(array);
+void _tgui_array_initialize(TGuiVoidArray *array, tgui_u64 element_size) {
+    TGUI_ASSERT(array);
     tgui_arena_initialize(&array->arena, 0, TGUI_ARENA_TYPE_VIRTUAL);
 
     array->size = 0;
@@ -319,7 +319,7 @@ void _tgui_array_terminate(TGuiVoidArray *array) {
     tgui_arena_terminate(&array->arena);
 }
 
-void _tgui_array_push(TGuiVoidArray *array, u64 element_size) {
+void _tgui_array_push(TGuiVoidArray *array, tgui_u64 element_size) {
     if((array->size + 1) > array->capacity) {
         tgui_arena_alloc(&array->arena, array->size*element_size, 1);
         array->capacity += array->size;
@@ -327,14 +327,14 @@ void _tgui_array_push(TGuiVoidArray *array, u64 element_size) {
         //printf("arena arena used: %lld, size: %lld\n", array->arena.used, array->arena.size);
     }
     
-    ASSERT(array->size < array->capacity);
+    TGUI_ASSERT(array->size < array->capacity);
     ++array->size;
 }
 
-void _tgui_array_reserve(TGuiVoidArray *array, u32 count, u64 element_size) {
+void _tgui_array_reserve(TGuiVoidArray *array, tgui_u32 count, tgui_u64 element_size) {
     tgui_arena_alloc(&array->arena, count*element_size, 1);
     array->capacity += count;
-    ASSERT(array->size < array->capacity);
+    TGUI_ASSERT(array->size < array->capacity);
     array->size += count;
 }
 

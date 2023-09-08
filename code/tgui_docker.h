@@ -1,7 +1,6 @@
 #ifndef _TGUI_DOCKER_H_
 #define _TGUI_DOCKER_H_
 
-#include "common.h"
 #include "tgui_painter.h"
 
 #define SPLIT_HALF_SIZE 1
@@ -41,9 +40,9 @@ typedef struct TGuiDockerNode {
     struct TGuiDockerNode *childs; /* Only for root nodes   */
     
     /* Only for window nodes */
-    u32 active_window;
+    tgui_u32 active_window;
     struct TGuiWindow *windows;
-    u32 windows_count;
+    tgui_u32 windows_count;
     
     /* Only a dummy window to use as head of double link list of windows */
     struct TGuiAllocatedWindow *dummy_allocated_window;
@@ -56,7 +55,7 @@ TGuiDockerNode *root_node_alloc(TGuiDockerNode *parent);
 
 TGuiDockerNode *window_node_alloc(TGuiDockerNode *parent);
     
-TGuiDockerNode *split_node_alloc(TGuiDockerNode *parent, f32 position);
+TGuiDockerNode *split_node_alloc(TGuiDockerNode *parent, tgui_f32 position);
 
 void node_free(TGuiDockerNode *node);
 
@@ -67,12 +66,12 @@ typedef struct TGuiDocker {
     TGuiDockerNode *first_free_node;
 
     TGuiDockerNode *active_node;
-    b32 grabbing_window;
-    b32 grabbing_window_start;
+    tgui_b32 grabbing_window;
+    tgui_b32 grabbing_window_start;
     TGuiRectangle preview_window;
 
-    b32 saved_mouse_x;
-    b32 saved_mouse_y;
+    tgui_b32 saved_mouse_x;
+    tgui_b32 saved_mouse_y;
 
 } TGuiDocker;
 
@@ -94,7 +93,7 @@ void tgui_docker_window_node_add_window(TGuiDockerNode *window_node, struct TGui
 
 void tgui_docker_window_node_remove_window(struct TGuiWindow *window);
 
-b32 tgui_docker_window_has_tabs(TGuiDockerNode *window_node);
+tgui_b32 tgui_docker_window_has_tabs(TGuiDockerNode *window_node);
 
 
 void tgui_docker_root_node_draw(TGuiPainter *painter);
@@ -103,7 +102,7 @@ void tgui_docker_draw_preview(TGuiPainter *painter);
 
 TGuiRectangle tgui_docker_get_client_rect(TGuiDockerNode *window);
 
-b32 tgui_docker_window_is_visible(TGuiDockerNode *window_node, struct TGuiWindow *window);
+tgui_b32 tgui_docker_window_is_visible(TGuiDockerNode *window_node, struct TGuiWindow *window);
 
 
 TGuiDockerNode *node_alloc(void);
@@ -112,6 +111,6 @@ TGuiDockerNode *root_node_alloc(TGuiDockerNode *parent);
 
 TGuiDockerNode *window_node_alloc(TGuiDockerNode *parent);
 
-TGuiDockerNode *split_node_alloc(TGuiDockerNode *parent, f32 position);
+TGuiDockerNode *split_node_alloc(TGuiDockerNode *parent, tgui_f32 position);
 
 #endif /* _TGUI_DOCKER_H_ */

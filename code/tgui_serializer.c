@@ -1,5 +1,5 @@
 #include "tgui_serializer.h"
-#include "common.h"
+
 #include "tgui_os.h"
 #include "tgui_docker.h"
 #include "tgui.h"
@@ -13,20 +13,20 @@ extern TGuiDocker docker;
 
 static FILE *file = NULL;
 
-static inline void indent(FILE *stream, u32 n) {
-    for(u32 i = 0; i < n; ++i) {
+static inline void indent(FILE *stream, tgui_u32 n) {
+    for(tgui_u32 i = 0; i < n; ++i) {
         fprintf(stream, "  ");
     }
 }
 
-static inline void write_to_file(u32 depth, char *str, ...) {
+static inline void write_to_file(tgui_u32 depth, char *str, ...) {
     va_list argp;
     va_start(argp, str);
     indent(file, depth); vfprintf(file, str, argp);
     va_end(argp);
 }
 
-void tgui_serializer_write_window(TGuiWindow *window, u32 depth) {
+void tgui_serializer_write_window(TGuiWindow *window, tgui_u32 depth) {
     write_to_file(depth, "window: {\n");
     write_to_file(depth+1, "id: %d\n", window->id);
     write_to_file(depth+1, "name: \"%s\"\n", window->name);
@@ -34,7 +34,7 @@ void tgui_serializer_write_window(TGuiWindow *window, u32 depth) {
     write_to_file(depth, "}\n");
 }
 
-void tgui_serializer_write_node(TGuiDockerNode *node, u32 depth) {
+void tgui_serializer_write_node(TGuiDockerNode *node, tgui_u32 depth) {
 
     switch(node->type) {
     
@@ -53,7 +53,7 @@ void tgui_serializer_write_node(TGuiDockerNode *node, u32 depth) {
 
         case TGUI_DOCKER_NODE_SPLIT: {
             write_to_file(depth, "split_node: {\n");
-            write_to_file(depth+1, "split_position: %d\n", (u32)(node->split_position * 1000));
+            write_to_file(depth+1, "split_position: %d\n", (tgui_u32)(node->split_position * 1000));
             write_to_file(depth, "}\n");
         } break;
 
@@ -79,20 +79,20 @@ void tgui_serializer_write_docker_tree(TGuiDockerNode *node, char *filename) {
     fclose(file);
 }
 
-void tgui_serializer_error(b32 *error, TGuiToken *token, char *str) {
+void tgui_serializer_error(tgui_b32 *error, TGuiToken *token, char *str) {
     if(*error == false) {
         printf("line:%d:col:%d: error: %s\n", token->line, token->col, str);
         *error = true;
     }
 }
 
-void tgui_serializer_next_token(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error) {
+void tgui_serializer_next_token(TGuiTokenizer *tokenizer, TGuiToken *token, tgui_b32 *error) {
     if(*error == false) {
         tgui_tokenizer_next_token(tokenizer, token, error); 
     }
 }
 
-void tgui_serializer_expect(TGuiTokenizer *tokenizer, TGuiToken *token, TGuiTokenType type, b32 *error, char *str) {
+void tgui_serializer_expect(TGuiTokenizer *tokenizer, TGuiToken *token, TGuiTokenType type, tgui_b32 *error, char *str) {
     tgui_serializer_next_token(tokenizer, token, error);
     if(token->type != type) {
         tgui_serializer_error(error, token, str);
@@ -100,14 +100,14 @@ void tgui_serializer_expect(TGuiTokenizer *tokenizer, TGuiToken *token, TGuiToke
 }
 
 void tgui_serializer_peek_next(TGuiTokenizer *tokenizer, TGuiToken *token) {
-    b32 error;
+    tgui_b32 error;
     TGuiTokenizer temp = *tokenizer;
     tgui_tokenizer_next_token(&temp, token, &error);
 }
 
-b32 tgui_token_contain(TGuiToken *token, char *str);
+tgui_b32 tgui_token_contain(TGuiToken *token, char *str);
 
-void tgui_serializer_expect_identifier(TGuiTokenizer *tokenizer, TGuiToken *token, char *identifier, b32 *error, char *error_str) {
+void tgui_serializer_expect_identifier(TGuiTokenizer *tokenizer, TGuiToken *token, char *identifier, tgui_b32 *error, char *error_str) {
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_IDENTIFIER, error, "Node body can only contain identifiers");
     if(!tgui_token_contain(token, identifier)) {
         tgui_serializer_error(error, token, error_str);
@@ -121,14 +121,14 @@ char *tgui_token_to_c_string(TGuiToken *token) {
     char *start = token->start + 1;
     char *end = token->end - 1;
 
-    u32 str_size = end - start + 1;
+    tgui_u32 str_size = end - start + 1;
     char *c_str = tgui_arena_alloc(&state.arena, str_size+1, 8);
     memcpy(c_str, start, str_size);
     c_str[str_size] = '\0';
     return c_str;
 }
 
-TGuiWindow *tgui_serializer_read_window(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error, TGuiDockerNode *parent, TGuiAllocatedWindow *list) {
+TGuiWindow *tgui_serializer_read_window(TGuiTokenizer *tokenizer, TGuiToken *token, tgui_b32 *error, TGuiDockerNode *parent, TGuiAllocatedWindow *list) {
     if(*error) return NULL;
 
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_DOUBLE_DOT, error, "Identifier must be follow by ':'");
@@ -136,7 +136,7 @@ TGuiWindow *tgui_serializer_read_window(TGuiTokenizer *tokenizer, TGuiToken *tok
 
     tgui_serializer_expect_identifier(tokenizer, token, "id", error, "First member of window must be 'id'");
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_NUMBER, error, "'id' value must be a number");
-    u32 id = token->value;
+    tgui_u32 id = token->value;
 
     tgui_serializer_expect_identifier(tokenizer, token, "name", error, "Second member of window must be 'name'");
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_STRING, error, "'name' value must be a string");
@@ -154,7 +154,7 @@ TGuiWindow *tgui_serializer_read_window(TGuiTokenizer *tokenizer, TGuiToken *tok
     return window;
 }
 
-TGuiDockerNode *tgui_serializer_read_node_window(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error, TGuiDockerNode *parent, TGuiAllocatedWindow *list) {
+TGuiDockerNode *tgui_serializer_read_node_window(TGuiTokenizer *tokenizer, TGuiToken *token, tgui_b32 *error, TGuiDockerNode *parent, TGuiAllocatedWindow *list) {
     if(*error) return NULL;
     
     TGuiDockerNode *node = window_node_alloc(parent);
@@ -164,11 +164,11 @@ TGuiDockerNode *tgui_serializer_read_node_window(TGuiTokenizer *tokenizer, TGuiT
 
     tgui_serializer_expect_identifier(tokenizer, token, "active_window", error, "First member of window_node must be 'active_window'");
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_NUMBER, error, "active_window value must be a number");
-    u32 active_window = token->value;
+    tgui_u32 active_window = token->value;
     
     tgui_serializer_expect_identifier(tokenizer, token, "window_count", error, "Seconds member of window_node must be 'window_count'");
     tgui_serializer_expect(tokenizer, token, TGUI_TOKEN_NUMBER, error, "window_count value must be a number");
-    u32 window_count_test = token->value;
+    tgui_u32 window_count_test = token->value;
     
     tgui_serializer_next_token(tokenizer, token, error);
 
@@ -193,14 +193,14 @@ TGuiDockerNode *tgui_serializer_read_node_window(TGuiTokenizer *tokenizer, TGuiT
     }
     
     if(parent) {
-        ASSERT(parent->type == TGUI_DOCKER_NODE_ROOT);
+        TGUI_ASSERT(parent->type == TGUI_DOCKER_NODE_ROOT);
         tgui_clink_list_insert_back(parent->childs, node);
     }
     
     return node;
 }
 
-TGuiDockerNode *tgui_serializer_read_node_split(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error, TGuiDockerNode *parent) {
+TGuiDockerNode *tgui_serializer_read_node_split(TGuiTokenizer *tokenizer, TGuiToken *token, tgui_b32 *error, TGuiDockerNode *parent) {
     if(*error) return NULL;
     
     TGuiDockerNode *node = split_node_alloc(parent, 0);
@@ -220,14 +220,14 @@ TGuiDockerNode *tgui_serializer_read_node_split(TGuiTokenizer *tokenizer, TGuiTo
     }
     
     if(parent) {
-        ASSERT(parent->type == TGUI_DOCKER_NODE_ROOT);
+        TGUI_ASSERT(parent->type == TGUI_DOCKER_NODE_ROOT);
         tgui_clink_list_insert_back(parent->childs, node);
     }
 
     return node;
 }
 
-TGuiDockerNode *tgui_serializer_read_node_root(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error, TGuiDockerNode *parent, TGuiAllocatedWindow *list) {
+TGuiDockerNode *tgui_serializer_read_node_root(TGuiTokenizer *tokenizer, TGuiToken *token, tgui_b32 *error, TGuiDockerNode *parent, TGuiAllocatedWindow *list) {
     if(*error) return NULL;
 
     TGuiDockerNode *node = root_node_alloc(parent);
@@ -267,14 +267,14 @@ TGuiDockerNode *tgui_serializer_read_node_root(TGuiTokenizer *tokenizer, TGuiTok
     }
 
     if(parent) {
-        ASSERT(parent->type == TGUI_DOCKER_NODE_ROOT);
+        TGUI_ASSERT(parent->type == TGUI_DOCKER_NODE_ROOT);
         tgui_clink_list_insert_back(parent->childs, node);
     }
 
     return node;
 }
 
-TGuiDockerNode *tgui_serializer_read_node(TGuiTokenizer *tokenizer, b32 *error, TGuiDockerNode *parent, TGuiAllocatedWindow *list) {
+TGuiDockerNode *tgui_serializer_read_node(TGuiTokenizer *tokenizer, tgui_b32 *error, TGuiDockerNode *parent, TGuiAllocatedWindow *list) {
     TGuiDockerNode *node = NULL;
 
     TGuiToken token;
@@ -294,9 +294,9 @@ TGuiDockerNode *tgui_serializer_read_node(TGuiTokenizer *tokenizer, b32 *error, 
 }
 
 void tgui_serializer_read_docker_tree(TGuiOsFile *file, struct TGuiDockerNode **node, TGuiAllocatedWindow *list) {
-    b32 serializer_error = false;
+    tgui_b32 serializer_error = false;
     
-    ASSERT(list);
+    TGUI_ASSERT(list);
     tgui_clink_list_init(list);
 
     TGuiToken token;
@@ -312,21 +312,21 @@ void tgui_serializer_read_docker_tree(TGuiOsFile *file, struct TGuiDockerNode **
 
 }
 
-b32 tgui_is_digit(char character) {
+tgui_b32 tgui_is_digit(char character) {
     return (character >= '0' && character <= '9');
 }
 
-b32 tgui_is_alpha(char character) {
+tgui_b32 tgui_is_alpha(char character) {
  return ((character >= 'A' && character <= 'Z') || (character >= 'a' && character <= 'z'));
 }
 
-b32 tgui_is_space(char character) {
+tgui_b32 tgui_is_space(char character) {
     return (character == ' ' || character == '\n' || character == '\r' || character == '\t');
 }
 
-b32 tgui_token_contain(TGuiToken *token, char *str) {
+tgui_b32 tgui_token_contain(TGuiToken *token, char *str) {
 
-    if((u32)(token->end - token->start + 1) != strlen(str)) {
+    if((tgui_u32)(token->end - token->start + 1) != strlen(str)) {
         return false;
     }
 
@@ -351,8 +351,8 @@ void tgui_check_special_identifier(TGuiToken *token) {
     }
 }
 
-void tgui_tokenizer_skip_space_or_new_line(TGuiTokenizer *tokenizer, b32 *error) {
-    UNUSED(error);
+void tgui_tokenizer_skip_space_or_new_line(TGuiTokenizer *tokenizer, tgui_b32 *error) {
+    TGUI_UNUSED(error);
     while (tgui_is_space(*tokenizer->current) && (tokenizer->current != tokenizer->end)) {
 
         ++tokenizer->current_col;
@@ -364,12 +364,12 @@ void tgui_tokenizer_skip_space_or_new_line(TGuiTokenizer *tokenizer, b32 *error)
     }
 }
 
-void tokenizer_token_number(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error) {
+static void tokenizer_token_number(TGuiTokenizer *tokenizer, TGuiToken *token, tgui_b32 *error) {
     
     char *start = tokenizer->current;
-    u32 col = tokenizer->current_col;
+    tgui_u32 col = tokenizer->current_col;
     
-    u32 value = 0;
+    tgui_u32 value = 0;
     while(tgui_is_digit(*tokenizer->current)) {
         value *= 10;
         value += ((*tokenizer->current) - '0');
@@ -390,10 +390,10 @@ void tokenizer_token_number(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *err
     }
 }
 
-void tokenizer_token_identifier(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error) {
+static void tokenizer_token_identifier(TGuiTokenizer *tokenizer, TGuiToken *token, tgui_b32 *error) {
 
     char *start = tokenizer->current;
-    u32 col = tokenizer->current_col;
+    tgui_u32 col = tokenizer->current_col;
 
     while(tgui_is_alpha(*tokenizer->current) || tgui_is_digit(*tokenizer->current) || *tokenizer->current == '_') {
         ++tokenizer->current;
@@ -413,10 +413,10 @@ void tokenizer_token_identifier(TGuiTokenizer *tokenizer, TGuiToken *token, b32 
     }
 }
 
-void tokenizer_token_string(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error) {
+static void tokenizer_token_string(TGuiTokenizer *tokenizer, TGuiToken *token, tgui_b32 *error) {
     
     char *start = tokenizer->current;
-    u32 col = tokenizer->current_col;
+    tgui_u32 col = tokenizer->current_col;
     
     ++tokenizer->current;
 
@@ -439,10 +439,10 @@ void tokenizer_token_string(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *err
 
 }
 
-void tokenizer_token_single_char(TGuiTokenizer *tokenizer, TGuiToken *token, TGuiTokenType type) {
+static void tokenizer_token_single_char(TGuiTokenizer *tokenizer, TGuiToken *token, TGuiTokenType type) {
 
     char *start = tokenizer->current;
-    u32 col = tokenizer->current_col;
+    tgui_u32 col = tokenizer->current_col;
 
     ++tokenizer->current;
     ++tokenizer->current_col;
@@ -457,13 +457,13 @@ void tokenizer_token_single_char(TGuiTokenizer *tokenizer, TGuiToken *token, TGu
 
 void tgui_tokenizer_start(TGuiTokenizer *tokenizer, struct TGuiOsFile *file) {
     tokenizer->current = (char *)file->data;
-    tokenizer->end = (char *)((u8 *)file->data + file->size);
+    tokenizer->end = (char *)((tgui_u8 *)file->data + file->size);
     tokenizer->current_line = TGUI_START_LINE_AND_COL;
     tokenizer->current_col = TGUI_START_LINE_AND_COL;
 }
 
-b32 tgui_tokenizer_next_token(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error) {
-    b32 tokenizer_error = false;
+tgui_b32 tgui_tokenizer_next_token(TGuiTokenizer *tokenizer, TGuiToken *token, tgui_b32 *error) {
+    tgui_b32 tokenizer_error = false;
 
     tgui_tokenizer_skip_space_or_new_line(tokenizer, &tokenizer_error);
     
@@ -532,7 +532,7 @@ void tgui_token_print(TGuiToken *token) {
         case TGUI_TOKEN_DOUBLE_DOT:  { printf("TGUI_TOKEN_DOUBLE_DOT\n"); } break;
     }
 
-    printf("content: %.*s\n", (u32)(token->end - token->start + 1), token->start);
+    printf("content: %.*s\n", (tgui_u32)(token->end - token->start + 1), token->start);
     printf("line: %d\n", token->line);
     printf("col: %d\n", token->col);
 

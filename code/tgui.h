@@ -1,8 +1,6 @@
 #ifndef _TGUI_H_
 #define _TGUI_H_
 
-#include "common.h"
-
 #include "tgui_docker.h"
 #include "tgui_gfx.h"
 
@@ -25,28 +23,28 @@ typedef enum TGuiCursor {
 
 typedef struct TGuiKeyboard {
 
-    b32 k_r_arrow_down;
-    b32 k_l_arrow_down;
-    b32 k_delete;
-    b32 k_backspace;
-    b32 k_ctrl;
-    b32 k_shift;
+    tgui_b32 k_r_arrow_down;
+    tgui_b32 k_l_arrow_down;
+    tgui_b32 k_delete;
+    tgui_b32 k_backspace;
+    tgui_b32 k_ctrl;
+    tgui_b32 k_shift;
 
 } TGuiKeyboard;
 
 typedef struct TGuiInput {
-    b32 mouse_button_is_down;
-    b32 mouse_button_was_down;
+    tgui_b32 mouse_button_is_down;
+    tgui_b32 mouse_button_was_down;
     
-    s32 mouse_x;
-    s32 mouse_y;
+    tgui_s32 mouse_x;
+    tgui_s32 mouse_y;
     
-    b32 window_resize;
-    s32 resize_w;
-    s32 resize_h;
+    tgui_b32 window_resize;
+    tgui_s32 resize_w;
+    tgui_s32 resize_h;
     
-    u8 text[TGUI_MAX_TEXT_SIZE];
-    u32 text_size;
+    tgui_u8 text[TGUI_MAX_TEXT_SIZE];
+    tgui_u32 text_size;
     
     TGuiKeyboard keyboard;
  
@@ -67,7 +65,7 @@ typedef enum TGuiWindowFlags {
 
 typedef struct TGuiWindow {
     
-    u32 id;
+    tgui_u32 id;
     TGuiRectangle dim;
     char *name;
     
@@ -78,11 +76,11 @@ typedef struct TGuiWindow {
     TGuiRectangle h_scroll_bar;
     TGuiRectangle v_scroll_bar;
     
-    f32 v_scroll_offset;
-    f32 h_scroll_offset;
+    tgui_f32 v_scroll_offset;
+    tgui_f32 h_scroll_offset;
     
-    b32 v_scroll_active;
-    b32 h_scroll_active;
+    tgui_b32 v_scroll_active;
+    tgui_b32 h_scroll_active;
     
     TGuiRectangle scroll_saved_rect;
 
@@ -92,7 +90,7 @@ typedef struct TGuiWindow {
 
 } TGuiWindow;
 
-typedef u32 TGuiWindowHandle;
+typedef tgui_u32 TGuiWindowHandle;
 
 TGuiWindow *tgui_window_alloc(TGuiDockerNode *parent, char *name, TGuiWindowFlags flags, struct TGuiAllocatedWindow *list);
 
@@ -102,9 +100,9 @@ TGuiWindowHandle tgui_create_root_window(char *name, TGuiWindowFlags flags);
 
 TGuiWindowHandle tgui_split_window(TGuiWindowHandle window, TGuiSplitDirection dir, char *name, TGuiWindowFlags flags);
 
-void tgui_window_set_transparent(TGuiWindowHandle window, b32 state);
+void tgui_window_set_transparent(TGuiWindowHandle window, tgui_b32 state);
 
-b32 tgui_window_flag_is_set(TGuiWindow *window, TGuiWindowFlags flags);
+tgui_b32 tgui_window_flag_is_set(TGuiWindow *window, TGuiWindowFlags flags);
 
 void tgui_window_flag_set(TGuiWindow *window, TGuiWindowFlags flag);
 
@@ -113,8 +111,8 @@ void tgui_window_flag_clear(TGuiWindow *window, TGuiWindowFlags flag);
 typedef void (*TGuiWidgetInternalFunc) (struct TGuiWidget *widget, TGuiPainter *painter);
 
 typedef struct TGuiWidget {
-    u64 id;
-    s32 x, y, w, h;    
+    tgui_u64 id;
+    tgui_s32 x, y, w, h;    
 
     struct TGuiWindow *parent;
     struct TGuiWidget *prev;
@@ -143,19 +141,19 @@ typedef struct TGui {
     TGuiArena arena;
     TGuiVirtualMap registry;
     
-    u32 window_id_generator;
+    tgui_u32 window_id_generator;
 
     TGuiAllocatedWindow *allocated_windows;
     TGuiAllocatedWindow *free_windows;
 
-    u64 hot;
-    u64 active;
+    tgui_u64 hot;
+    tgui_u64 active;
     
-    f32 dt;
+    tgui_f32 dt;
     
     TGuiWidget *first_free_widget;
     
-    u64 active_id;
+    tgui_u64 active_id;
     TGuiWindow *active_window;
     
     TGuiRenderState render_state;
@@ -166,11 +164,11 @@ typedef struct TGui {
 
 } TGui;
 
-void tgui_initialize(s32 w, s32 h, TGuiGfxBackend *gfx);
+void tgui_initialize(tgui_s32 w, tgui_s32 h, TGuiGfxBackend *gfx);
 
 void tgui_terminate(void);
 
-void tgui_begin(f32 dt);
+void tgui_begin(tgui_f32 dt);
 
 void tgui_end(void);
 
@@ -214,37 +212,37 @@ void tgui_texture(TGuiWindowHandle window, void *texture);
 
 typedef struct TGuiButton {
     char *label;
-    b32 result;
+    tgui_b32 result;
 } TGuiButton;
 
-b32 _tgui_button(TGuiWindowHandle window, char *label, s32 x, s32 y, char *tgui_id);
+tgui_b32 _tgui_button(TGuiWindowHandle window, char *label, tgui_s32 x, tgui_s32 y, char *tgui_id);
 
 void _tgui_button_internal(TGuiWidget *widget, TGuiPainter *painter);
 
 #define TGUI_TEXT_INPUT_MAX_CHARACTERS 124 
 typedef struct TGuiTextInput {
-    u8 buffer[TGUI_TEXT_INPUT_MAX_CHARACTERS];
-    u32 used;
-    u32 cursor;
+    tgui_u8 buffer[TGUI_TEXT_INPUT_MAX_CHARACTERS];
+    tgui_u32 used;
+    tgui_u32 cursor;
     
-    u32 offset;
+    tgui_u32 offset;
     
-    b32 initilize;
+    tgui_b32 initilize;
     
-    b32 selection;
-    u32 selection_start;
-    u32 selection_end;
+    tgui_b32 selection;
+    tgui_u32 selection_start;
+    tgui_u32 selection_end;
     
-    f32 cursor_inactive_acumulator;
-    f32 cursor_inactive_target;
-    f32 cursor_blink_acumulator;
-    f32 cursor_blink_target;
-    b32 blink_cursor;
-    b32 draw_cursor;
+    tgui_f32 cursor_inactive_acumulator;
+    tgui_f32 cursor_inactive_target;
+    tgui_f32 cursor_blink_acumulator;
+    tgui_f32 cursor_blink_target;
+    tgui_b32 blink_cursor;
+    tgui_b32 draw_cursor;
 
 } TGuiTextInput;
 
-TGuiTextInput *_tgui_text_input(TGuiWindowHandle window, s32 x, s32 y, char *tgui_id);
+TGuiTextInput *_tgui_text_input(TGuiWindowHandle window, tgui_s32 x, tgui_s32 y, char *tgui_id);
 
 void _tgui_text_input_internal(TGuiWidget *widget, TGuiPainter *painter);
 
@@ -253,39 +251,39 @@ typedef struct TGuiColorPicker {
     TGuiBitmap radiant;
     TGuiBitmap mini_radiant;
     
-    u32 saved_radiant_color;
+    tgui_u32 saved_radiant_color;
 
-    f32 hue;
-    f32 saturation;
-    f32 value;
+    tgui_f32 hue;
+    tgui_f32 saturation;
+    tgui_f32 value;
     
-    b32 hue_cursor_active;
-    b32 sv_cursor_active;
+    tgui_b32 hue_cursor_active;
+    tgui_b32 sv_cursor_active;
 
-    u32 *color_ptr;
+    tgui_u32 *color_ptr;
 
-    b32 initialize;
+    tgui_b32 initialize;
 
 } TGuiColorPicker;
 
-void tgui_u32_color_to_hsv_color(u32 color, f32 *h, f32 *s, f32 *v);
+void tgui_tgui_u32_color_to_hsv_color(tgui_u32 color, tgui_f32 *h, tgui_f32 *s, tgui_f32 *v);
 
-void _tgui_color_picker(TGuiWindowHandle window, s32 x, s32 y, s32 w, s32 h, u32 *color, char *tgui_id);
+void _tgui_color_picker(TGuiWindowHandle window, tgui_s32 x, tgui_s32 y, tgui_s32 w, tgui_s32 h, tgui_u32 *color, char *tgui_id);
 
 void _tgui_color_picker_internal(TGuiWidget *widget, TGuiPainter *painter);
 
 typedef struct TGuiTreeViewNode {
         
     char *label;
-    u32 label_depth;
+    tgui_u32 label_depth;
     
     TGuiRectangle dim;
     
-    u32 state_index;
-    b32 visible;
+    tgui_u32 state_index;
+    tgui_b32 visible;
     
-    b32 selected;
-    u32 selected_state_index;
+    tgui_b32 selected;
+    tgui_u32 selected_state_index;
     
     void *user_data;
 
@@ -304,13 +302,13 @@ typedef struct TGuiTreeViewNode {
 
 #define TGUI_TREEVIEW_DEFAULT_DEPTH_WIDTH 16 
 
-TGuiArray(b32, TGuiB32Array);
+TGuiArray(tgui_b32, TGuiB32Array);
 
 typedef struct TGuiTreeView {
     
     TGuiTreeViewNode *root;
     TGuiTreeViewNode *active_root_node;
-    s32 active_depth;
+    tgui_s32 active_depth;
     
     TGuiTreeViewNode *first_free_node;
     
@@ -318,24 +316,24 @@ typedef struct TGuiTreeView {
     
     /* TODO: Make this two arrays dynamic or use hash table or link list */
 #if 0
-    b32 root_node_state[TGUI_TREEVIEW_MAX_STATE_SIZE];
-    u32 root_node_state_head; 
+    tgui_b32 root_node_state[TGUI_TREEVIEW_MAX_STATE_SIZE];
+    tgui_u32 root_node_state_head; 
 
-    b32 selected_node_data[TGUI_TREEVIEW_MAX_STATE_SIZE];
-    u32 selected_node_data_head;
+    tgui_b32 selected_node_data[TGUI_TREEVIEW_MAX_STATE_SIZE];
+    tgui_u32 selected_node_data_head;
 #endif
     
     TGuiB32Array root_node_state;
-    u32 root_node_state_head; 
+    tgui_u32 root_node_state_head; 
     TGuiB32Array selected_node_data;
-    u32 selected_node_data_head;
+    tgui_u32 selected_node_data_head;
    
-    u32 rect_w;
-    u32 padding;
+    tgui_u32 rect_w;
+    tgui_u32 padding;
 
-    b32 initiliaze;
+    tgui_b32 initiliaze;
 
-    s32 selection_index;
+    tgui_s32 selection_index;
     void *selection_data;
 
 } TGuiTreeView;
@@ -358,16 +356,16 @@ void _tgui_tree_view_internal(TGuiWidget *widget, TGuiPainter *painter);
 typedef struct TGuiDropDownMenu {
     
     char **options;
-    u32 options_size;
-    u32 selected_option;
+    tgui_u32 options_size;
+    tgui_u32 selected_option;
     
-    b32 click_was_in_scrollbar;
+    tgui_b32 click_was_in_scrollbar;
 
-    b32 initialize;
+    tgui_b32 initialize;
 
 } TGuiDropDownMenu;
 
-void _tgui_dropdown_menu(TGuiWindowHandle window, s32 x, s32 y, char **options, u32 options_size, s32 *selected_option_index, char *tgui_id);
+void _tgui_dropdown_menu(TGuiWindowHandle window, tgui_s32 x, tgui_s32 y, char **options, tgui_u32 options_size, tgui_s32 *selected_option_index, char *tgui_id);
 
 void _tgui_dropdown_menu_internal(TGuiWidget *widget, TGuiPainter *painter);
 
@@ -377,27 +375,27 @@ void _tgui_dropdown_menu_internal(TGuiWidget *widget, TGuiPainter *painter);
 
 typedef struct TGuiGlyph {
     TGuiBitmap bitmap;
-    s32 codepoint;
+    tgui_s32 codepoint;
 
-    s32 top_bearing;
-    s32 left_bearing;
-    s32 adv_width;
+    tgui_s32 top_bearing;
+    tgui_s32 left_bearing;
+    tgui_s32 adv_width;
 
 } TGuiGlyph;
 
 typedef struct TGuiFont {
     TGuiGlyph *glyphs;
     
-    u32 glyph_count;
-    u32 glyph_rage_start;
-    u32 glyph_rage_end;
+    tgui_u32 glyph_count;
+    tgui_u32 glyph_rage_start;
+    tgui_u32 glyph_rage_end;
 
-    s32 ascent;
-    s32 descent;
-    s32 line_gap;
+    tgui_s32 ascent;
+    tgui_s32 descent;
+    tgui_s32 line_gap;
 
-    u32 max_glyph_height;
-    u32 max_glyph_width;
+    tgui_u32 max_glyph_height;
+    tgui_u32 max_glyph_width;
     
     struct TGuiOsFont *font;
 } TGuiFont;
@@ -406,12 +404,12 @@ void tgui_font_initilize(TGuiArena *arena);
 
 void tgui_font_terminate(void);
 
-TGuiGlyph *tgui_font_get_codepoint_glyph(u32 codepoint);
+TGuiGlyph *tgui_font_get_codepoint_glyph(tgui_u32 codepoint);
 
-TGuiRectangle tgui_get_size_text_dim(s32 x, s32 y, char *text, u32 size);
+TGuiRectangle tgui_get_size_text_dim(tgui_s32 x, tgui_s32 y, char *text, tgui_u32 size);
 
-TGuiRectangle tgui_get_text_dim(s32 x, s32 y, char *text);
+TGuiRectangle tgui_get_text_dim(tgui_s32 x, tgui_s32 y, char *text);
 
-void tgui_font_draw_text(TGuiPainter *painter, s32 x, s32 y, char *text, u32 size, u32 color);
+void tgui_font_draw_text(TGuiPainter *painter, tgui_s32 x, tgui_s32 y, char *text, tgui_u32 size, tgui_u32 color);
 
 #endif /* _TGUI_H_ */

@@ -9,12 +9,12 @@
 /* ----------------------- */
 
 typedef struct TGuiBitmap {
-    u32 *pixels;
-    u32 width, height;
+    tgui_u32 *pixels;
+    tgui_u32 width, height;
     struct TGuiTexture *texture;
 } TGuiBitmap;
 
-TGuiBitmap tgui_bitmap_alloc_empty(TGuiArena *arena, u32 w, u32 h);
+TGuiBitmap tgui_bitmap_alloc_empty(TGuiArena *arena, tgui_u32 w, tgui_u32 h);
 
 TGuiBitmap tgui_bitmap_copy(TGuiArena *arena, TGuiBitmap *bitmap);
 
@@ -44,9 +44,9 @@ typedef struct TGuiTextureAtlas {
     
     TGuiBitmap bitmap;
 
-    u32 current_x;
-    u32 current_y;
-    u32 last_row_added_height;
+    tgui_u32 current_x;
+    tgui_u32 current_y;
+    tgui_u32 last_row_added_height;
 
     TGuiArena arena;
     TGuiTextureArray textures;
@@ -61,9 +61,9 @@ void tgui_texture_atlas_add_bitmap(TGuiTextureAtlas *texture_atlas, TGuiBitmap *
 
 void tgui_texture_atlas_generate_atlas(void);
 
-u32 tgui_texture_atlas_get_width(TGuiTextureAtlas *texture_atlas);
+tgui_u32 tgui_texture_atlas_get_width(TGuiTextureAtlas *texture_atlas);
 
-u32 tgui_texture_atlas_get_height(TGuiTextureAtlas *texture_atlas);
+tgui_u32 tgui_texture_atlas_get_height(TGuiTextureAtlas *texture_atlas);
 
 /* ----------------------------- */
 /*          TGui Vertext         */
@@ -76,7 +76,7 @@ typedef struct TGuiVertex {
 } TGuiVertex;
 
 TGuiArray(TGuiVertex, TGuiVertexArray);
-TGuiArray(u32, TGuiU32Array);
+TGuiArray(tgui_u32, TGuiU32Array);
 
 /* ----------------------------------- */
 /*          TGui Render Buffer         */
@@ -124,7 +124,7 @@ typedef struct TGuiRenderState {
     TGuiRenderBuffer      render_buffer_tgui_on_top;
     
     TGuiRenderBufferArray render_buffers_custom;
-    u32 current_render_buffer_custom_pushed_count;
+    tgui_u32 current_render_buffer_custom_pushed_count;
 
 } TGuiRenderState;
 
@@ -148,10 +148,10 @@ void tgui_render_state_draw_buffers(TGuiRenderState *render_state);
 typedef void *(*TGuiGfxCreateProgram) (char *vert, char *frag);
 typedef void (*TGuiGfxDestroyProgram) (void *program);
 
-typedef void *(*TGuiGfxCreateTexture) (u32 *data, u32 width, u32 height);
+typedef void *(*TGuiGfxCreateTexture) (tgui_u32 *data, tgui_u32 width, tgui_u32 height);
 typedef void (*TGuiGfxDestroyTexture) (void *texture);
 
-typedef void (*TGuiGfxSetProgramWidthAndHeight) (void *program, u32 width, u32 height);
+typedef void (*TGuiGfxSetProgramWidthAndHeight) (void *program, tgui_u32 width, tgui_u32 height);
 
 typedef void (*TGuiGfxDrawBuffers) (void *program, void *texutre, TGuiVertexArray *vertex_buffer, TGuiU32Array *index_buffer);
 

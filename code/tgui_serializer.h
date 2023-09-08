@@ -1,7 +1,6 @@
 #ifndef _TGUI_SERIALIZER_ 
 #define _TGUI_SERIALIZER_ 
 
-#include "common.h"
 #include "tgui_os.h"
 #include "tgui_docker.h"
 
@@ -34,10 +33,10 @@ typedef struct TGuiToken {
     char *start;
     char *end;
     
-    s32 value;
+    tgui_s32 value;
 
-    u32 line;
-    u32 col;
+    tgui_u32 line;
+    tgui_u32 col;
 
 } TGuiToken;
 
@@ -45,8 +44,8 @@ typedef struct TGuiTokenizer {
     char *current;
     char *end;
 
-    u32 current_line;
-    u32 current_col;
+    tgui_u32 current_line;
+    tgui_u32 current_col;
 
 } TGuiTokenizer;
 
@@ -54,7 +53,7 @@ typedef struct TGuiTokenizer {
 
 void tgui_tokenizer_start(TGuiTokenizer *tokenizer, struct TGuiOsFile *file);
 
-b32 tgui_tokenizer_next_token(TGuiTokenizer *tokenizer, TGuiToken *token, b32 *error);
+tgui_b32 tgui_tokenizer_next_token(TGuiTokenizer *tokenizer, TGuiToken *token, tgui_b32 *error);
 
 void tgui_token_print(TGuiToken *token);
 
